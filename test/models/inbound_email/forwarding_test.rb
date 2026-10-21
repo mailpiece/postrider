@@ -10,7 +10,8 @@ class InboundEmail::ForwardingTest < ActiveSupport::TestCase
     publish_sealing_key
   end
 
-  test "mail from an unknown sender is held and its sender lands denied" do
+  test "mail from an unknown, authenticated sender is held and its sender lands denied" do
+    stub_verdicts(dmarc: "pass", from_aligned: true)
     email = inbound_to_mailbox(from: JANE)
 
     assert_no_difference -> { Message.count } do
@@ -25,6 +26,18 @@ class InboundEmail::ForwardingTest < ActiveSupport::TestCase
     event = email.events.last
     assert_equal "inbound_email_held", event.action
     assert_equal "denied_sender", event.particulars["reason"]
+  end
+
+  test "mail from an unknown sender nothing vouches for is held under no contact" do
+    email = inbound_to_mailbox(from: JANE)
+
+    assert_no_difference [ -> { Message.count }, -> { Contact.count } ] do
+      email.forward(ip: "203.0.113.1", helo: "sender.example")
+    end
+
+    assert email.reload.held?
+    assert_nil email.contact
+    assert_equal "unauthenticated_sender", email.events.last.particulars["reason"]
   end
 
   test "mail from an approved, authenticated sender is forwarded to the confirmed destination" do
@@ -108,6 +121,7 @@ class InboundEmail::ForwardingTest < ActiveSupport::TestCase
     end
 
     assert email.reload.held?
+    assert_nil email.contact, "a spoofed From must not land in the history of the contact it imitates"
     assert_equal "unauthenticated_sender", email.events.last.particulars["reason"]
   end
 

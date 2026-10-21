@@ -17,8 +17,9 @@ module InboundEmail::Forwarding
     !to_bounce_address? && forwarding_mailbox.present?
   end
 
+  # A spoofed From must not open a contact to approve, nor land in the history of the one it imitates.
   def forward_or_hold
-    update! contact: Contact.for_sender(domain, from_address, name: from_name)
+    update! contact: Contact.for_sender(domain, from_address, name: from_name) if authenticated_sender?
 
     if forwardable?
       forward_to_destination
@@ -112,12 +113,12 @@ module InboundEmail::Forwarding
     end
 
     def hold_reason
-      if contact.nil?
+      if !authenticated_sender?
+        "unauthenticated_sender"
+      elsif contact.nil?
         "unidentified_sender"
       elsif contact.denied?
         "denied_sender"
-      elsif !authenticated_sender?
-        "unauthenticated_sender"
       else
         "forwarding_loop"
       end

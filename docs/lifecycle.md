@@ -29,7 +29,7 @@ Tracks one piece of inbound mail from receipt through forwarding.
 | `delivered`  | Forwarded to your webhook successfully (or, for a bounce DSN, correlated back to the originating delivery) |
 | `failed`     | Processing could not complete (e.g. it stayed stuck for over a day)             |
 | `bounced`    | Discarded rather than forwarded — no registered mailbox claimed it, or a DSN couldn't be correlated to a delivery |
-| `held`       | Addressed to a forwarding mailbox but not passed on — the sender isn't an approved contact (a sender first seen starts out denied), no aligned DKIM, SPF, or DMARC pass vouches for its `From`, or the message was going round a forwarding loop |
+| `held`       | Addressed to a forwarding mailbox but not passed on — no aligned DKIM, SPF, or DMARC pass vouches for its `From` (such mail is filed under no contact), the sender isn't an approved contact (a sender first seen starts out denied), or the message was going round a forwarding loop |
 
 `held` is the one inbound status that isn't final: the mail is kept as it arrived, and approving the sender releases everything held from them — each message that nothing else blocks is forwarded then and becomes `delivered`. Held mail nobody releases ages out on its own clock (`HELD_RETENTION_DAYS`, default 90 days) rather than the ordinary retention period.
 

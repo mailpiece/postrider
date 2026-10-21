@@ -42,3 +42,6 @@ module AccountSlug
 end
 
 Rails.application.config.middleware.insert_after Rack::TempfileReaper, AccountSlug::Extractor
+
+# The slug is moved off PATH_INFO before routing, so declared routes are matched past it.
+FilterPathParameters.prefix = AccountSlug::PATH_INFO_MATCH

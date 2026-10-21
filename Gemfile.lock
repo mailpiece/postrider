@@ -14,6 +14,15 @@ GIT
       railties (>= 7.1.0)
 
 GIT
+  remote: https://github.com/mailpiece/filter_path_parameters.git
+  revision: b834332305e6a2f7e89aafb25a0b4760cee57036
+  branch: main
+  specs:
+    filter_path_parameters (0.1.0)
+      actionpack (>= 8.0)
+      railties (>= 8.0)
+
+GIT
   remote: https://github.com/mailpiece/mailauth.git
   revision: 4d844d3b7397e887c4dcaff2a715c85c864c34b8
   branch: main
@@ -549,6 +558,7 @@ DEPENDENCIES
   capybara
   debug
   faker
+  filter_path_parameters!
   geared_pagination (~> 1.2)
   importmap-rails
   jbuilder
@@ -632,6 +642,7 @@ CHECKSUMS
   faraday (2.14.4) sha256=9bb4408c44621b0dbaaaa39e5dbfc4dbe58cc6751b6eb94d16ae9e1f2f2fab6e
   faraday-net_http (3.4.4) sha256=0e78af151747ed1b00f33e25973b4bc220d7f16c00c39676817c8b12331eb588
   faraday-retry (2.4.0) sha256=7b79c48fb7e56526faf247b12d94a680071ff40c9fda7cf1ec1549439ad11ebe
+  filter_path_parameters (0.1.0)
   fugit (1.14.0) sha256=e311a9cc85a54bb67649df45060e721282a1e2c8ebad40e41874a3a7d576f37e
   geared_pagination (1.2.0) sha256=16dc25b28e9d6945df27e9bcc6ed298d66eb9493ba45bf987037010724120cc7
   globalid (1.4.0) sha256=037f12fbf1d9d7a014d501c2d5c77356fd4ddd96d7a7991d6700bba96706f427

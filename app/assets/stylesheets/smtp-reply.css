@@ -1,0 +1,14 @@
+@layer components {
+  /* What the other server answered, whole, under the trail line it belongs to. */
+  .smtp-reply {
+    color: var(--color-ink-dark);
+    font-size: var(--text-x-small);
+    grid-column: 2;
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
+
+    .status {
+      font-size: inherit;
+    }
+  }
+}

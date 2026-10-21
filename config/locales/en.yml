@@ -1,0 +1,7 @@
+en:
+  filter_search_everything_html: "Search everything for “%{term}”"
+  hello: "Hello world"
+  activerecord:
+    attributes:
+      domain:
+        allowed_ips: "Allowed IPs"

@@ -1,0 +1,8 @@
+@layer components {
+  /* A trail whose lines say what no other part of the page does, so none is cut short. */
+  .trail.trail--whole .trail__sentence {
+    overflow: visible;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+}

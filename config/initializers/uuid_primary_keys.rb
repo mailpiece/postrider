@@ -1,0 +1,83 @@
+module UuidPrimaryKeyDefault
+  # Rails builds the schema context's attribute set, applying pending attribute modifications, before
+  # the model's own `load_schema!` runs, so the default is registered as the context is built.
+  def build_schema_context
+    define_uuid_primary_key_pending_default
+    super
+  end
+
+  private
+    def define_uuid_primary_key_pending_default
+      if uuid_primary_key?
+        pending_attribute_modifications << PendingUuidDefault.new(primary_key)
+      end
+    rescue ActiveRecord::StatementInvalid
+      # Table doesn't exist yet (e.g. mid-migration).
+    end
+
+    def uuid_primary_key?
+      table_name && primary_key && schema_cache.columns_hash(table_name)[primary_key]&.type == :uuid
+    end
+
+    PendingUuidDefault = Struct.new(:name) do
+      def apply_to(attribute_set)
+        attribute_set[name] = attribute_set[name].with_user_default(-> { ActiveRecord::Type::Uuid.generate })
+      end
+    end
+end
+
+module SqliteUuidAdapter
+  extend ActiveSupport::Concern
+
+  def lookup_cast_type(sql_type)
+    if sql_type == "blob(16)"
+      ActiveRecord::Type.lookup(:uuid, adapter: :sqlite3)
+    else
+      super
+    end
+  end
+
+  def fetch_type_metadata(sql_type)
+    if sql_type == "blob(16)"
+      ActiveRecord::ConnectionAdapters::SqlTypeMetadata.new(
+        sql_type: sql_type,
+        type: :uuid,
+        limit: 16
+      )
+    else
+      super
+    end
+  end
+
+  class_methods do
+    def native_database_types
+      @native_database_types_with_uuid ||= super.merge(uuid: { name: "blob", limit: 16 })
+    end
+  end
+end
+
+module SchemaDumperUuidType
+  def schema_type(column)
+    if column.sql_type == "binary(16)" || column.sql_type == "blob(16)"
+      :uuid
+    else
+      super
+    end
+  end
+end
+
+module TableDefinitionUuidSupport
+  def uuid(name, **options)
+    column(name, :uuid, **options)
+  end
+end
+
+ActiveSupport.on_load(:active_record) do
+  ActiveRecord::Base.singleton_class.prepend(UuidPrimaryKeyDefault)
+  ActiveRecord::ConnectionAdapters::TableDefinition.prepend(TableDefinitionUuidSupport)
+end
+
+ActiveSupport.on_load(:active_record_sqlite3adapter) do
+  ActiveRecord::ConnectionAdapters::SQLite3Adapter.prepend(SqliteUuidAdapter)
+  ActiveRecord::ConnectionAdapters::SQLite3::SchemaDumper.prepend(SchemaDumperUuidType)
+end

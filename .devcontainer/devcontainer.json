@@ -1,0 +1,26 @@
+{
+  "name": "PostRider",
+  "runArgs": [
+    "--name",
+    "postrider"
+  ],
+  "image": "ghcr.io/rails/devcontainer/images/ruby:4.0.5",
+  "workspaceFolder": "/rails",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/rails,type=bind,consistency=cached",
+  "containerEnv": {
+    "RAILS_ENV": "development",
+    "BUNDLE_WITHOUT": "",
+    "BUNDLE_DEPLOYMENT": "0"
+  },
+  "postCreateCommand": "bin/devcontainer",
+  "forwardPorts": [
+    3010
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "Shopify.ruby-lsp"
+      ]
+    }
+  }
+}

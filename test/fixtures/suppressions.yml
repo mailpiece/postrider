@@ -1,0 +1,6 @@
+bounced:
+  account: davids_account
+  domain: example
+  address: invalid@unreachable.example
+  reason: invalid
+  expires_at: <%= Suppression::LIFETIME.from_now %>

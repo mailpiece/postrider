@@ -1,0 +1,28 @@
+approved:
+  account: davids_account
+  domain: example
+  number: 1
+  email: friend@sender.example
+  name: Friend
+  decision: approved
+
+denied:
+  account: davids_account
+  domain: example
+  number: 2
+  email: stranger@sender.example
+  decision: denied
+
+other_account:
+  account: other_account
+  domain: other_account
+  number: 100
+  email: outsider@sender.example
+  decision: denied
+
+private:
+  account: davids_account
+  domain: private
+  number: 3
+  email: hidden@example.org
+  decision: denied

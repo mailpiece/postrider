@@ -1,0 +1,30 @@
+@layer components {
+  /* layout.css lets the container's children sit in the body's rows; the strip can only stick inside a box that runs to the end of the page. A column, so #main's auto margins still centre a lone panel. Without the zero, the crumbs would widen the page on a phone. */
+  #global-container {
+    display: flex;
+    flex-direction: column;
+    min-inline-size: 0;
+  }
+
+  body {
+    grid-template-rows: 1fr auto 9em;
+
+    &.public {
+      grid-template-rows: 1fr auto;
+    }
+  }
+
+  /* The shell's #main centres its text; a page of ours reads from the start. A panel inside fills the page at every width. */
+  .page {
+    --panel-size: 100%;
+
+    inline-size: 100%;
+    margin-inline: auto;
+    max-inline-size: var(--page-size, 40rem);
+    text-align: start;
+  }
+
+  .page--wide {
+    --page-size: 65rem;
+  }
+}

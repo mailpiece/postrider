@@ -1,0 +1,11 @@
+@layer components {
+  .dmarc-report {
+    display: flex;
+    flex-direction: column;
+    gap: var(--block-space-half);
+
+    > .rows {
+      margin-block: 0;
+    }
+  }
+}

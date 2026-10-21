@@ -1,0 +1,6 @@
+@layer utilities {
+  .txt-mono { font-family: var(--font-mono); }
+
+  /* Doubled: utilities.css loads later and its text-decoration shorthand resets the thickness at equal specificity. */
+  .txt-link.txt-link { text-decoration-thickness: max(1px, 0.07em); text-underline-offset: 0.08em; }
+}

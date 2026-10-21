@@ -1,0 +1,221 @@
+@layer components {
+  .site-header {
+    align-items: center;
+    column-gap: var(--header-gap, var(--inline-space-half));
+    display: grid;
+    grid-template-areas:
+      ". brand messages"
+      "nav nav nav";
+    grid-template-columns: 1fr auto 1fr;
+
+    @media (width >= 960px) {
+      grid-template-areas: ". brand nav messages";
+      grid-template-columns: 1fr auto auto 1fr;
+    }
+  }
+
+  .header:has(> .site-header) {
+    align-items: center;
+    row-gap: 0;
+
+    /* As wide as a wide page inside #main's padding, so the actions end where the page does. */
+    inline-size: 100%;
+    margin-inline: auto;
+    max-inline-size: calc(var(--header-size, 65rem) + var(--main-padding) * 2);
+
+    /* header.css sizes the action columns for icon circles; from 640 up ours carry a label, so the sides take their content and stay equal while there is room. */
+    @media (width >= 640px) {
+      --header-actions-width: auto;
+      --header-btn-size: 2.5rem;
+
+      column-gap: var(--header-gap);
+      grid-template-columns: 1fr fit-content(50%) 1fr;
+    }
+  }
+
+  @media (width >= 640px) {
+    .header__actions {
+      font-size: var(--text-normal);
+    }
+
+    /* buttons.css makes a circle of any button with an aria-label and an icon, the label stacked on the icon. */
+    .header__actions .btn--circle-mobile[aria-label] {
+      --btn-gap: var(--inline-space);
+      --btn-padding: 0 1.1em;
+      --icon-size: var(--btn-icon-size, 1.3em);
+
+      aspect-ratio: auto;
+      block-size: auto;
+      display: inline-flex;
+      inline-size: auto;
+      justify-content: center;
+      min-block-size: var(--header-btn-size);
+      white-space: nowrap;
+    }
+  }
+
+  /* The circle the header's columns are sized for. */
+  @media (width < 640px) {
+    .header__actions .btn--circle-mobile {
+      --btn-size: var(--header-btn-size);
+    }
+  }
+
+  .header .header__title {
+    font-size: var(--text-x-large);
+    font-weight: 800;
+    letter-spacing: -0.024em;
+    line-height: 1.15;
+  }
+
+  /* With the title and actions in the strip, the header keeps its sections row alone. */
+  .header:has(> .site-header):not(:has(.header__title, .header__actions)) {
+    grid-template-areas: "menu menu menu";
+  }
+
+  /* Spanning the header's columns, its content would hold their width against the title's. */
+  .header > .site-header {
+    contain: inline-size;
+    grid-area: menu;
+  }
+
+  .site-header__brand {
+    align-items: center;
+    display: inline-flex;
+    gap: var(--inline-space-half);
+    grid-area: brand;
+    justify-content: center;
+    min-inline-size: 0;
+  }
+
+  /* As tall as a section's button beside it: one line of its small text and its padding. */
+  .site-header__logo {
+    block-size: var(--site-header-logo-size, calc(1lh + 1em));
+    font-size: var(--text-small);
+    border-radius: var(--radius-lg);
+    display: block;
+    inline-size: auto;
+  }
+
+  .public .site-header__logo {
+    border-radius: var(--radius-md);
+  }
+
+  /* Beside the sections our mark and the account's sit a little under a button's height. On a phone the stacked header below sets its own. */
+  .header:has(.site-header__sections) {
+    --site-header-logo-size: 1.5rem;
+  }
+
+  .site-header__sections {
+    display: contents;
+  }
+
+  /* header.css places every nav in the header's menu area and centres it; ours sits inside the site header's own grid. */
+  .header .site-header__nav {
+    grid-area: nav;
+    margin-inline: 0;
+    min-inline-size: 0;
+  }
+
+  /* One row, so the last section never wraps alone. */
+  .site-header__list {
+    align-items: center;
+    display: flex;
+    gap: var(--header-gap, var(--inline-space-half));
+    justify-content: center;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .site-header__item {
+    flex: none;
+  }
+
+  .site-header__link {
+    --btn-background: transparent;
+    --btn-border-size: 0;
+    --btn-padding: 0.5em 0.75em;
+
+    white-space: nowrap;
+
+    @media (any-hover: hover) {
+      &:hover {
+        --btn-background: var(--color-ink-lighter);
+      }
+    }
+
+    &[aria-current="page"],
+    &[aria-expanded="true"] {
+      --btn-background: var(--color-ink-lightest);
+    }
+  }
+
+  /* On a phone the brand sits between the actions, the sections take a row of their own and the title keeps the full width. */
+  @media (width < 640px) {
+    .header--mobile-actions-stack:has(.site-header__sections) {
+      --site-header-logo-size: var(--header-btn-size);
+
+      grid-template-areas:
+        "actions-start menu actions-end"
+        "sections sections sections"
+        "title title title";
+
+      &:not(:has(.header__title, .header__actions)) {
+        grid-template-areas:
+          "actions-start menu actions-end"
+          "sections sections sections";
+      }
+
+      > .site-header {
+        display: contents;
+      }
+
+      .site-header__brand {
+        grid-area: menu;
+      }
+
+      /* Spanning the header's columns, the row would hold their width against the brand's. */
+      .site-header__sections {
+        align-items: center;
+        contain: inline-size;
+        display: flex;
+        gap: var(--header-gap);
+        grid-area: sections;
+        justify-content: center;
+      }
+
+      .site-header__nav {
+        flex: 0 1 auto;
+      }
+
+      /* The row scrolls sideways when the sections do not fit. */
+      .site-header__list {
+        justify-content: safe center;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+      }
+
+      .site-header__link {
+        --btn-padding: 0.5em;
+      }
+
+      /* The row takes the header's side padding and the links a smaller size, so all five fit at 375px. Narrower
+         screens still scroll. */
+      .site-header__sections:has(.site-header__item:nth-child(4)) {
+        gap: 0;
+        margin-inline: calc(0.25rem - var(--main-padding));
+
+        .site-header__list {
+          gap: 0;
+        }
+
+        .site-header__link {
+          --btn-padding: 0.5em 0.3em;
+          --text-small: var(--text-x-small);
+        }
+      }
+    }
+  }
+}

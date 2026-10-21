@@ -1,0 +1,26 @@
+active:
+  account: davids_account
+  domain: example
+  name: Deliveries
+  url: https://hooks.example.com/postrider
+  signing_secret: Wc4oqgMXpZGK8vYbJhT3sN2d # gitleaks:allow randomly generated
+  subscribed_actions: '<%= %w[ delivery_delivered ].to_json %>'
+  active: true
+
+inactive:
+  account: davids_account
+  domain: example
+  name: Receipts
+  url: https://hooks.example.com/receipts
+  signing_secret: Qn7rXk2PvLd9Tm4Hs8bYcW3e # gitleaks:allow randomly generated
+  subscribed_actions: '<%= %w[ inbound_email_received ].to_json %>'
+  active: false
+
+other_account:
+  account: other_account
+  domain: other_account
+  name: Theirs
+  url: https://hooks.other-account.test/postrider
+  signing_secret: Zt5mBq8NwJr2Kx6Fv9Lp4Hd7 # gitleaks:allow randomly generated
+  subscribed_actions: '<%= %w[ inbound_email_received ].to_json %>'
+  active: true

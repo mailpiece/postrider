@@ -1,0 +1,11 @@
+davids_account:
+  code: DVDS-5678-9XYZ
+  usage_count: 0
+  usage_limit: 10
+  account: davids_account
+
+other_account:
+  code: OTHR-1234-5ABC
+  usage_count: 0
+  usage_limit: 10
+  account: other_account

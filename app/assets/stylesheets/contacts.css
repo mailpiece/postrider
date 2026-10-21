@@ -1,0 +1,7 @@
+@layer components {
+  .avatar.contact__avatar {
+    --avatar-size: 2.25rem;
+
+    font-size: var(--text-x-small);
+  }
+}

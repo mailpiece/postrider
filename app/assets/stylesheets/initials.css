@@ -1,0 +1,24 @@
+@layer components {
+  /* Initials on a colour picked from the address, so the ink is white in both themes. */
+  .avatar {
+    color: var(--color-white);
+    font-size: var(--text-small);
+    font-weight: 800;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .avatar--initials {
+    white-space: nowrap;
+    word-break: normal;
+  }
+
+  /* Three initials shrink to the circle they are in, whatever unit sized it. */
+  .avatar--squeezed {
+    container-type: inline-size;
+  }
+
+  .avatar__letters {
+    font-size: min(1em, 30cqi);
+  }
+}

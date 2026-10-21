@@ -1,0 +1,27 @@
+queued:
+  account: davids_account
+  domain: example
+  mail_from: sender@example.com
+  subject: Hello
+  mail_message_id: <hello@example.com>
+
+delivered:
+  account: davids_account
+  domain: example
+  mail_from: sender@example.com
+  subject: Hello
+  mail_message_id: <hello@example.com>
+
+bounced:
+  account: davids_account
+  domain: example
+  mail_from: sender@example.com
+  subject: Hello
+  mail_message_id: <hello@example.com>
+
+deferred:
+  account: davids_account
+  domain: example
+  mail_from: sender@example.com
+  subject: Hello
+  mail_message_id: <hello@example.com>

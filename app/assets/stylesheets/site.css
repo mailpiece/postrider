@@ -1,0 +1,57 @@
+@layer base {
+  /* The ground is the canvas everywhere, in light and dark. Set on the body: the tokens are resolved on the root. */
+  body {
+    --color-page: var(--color-canvas);
+    --color-body: var(--color-canvas);
+  }
+
+  body.public #footer {
+    color: var(--color-ink-medium);
+    font-size: var(--text-small);
+    margin-top: 4rem;
+    padding: 2rem 1rem 1.5rem;
+    text-align: center;
+  }
+
+  @media screen {
+    body:not(.public) #main > :first-child {
+      margin-block-start: 0;
+
+      &:not(.project) > :first-child,
+      &:not(.project) > div:not([class]):first-child > :first-child {
+        margin-block-start: 0;
+      }
+    }
+  }
+}
+
+@layer components {
+  .btn {
+    line-height: normal;
+  }
+
+  .public form .input {
+    font-size: var(--text-large);
+  }
+
+  /* Validation feedback only after interaction */
+  .input:user-invalid {
+    --input-border-color: var(--color-negative);
+  }
+
+  /* On a white ground the centred card needs its edge back. */
+  .panel.panel--centered {
+    --panel-border-size: 1px;
+  }
+}
+
+@layer components {
+  /* Settings panels inside a page stack in its column, so the strip keeps to the column too. */
+  .page > .settings {
+    flex-direction: column;
+
+    .settings__panel {
+      max-inline-size: 100%;
+    }
+  }
+}

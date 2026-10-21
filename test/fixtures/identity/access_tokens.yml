@@ -1,0 +1,5 @@
+davids_api_token:
+  identity: leo
+  token_digest: <%= Identity::AccessToken.digest("test_token_davids_api_0000000000") %>
+  description: Test token
+  permission: write

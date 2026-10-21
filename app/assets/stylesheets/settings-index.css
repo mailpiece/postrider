@@ -1,0 +1,32 @@
+@layer components {
+  .settings-index {
+    display: flex;
+    flex-direction: column;
+    gap: var(--block-space);
+    padding-block-end: var(--block-space-double);
+  }
+
+  .settings-index__card {
+    --panel-padding: 0;
+
+    display: flex;
+    flex-direction: column;
+  }
+
+  .settings-index__heading {
+    border-block-end: 1px solid var(--color-ink-light);
+    font-size: var(--text-medium);
+    font-weight: 700;
+    margin: 0;
+    padding: var(--block-space) var(--inline-space-double);
+    text-align: center;
+    text-wrap: balance;
+  }
+
+  .settings-index__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--block-space);
+    padding: var(--block-space) var(--inline-space-double);
+  }
+}

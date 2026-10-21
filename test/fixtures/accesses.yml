@@ -1,0 +1,24 @@
+example_leo:
+  account: davids_account
+  domain: example
+  user: leo
+
+example_nonstaff:
+  account: davids_account
+  domain: example
+  user: nonstaff
+
+private_leo:
+  account: davids_account
+  domain: private
+  user: leo
+
+unverified_leo:
+  account: davids_account
+  domain: unverified
+  user: leo
+
+other_account_other:
+  account: other_account
+  domain: other_account
+  user: other

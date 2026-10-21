@@ -1,0 +1,483 @@
+require "test_helper"
+
+class ActionPack::WebAuthn::CborDecoderTest < ActiveSupport::TestCase
+  test "decodes unsigned integer 0" do
+    assert_equal 0, decode("00")
+  end
+
+  test "decodes unsigned integer 1" do
+    assert_equal 1, decode("01")
+  end
+
+  test "decodes unsigned integer 10" do
+    assert_equal 10, decode("0a")
+  end
+
+  test "decodes unsigned integer 23" do
+    assert_equal 23, decode("17")
+  end
+
+  test "decodes unsigned integer 24 (single byte follows)" do
+    assert_equal 24, decode("1818")
+  end
+
+  test "decodes unsigned integer 25" do
+    assert_equal 25, decode("1819")
+  end
+
+  test "decodes unsigned integer 100" do
+    assert_equal 100, decode("1864")
+  end
+
+  test "decodes unsigned integer 1000 (two bytes follow)" do
+    assert_equal 1000, decode("1903e8")
+  end
+
+  test "decodes unsigned integer 1000000 (four bytes follow)" do
+    assert_equal 1000000, decode("1a000f4240")
+  end
+
+  test "decodes unsigned integer 1000000000000 (eight bytes follow)" do
+    assert_equal 1000000000000, decode("1b000000e8d4a51000")
+  end
+
+  test "decodes negative integer -1" do
+    assert_equal(-1, decode("20"))
+  end
+
+  test "decodes negative integer -10" do
+    assert_equal(-10, decode("29"))
+  end
+
+  test "decodes negative integer -100" do
+    assert_equal(-100, decode("3863"))
+  end
+
+  test "decodes negative integer -1000" do
+    assert_equal(-1000, decode("3903e7"))
+  end
+
+  test "decodes empty byte string" do
+    assert_equal "", decode("40")
+  end
+
+  test "decodes byte string with 4 bytes" do
+    assert_equal "\x01\x02\x03\x04".b, decode("4401020304")
+  end
+
+  test "decodes empty text string" do
+    result = decode("60")
+    assert_equal "", result
+    assert_equal Encoding::UTF_8, result.encoding
+  end
+
+  test "decodes text string 'a'" do
+    result = decode("6161")
+    assert_equal "a", result
+    assert_equal Encoding::UTF_8, result.encoding
+  end
+
+  test "decodes text string 'IETF'" do
+    result = decode("6449455446")
+    assert_equal "IETF", result
+    assert_equal Encoding::UTF_8, result.encoding
+  end
+
+  test "decodes text string with unicode" do
+    result = decode("62c3bc")
+    assert_equal "ü", result
+    assert_equal Encoding::UTF_8, result.encoding
+  end
+
+  test "decodes empty array" do
+    assert_equal [], decode("80")
+  end
+
+  test "decodes array [1, 2, 3]" do
+    assert_equal [ 1, 2, 3 ], decode("83010203")
+  end
+
+  test "decodes nested array [1, [2, 3], [4, 5]]" do
+    assert_equal [ 1, [ 2, 3 ], [ 4, 5 ] ], decode("8301820203820405")
+  end
+
+  test "decodes array with 25 elements" do
+    expected = (1..25).to_a
+    # 0x9819 = array with 25 elements (0x98 = type 4 + additional 24, 0x19 = 25)
+    # integers 1-23 encode as single bytes, 24 = 0x1818, 25 = 0x1819
+    elements = (1..23).map { |n| format("%02x", n) }.join + "18181819"
+    assert_equal expected, decode("9819" + elements)
+  end
+
+  test "decodes empty map" do
+    assert_equal({}, decode("a0"))
+  end
+
+  test "decodes map {1: 2, 3: 4}" do
+    assert_equal({ 1 => 2, 3 => 4 }, decode("a201020304"))
+  end
+
+  test "decodes map with string keys" do
+    assert_equal({ "a" => 1, "b" => 2 }, decode("a2616101616202"))
+  end
+
+  test "decodes nested map" do
+    assert_equal({ "a" => { "b" => 1 } }, decode("a16161a1616201"))
+  end
+
+  test "decodes false" do
+    assert_equal false, decode("f4")
+  end
+
+  test "decodes true" do
+    assert_equal true, decode("f5")
+  end
+
+  test "decodes null" do
+    assert_nil decode("f6")
+  end
+
+  test "decodes undefined as nil" do
+    assert_nil decode("f7")
+  end
+
+  test "decodes tagged value, ignoring tag" do
+    # 0xc0 = tag 0 (date/time string), followed by text "2013-03-21T20:04:00Z"
+    assert_equal "2013-03-21T20:04:00Z", decode("c074323031332d30332d32315432303a30343a30305a")
+  end
+
+  test "decodes tagged integer" do
+    # 0xc1 = tag 1 (epoch time), followed by integer 1363896240
+    assert_equal 1363896240, decode("c11a514b67b0")
+  end
+
+  test "raises error for reserved additional info values" do
+    assert_raises(ActionPack::WebAuthn::InvalidCborError) do
+      decode("1c")
+    end
+  end
+
+  test "decodes indefinite length array" do
+    assert_equal [ 1, 2, 3 ], decode("9f010203ff")
+  end
+
+  test "decodes empty indefinite length array" do
+    assert_equal [], decode("9fff")
+  end
+
+  test "decodes empty indefinite length map" do
+    assert_equal({}, decode("bfff"))
+  end
+
+  test "decodes indefinite length map" do
+    assert_equal({ "a" => 1, "b" => 2 }, decode("bf616101616202ff"))
+  end
+
+  test "decodes indefinite length byte string" do
+    assert_equal "\x01\x02\x03".b, decode("5f4201024103ff")
+  end
+
+  test "decodes indefinite length text string" do
+    result = decode("7f657374726561646d696e67ff")
+    assert_equal "streaming", result
+    assert_equal Encoding::UTF_8, result.encoding
+  end
+
+  test "decodes half-precision float 0.0" do
+    assert_equal 0.0, decode("f90000")
+  end
+
+  test "decodes half-precision float 1.0" do
+    assert_equal 1.0, decode("f93c00")
+  end
+
+  test "decodes half-precision float 1.5" do
+    assert_equal 1.5, decode("f93e00")
+  end
+
+  test "decodes half-precision float -4.0" do
+    assert_equal(-4.0, decode("f9c400"))
+  end
+
+  test "decodes half-precision positive infinity" do
+    assert_equal Float::INFINITY, decode("f97c00")
+  end
+
+  test "decodes half-precision NaN" do
+    assert_predicate decode("f97e00"), :nan?
+  end
+
+  test "decodes single-precision float 100000.0" do
+    assert_equal 100000.0, decode("fa47c35000")
+  end
+
+  test "decodes single-precision positive infinity" do
+    assert_equal Float::INFINITY, decode("fa7f800000")
+  end
+
+  test "decodes double-precision float 1.1" do
+    assert_in_delta 1.1, decode("fb3ff199999999999a"), 0.0001
+  end
+
+  test "decodes double-precision float -4.1" do
+    assert_in_delta(-4.1, decode("fbc010666666666666"), 0.0001)
+  end
+
+  test "decodes double-precision positive infinity" do
+    assert_equal Float::INFINITY, decode("fb7ff0000000000000")
+  end
+
+  test "decodes double-precision negative infinity" do
+    assert_equal(-Float::INFINITY, decode("fbfff0000000000000"))
+  end
+
+  test "raises error for unsupported simple value" do
+    assert_raises(ActionPack::WebAuthn::InvalidCborError) do
+      decode("e0")
+    end
+  end
+
+  test "decode accepts string input" do
+    bytes = [ 0x01 ].pack("C*")
+    assert_equal 1, ActionPack::WebAuthn::CborDecoder.decode(bytes)
+  end
+
+  test "decode accepts array input" do
+    assert_equal 1, ActionPack::WebAuthn::CborDecoder.decode([ 0x01 ])
+  end
+
+  test "raises error for empty input" do
+    assert_raises(ActionPack::WebAuthn::InvalidCborError) do
+      ActionPack::WebAuthn::CborDecoder.decode([])
+    end
+  end
+
+  test "raises error for truncated byte string" do
+    # 0x44 = byte string of length 4, but only 2 bytes follow
+    assert_raises(ActionPack::WebAuthn::InvalidCborError) do
+      decode("440102")
+    end
+  end
+
+  test "raises error for truncated integer" do
+    # 0x19 = 2-byte integer follows, but only 1 byte provided
+    assert_raises(ActionPack::WebAuthn::InvalidCborError) do
+      decode("19ff")
+    end
+  end
+
+  test "raises error for truncated array" do
+    # 0x82 = array of 2 items, but only 1 provided
+    assert_raises(ActionPack::WebAuthn::InvalidCborError) do
+      decode("8201")
+    end
+  end
+
+  test "raises error for deeply nested structure" do
+    # Build array nested 20 levels deep: [[[[...]]]]
+    # 0x81 = array of 1 item
+    deeply_nested = "81" * 20 + "01"
+
+    error = assert_raises(ActionPack::WebAuthn::InvalidCborError) do
+      decode(deeply_nested)
+    end
+
+    assert_equal "Maximum nesting depth exceeded", error.message
+  end
+
+  test "raises error for input exceeding max size" do
+    error = assert_raises(ActionPack::WebAuthn::InvalidCborError) do
+      ActionPack::WebAuthn::CborDecoder.decode([ 0x01 ], max_size: 0)
+    end
+
+    assert_equal "Input exceeds maximum size", error.message
+  end
+
+  test "rejects an oversized string input before materializing its bytes" do
+    # A String over the limit must be rejected before String#bytes runs, since
+    # that conversion is itself the ~8x allocation the limit exists to prevent.
+    # This String refuses to be converted, so reaching #bytes would raise the
+    # wrong error and fail the assertion below.
+    oversized = Class.new(String) do
+      def bytes = raise "must not materialize bytes for an oversized input"
+    end.new("x" * 100)
+
+    error = assert_raises(ActionPack::WebAuthn::InvalidCborError) do
+      ActionPack::WebAuthn::CborDecoder.decode(oversized, max_size: 10)
+    end
+
+    assert_equal "Input exceeds maximum size", error.message
+  end
+
+  test "rejects an array whose declared length exceeds the remaining input" do
+    # 0x9a = array, 4-byte length follows = 0xffffffff (~4.3 billion elements)
+    # from a 5-byte input. Without a bound this drives a multi-gigabyte
+    # pre-allocation (memory-exhaustion DoS) before any element is decoded.
+    error = assert_raises(ActionPack::WebAuthn::InvalidCborError) do
+      decode("9affffffff")
+    end
+
+    assert_equal "Declared length exceeds remaining input", error.message
+  end
+
+  test "rejects a map whose declared length exceeds the remaining input" do
+    # 0xba = map, 4-byte pair count follows = 0xffffffff.
+    error = assert_raises(ActionPack::WebAuthn::InvalidCborError) do
+      decode("baffffffff")
+    end
+
+    assert_equal "Declared length exceeds remaining input", error.message
+  end
+
+  test "still decodes a well-formed definite-length array" do
+    assert_equal [ 1, 2, 3 ], decode("83010203")
+  end
+
+  test "rejects a definite-length array declaring more elements than the budget before allocating them" do
+    # 0x9a = array with a 4-byte element count = MAX_ELEMENTS + 1, followed by
+    # exactly that many one-byte items (unsigned integer 0). The declared count
+    # slips under both MAX_SIZE and the remaining-bytes bound, so only the
+    # element budget stops it from building tens of thousands of Ruby objects.
+    # The count is charged in read_length before the build loop runs, so the
+    # array is never grown.
+    over_budget = ActionPack::WebAuthn::CborDecoder::MAX_ELEMENTS + 1
+    header = [ 0x9a, over_budget ].pack("CN").bytes
+    payload = header + Array.new(over_budget, 0x00)
+
+    error = assert_raises(ActionPack::WebAuthn::InvalidCborError) do
+      ActionPack::WebAuthn::CborDecoder.decode(payload)
+    end
+
+    assert_equal "Decoded element count exceeds maximum", error.message
+  end
+
+  test "rejects an indefinite-length array that streams more elements than the budget" do
+    # Indefinite-length containers carry no declared count, so the byte bound in
+    # read_length never sees them. 0x9f opens the stream, 0xff closes it; the
+    # per-element charge is what bounds it. Uses a small override to keep the
+    # fixture tiny while exercising the same guard as the default limit.
+    payload = [ 0x9f ] + Array.new(5, 0x00) + [ 0xff ]
+
+    error = assert_raises(ActionPack::WebAuthn::InvalidCborError) do
+      ActionPack::WebAuthn::CborDecoder.decode(payload, max_elements: 4)
+    end
+
+    assert_equal "Decoded element count exceeds maximum", error.message
+  end
+
+  test "rejects a definite-length map declaring more pairs than the budget" do
+    # 0xb8 = map with a 1-byte pair count. Six pairs (twelve one-byte items)
+    # exceed a budget of five.
+    payload = [ 0xb8, 0x06 ] + Array.new(12, 0x00)
+
+    error = assert_raises(ActionPack::WebAuthn::InvalidCborError) do
+      ActionPack::WebAuthn::CborDecoder.decode(payload, max_elements: 5)
+    end
+
+    assert_equal "Decoded element count exceeds maximum", error.message
+  end
+
+  test "rejects an indefinite-length byte string that streams more chunks than the budget" do
+    # 0x5f opens an indefinite byte string, each 0x40 is an empty chunk, 0xff
+    # closes it. Chunks carry almost no bytes but each is an iteration and an
+    # allocation, so they must be charged like array entries and map pairs.
+    payload = [ 0x5f ] + Array.new(6, 0x40) + [ 0xff ]
+
+    error = assert_raises(ActionPack::WebAuthn::InvalidCborError) do
+      ActionPack::WebAuthn::CborDecoder.decode(payload, max_elements: 5)
+    end
+
+    assert_equal "Decoded element count exceeds maximum", error.message
+  end
+
+  test "rejects an indefinite-length text string that streams more chunks than the budget" do
+    # 0x7f opens an indefinite text string, each 0x60 is an empty chunk.
+    payload = [ 0x7f ] + Array.new(6, 0x60) + [ 0xff ]
+
+    error = assert_raises(ActionPack::WebAuthn::InvalidCborError) do
+      ActionPack::WebAuthn::CborDecoder.decode(payload, max_elements: 5)
+    end
+
+    assert_equal "Decoded element count exceeds maximum", error.message
+  end
+
+  test "rejects an indefinite-length byte string whose chunk is itself indefinite instead of overflowing the stack" do
+    # RFC 8949 requires each chunk of an indefinite-length string to be a
+    # definite-length string of the same type. A chunk that is itself an
+    # indefinite byte string (0x5f) used to recurse without passing through the
+    # depth check, overflowing the stack (an uncaught SystemStackError) on a
+    # deeply nested payload. It must be rejected as InvalidCborError instead.
+    payload = [ 0x5f, 0x5f, 0xff, 0xff ]
+
+    error = assert_raises(ActionPack::WebAuthn::InvalidCborError) do
+      ActionPack::WebAuthn::CborDecoder.decode(payload)
+    end
+
+    assert_equal "Indefinite-length string chunk must be a definite-length string of the same type", error.message
+  end
+
+  test "rejects an indefinite-length string chunk of a mismatched major type" do
+    # 0x5f opens an indefinite byte string; 0x00 is an integer, not a byte-string
+    # chunk. Deeply nesting these was the stack-overflow vector.
+    payload = [ 0x5f, 0x00, 0xff ]
+
+    error = assert_raises(ActionPack::WebAuthn::InvalidCborError) do
+      ActionPack::WebAuthn::CborDecoder.decode(payload)
+    end
+
+    assert_equal "Indefinite-length string chunk must be a definite-length string of the same type", error.message
+  end
+
+  test "raises for an unterminated indefinite-length byte string instead of crashing at EOF" do
+    # 0x5f opens an indefinite byte string, 0x40 is an empty chunk, and the
+    # input ends with no 0xff break. break_code? reads falsy at EOF, so without
+    # the guard major_type would do nil >> 5 and raise an uncaught NoMethodError.
+    error = assert_raises(ActionPack::WebAuthn::InvalidCborError) do
+      decode("5f40")
+    end
+
+    assert_equal "Unexpected end of input", error.message
+  end
+
+  test "decodes a small CBOR bignum" do
+    # 0xc2 = tag 2 (positive bignum), 0x42 = byte string of length 2, 0x0100.
+    assert_equal 256, decode("c2420100")
+  end
+
+  test "rejects a CBOR bignum larger than the bignum byte limit" do
+    # Bignum conversion is quadratic, so an oversized value would tie up a
+    # worker. 0xc2 tag 2, 0x59 = byte string with a 2-byte length = 1025.
+    over = ActionPack::WebAuthn::CborDecoder::MAX_BIGNUM_BYTES + 1
+    payload = [ 0xc2, 0x59 ] + [ over ].pack("n").bytes + Array.new(over, 0x00)
+
+    error = assert_raises(ActionPack::WebAuthn::InvalidCborError) do
+      ActionPack::WebAuthn::CborDecoder.decode(payload)
+    end
+
+    assert_equal "Bignum exceeds maximum size", error.message
+  end
+
+  test "rejects a CBOR bignum whose tagged value is not a byte string" do
+    # 0xc2 = tag 2 wrapping the integer 1, which has no #bytes.
+    error = assert_raises(ActionPack::WebAuthn::InvalidCborError) do
+      decode("c201")
+    end
+
+    assert_equal "Bignum value must be a byte string", error.message
+  end
+
+  test "decodes a container whose element count is exactly at the budget" do
+    # Non-vacuity: the guard rejects strictly above the budget, so a container
+    # sized right at it still decodes. A five-element array under a budget of
+    # five proves the limit is a real boundary, not an always-raise.
+    payload = [ 0x85, 0x01, 0x02, 0x03, 0x04, 0x05 ]
+
+    assert_equal [ 1, 2, 3, 4, 5 ], ActionPack::WebAuthn::CborDecoder.decode(payload, max_elements: 5)
+  end
+
+  private
+    def decode(hex)
+      bytes = [ hex ].pack("H*").bytes
+      ActionPack::WebAuthn::CborDecoder.decode(bytes)
+    end
+end

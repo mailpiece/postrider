@@ -1,0 +1,23 @@
+# Settings and secrets live in postrider.env (docs/deployment.md lists them); RELAY_PUBLIC_IP comes from .env.
+services:
+  postrider:
+    build: .
+    image: postrider
+    container_name: postrider
+    restart: unless-stopped
+    stop_grace_period: 30s          # lets in-flight SMTP sessions and deliveries finish
+    env_file: postrider.env
+    ports:
+      - "80:80"
+      - "443:443"
+      # Mail and DNS on the server's own address alone, so systemd-resolved's stub on 127.0.0.53 is left be.
+      - "${RELAY_PUBLIC_IP:?the server address mail and DNS are published on}:25:25"        # inbound (MX)
+      - "${RELAY_PUBLIC_IP:?the server address mail and DNS are published on}:587:587"      # submission
+      - "${RELAY_PUBLIC_IP:?the server address mail and DNS are published on}:53:53"        # ACME DNS (Let's Encrypt reads the certificate challenge)
+      - "${RELAY_PUBLIC_IP:?the server address mail and DNS are published on}:53:53/udp"
+    volumes:
+      - postrider:/rails/storage
+
+volumes:
+  postrider:
+    name: postrider

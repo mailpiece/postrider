@@ -1,0 +1,219 @@
+@layer components {
+  .trail {
+    display: grid;
+    grid-template-columns: max-content max-content max-content minmax(0, max-content) minmax(0, 1fr);
+    column-gap: var(--inline-space);
+    row-gap: var(--block-space-half);
+    margin-block: var(--block-space);
+    font-size: var(--text-small);
+    color: var(--color-ink);
+  }
+
+  .trail__entry,
+  .trail__line,
+  .trail__entry::details-content {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
+    align-items: baseline;
+    min-width: 0;
+  }
+
+  .trail__entry {
+    row-gap: 0;
+  }
+
+  .trail__line {
+    cursor: pointer;
+  }
+
+  .trail__time,
+  .trail__number {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .trail__time--short {
+    color: var(--color-ink-dark);
+    font-family: var(--font-sans);
+    font-size: var(--text-x-small);
+  }
+
+  .trail__number {
+    color: inherit;
+    text-decoration: none;
+
+    @media (any-hover: hover) {
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+
+  .trail__action {
+    white-space: nowrap;
+  }
+
+  .trail__actor,
+  .trail__text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .trail__detail {
+    display: flex;
+    align-items: baseline;
+    gap: var(--inline-space-half);
+    min-width: 0;
+  }
+
+  .trail__caret {
+    flex: 0 0 auto;
+    margin-inline-start: auto;
+    font-size: 1ch;
+    rotate: -90deg;
+    transition: rotate var(--duration-medium) ease-out;
+
+    .trail__entry[open] & {
+      rotate: 0deg;
+    }
+  }
+
+  .trail__more {
+    --prose-gap: var(--block-space);
+
+    grid-column: 1 / -1;
+    margin-block: var(--block-space-half);
+    padding: var(--block-space);
+    background-color: var(--color-canvas);
+    border-radius: var(--radius-md);
+    overflow-wrap: break-word;
+
+    @media screen {
+      border: var(--trail-more-border-size, 1px) solid var(--color-ink-lighter);
+    }
+
+    > :first-child {
+      margin-block-start: 0;
+    }
+
+    > :last-child {
+      margin-block-end: 0;
+    }
+  }
+
+  .trail__paragraph {
+    margin-block: var(--block-space);
+  }
+
+  .trail__entry {
+    outline: none;
+
+    &[hidden] {
+      display: none;
+    }
+
+    &[aria-selected="true"] {
+      background-color: var(--color-ink-lightest);
+    }
+  }
+
+  .trail__sentence {
+    grid-column: 2 / -1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .trail__sentence--link {
+    color: inherit;
+    text-decoration: none;
+
+    @media (any-hover: hover) {
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+
+  .trail .pagination-link {
+    grid-column: 1 / -1;
+  }
+
+  @media (width < 640px) {
+    .trail {
+      grid-template-columns: max-content max-content max-content minmax(0, 1fr);
+      row-gap: var(--block-space);
+    }
+
+    .trail__detail {
+      grid-column: 2 / -1;
+      margin-block-start: 0.2rem;
+    }
+
+    .trail__sentence {
+      white-space: normal;
+      overflow-wrap: break-word;
+    }
+
+    .trail__detail:has(.trail__text:empty):not(:has(.trail__caret)) {
+      display: none;
+    }
+
+    .trail--answers {
+      grid-template-columns: max-content max-content max-content minmax(0, max-content) minmax(1ch, 1fr);
+
+      .trail__detail {
+        grid-column: auto;
+        margin-block-start: 0;
+      }
+    }
+  }
+
+  .trail--events {
+    grid-template-columns: max-content minmax(0, 1fr);
+
+    .trail__entry {
+      position: relative;
+    }
+
+    .trail__sentence {
+      grid-column: 2;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .trail__sentence--link::after {
+      content: "";
+      inset: 0;
+      position: absolute;
+    }
+  }
+
+  .trail--events,
+  .trail--answers {
+    row-gap: var(--block-space-half);
+  }
+
+  .trail-day__title {
+    margin-block: var(--block-space) 0;
+    color: var(--color-ink-dark);
+    font-size: var(--text-small);
+    font-weight: 600;
+  }
+
+  .trail-days__more {
+    display: flex;
+    inline-size: fit-content;
+    margin-inline: auto;
+
+    turbo-frame:has(~ turbo-frame) > & {
+      display: none;
+    }
+  }
+}

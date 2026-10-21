@@ -1,0 +1,8 @@
+enforced:
+  domain: enforced.example
+  policy_id: 20260730a
+  mode: enforce
+  mx: '<%= %w[ mail.enforced.example ].to_json %>'
+  max_age: 604800
+  fetched_at: <%= Time.current %>
+  expires_at: <%= 604800.seconds.from_now %>

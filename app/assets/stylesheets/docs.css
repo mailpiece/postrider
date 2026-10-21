@@ -1,0 +1,70 @@
+@layer components {
+  /* Reference text on a sheet. Its headings, samples and tables carry no class of their own. */
+  .docs {
+    h2, h3 {
+      font-weight: 800;
+      letter-spacing: -0.02ch;
+      line-height: 1.1;
+      text-wrap: balance;
+    }
+
+    h2 {
+      font-size: var(--text-large);
+      margin-block-start: var(--block-space);
+    }
+
+    h3 {
+      font-size: var(--text-medium);
+      margin-block-start: var(--block-space-half);
+    }
+
+    code {
+      font-family: var(--font-mono);
+      font-size: 0.9em;
+    }
+
+    code:not(pre code) {
+      background-color: var(--color-ink-lightest);
+      border-radius: 0.3em;
+      overflow-wrap: break-word;
+      padding: 0.1em 0.3em;
+
+      /* On a phone a table's columns only fit if a long field name may break. */
+      @media (width < 640px) {
+        overflow-wrap: anywhere;
+      }
+    }
+
+    pre {
+      background-color: var(--color-ink-lightest);
+      border-radius: 0.5em;
+      font-size: var(--text-small);
+      overflow-wrap: anywhere;
+      padding: var(--block-space-half) var(--inline-space);
+      white-space: pre-wrap;
+    }
+
+    table {
+      border-block-end: var(--border);
+      border-collapse: collapse;
+      font-size: var(--text-small);
+      inline-size: 100%;
+    }
+
+    th, td {
+      border-block-start: var(--border);
+      padding: var(--block-space-half) var(--inline-space) var(--block-space-half) 0;
+      text-align: start;
+      vertical-align: top;
+
+      &:last-child {
+        padding-inline-end: 0;
+      }
+    }
+
+    th {
+      color: var(--color-ink-dark);
+      font-weight: 600;
+    }
+  }
+}

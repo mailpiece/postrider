@@ -1,0 +1,62 @@
+@layer components {
+  .dns-record {
+    align-items: center;
+    display: flex;
+    gap: var(--inline-space);
+
+    > .btn {
+      flex: none;
+    }
+  }
+
+  .dns-record__value {
+    flex: 1 1 auto;
+    font-size: var(--text-small);
+    min-inline-size: 0;
+  }
+
+  /* A DNS record to publish: what it is for and whether it was found, then the name and value as the provider's form asks for them. */
+  .dns-checks {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--block-space) * 1.5);
+  }
+
+  .dns-check {
+    display: flex;
+    flex-direction: column;
+    gap: var(--block-space-half);
+  }
+
+  .dns-check__header {
+    align-items: center;
+    display: flex;
+    gap: var(--inline-space);
+  }
+
+  .dns-check__title {
+    font-size: var(--text-normal);
+    font-weight: 700;
+    margin: 0;
+  }
+
+  .dns-check__status {
+    margin-inline-start: auto;
+  }
+
+  .dns-check .details__row {
+    align-items: center;
+  }
+
+  /* Records answered by one check: its status is said once, over the records it covers. */
+  .dns-check-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--block-space);
+  }
+
+  .dns-check-group > .dns-check {
+    border-inline-start: var(--border);
+    padding-inline-start: var(--inline-space-double);
+  }
+}

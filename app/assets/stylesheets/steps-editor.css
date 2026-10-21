@@ -1,0 +1,19 @@
+@layer components {
+  .step__actions {
+    --btn-size: 2em;
+
+    align-items: center;
+    display: flex;
+
+    .btn {
+      --btn-background: transparent;
+      --btn-border-color: transparent;
+
+      @media (any-hover: hover) {
+        &:hover {
+          --btn-background: var(--tint-ink-10);
+        }
+      }
+    }
+  }
+}

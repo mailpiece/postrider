@@ -1,0 +1,11 @@
+leo:
+  email_address: leo@example.com
+  staff: true
+
+nonstaff:
+  email_address: nonstaff@example.com
+  staff: false
+
+other:
+  email_address: owner@other-account.test
+  staff: false

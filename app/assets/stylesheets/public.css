@@ -1,0 +1,6 @@
+@layer components {
+  /* panels.css centres a lone panel in the page's height; on a public page the card stays under its title. */
+  body.public #main:has(> .panel--centered) {
+    margin-block: 0 auto;
+  }
+}

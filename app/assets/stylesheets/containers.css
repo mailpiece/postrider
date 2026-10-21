@@ -1,0 +1,11 @@
+@layer components {
+  /* Components answer to the column they sit in. The page is a layout. */
+  #main {
+    container: layout / inline-size;
+  }
+
+  /* A container cannot query itself, so the sheet, which the grid fills edge to edge, names the grid's width. */
+  .project__sheet {
+    container: card-grid / inline-size;
+  }
+}

@@ -1,0 +1,78 @@
+<% relay_public_ip = Kamal::Secrets.new(destination: ENV["KAMAL_DESTINATION"])["RELAY_PUBLIC_IP"] -%>
+# Name of this app
+service: postrider
+image: postrider/postrider
+
+
+#-- About your deployment --#
+
+# Where to deploy postrider: the web UI, the jobs and the SMTP listeners, from one image
+servers:
+  web:
+    hosts:
+      - postrider.example.com  # Set your server name here
+
+  jobs:
+    hosts:
+      - postrider.example.com  # Set your server name here
+    cmd: bin/jobs
+
+  smtp:
+    hosts:
+      - postrider.example.com  # Set your server name here
+    cmd: bin/relay
+    stop_timeout: 30
+    options:
+      publish:
+        # Mail and DNS on the server's own address alone (RELAY_PUBLIC_IP in .kamal/secrets): other
+        # interfaces stay closed, and systemd-resolved's stub on 127.0.0.53 is left be.
+        - "<%= relay_public_ip %>:25:25"
+        - "<%= relay_public_ip %>:587:587"
+        - "<%= relay_public_ip %>:53:53"
+        - "<%= relay_public_ip %>:53:53/udp"
+
+# How you connect to your server
+ssh:
+  user: root  # If you use a different username to SSH to your server, specify it here
+
+# Automatic SSL for the web UI
+proxy:
+  ssl: true
+  forward_headers: true
+  host: postrider.example.com  # Set your server name here
+
+# Your application configuration (secrets come from .kamal/secrets).
+env:
+  secret:
+    - SECRET_KEY_BASE
+  clear:
+    BASE_URL: https://postrider.example.com # The public URL of your PostRider instance
+    MULTI_TENANT: false # Set to true to allow multiple accounts to sign up
+    SOLID_QUEUE_IN_PUMA: false # Jobs run in the jobs role
+    RELAY_IN_PUMA: false # The SMTP listeners run in the smtp role
+
+
+#-- General configuration --#
+
+# Use a local registry to deploy
+registry:
+  server: localhost:5555
+
+# Handy aliases for interacting with your deployment. For example: `bin/kamal console` will connect to a
+# Rails console in production.
+aliases:
+  console: app exec --interactive --reuse "bin/rails console"
+  shell: app exec --interactive --reuse "bash"
+  logs: app logs -f
+
+# Use a persistent storage volume for sqlite database files and local Active Storage files.
+volumes:
+  - "postrider:/rails/storage"
+
+# Bridge fingerprinted assets, like JS and CSS, between versions to avoid
+# hitting 404 on in-flight requests.
+asset_path: /rails/public/assets
+
+# Configure the image builder.
+builder:
+  arch: amd64

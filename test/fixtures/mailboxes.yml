@@ -1,0 +1,57 @@
+example_postmaster:
+  account: davids_account
+  domain: example
+  local_part: postmaster
+
+example_dmarc_reports:
+  account: davids_account
+  domain: example
+  local_part: dmarc-reports
+
+private_postmaster:
+  account: davids_account
+  domain: private
+  local_part: postmaster
+
+private_dmarc_reports:
+  account: davids_account
+  domain: private
+  local_part: dmarc-reports
+
+unverified_postmaster:
+  account: davids_account
+  domain: unverified
+  local_part: postmaster
+
+unverified_dmarc_reports:
+  account: davids_account
+  domain: unverified
+  local_part: dmarc-reports
+
+other_account_postmaster:
+  account: other_account
+  domain: other_account
+  local_part: postmaster
+
+other_account_dmarc_reports:
+  account: other_account
+  domain: other_account
+  local_part: dmarc-reports
+
+inbox:
+  account: davids_account
+  domain: example
+  local_part: inbox
+
+forwarding:
+  account: davids_account
+  domain: example
+  local_part: forwarding
+  forward_to: forwarding@elsewhere.example
+  forward_confirmed_at: <%= 1.week.ago %>
+
+unconfirmed_forwarding:
+  account: davids_account
+  domain: example
+  local_part: unconfirmed
+  forward_to: unconfirmed@elsewhere.example

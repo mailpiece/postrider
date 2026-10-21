@@ -1,0 +1,27 @@
+received:
+  account: davids_account
+  domain: example
+  contact: approved
+  mail_from: friend@sender.example
+  rcpt_to: inbox@example.com
+  subject: Hello
+  status: delivered
+  forwarded_at: <%= Time.current %>
+
+held:
+  account: davids_account
+  domain: example
+  contact: denied
+  mail_from: stranger@sender.example
+  rcpt_to: forwarding@example.com
+  subject: Hello
+  status: held
+
+other_account:
+  account: other_account
+  domain: other_account
+  contact: other_account
+  mail_from: outsider@sender.example
+  rcpt_to: postmaster@other-account.test
+  subject: Hello
+  status: held

@@ -1,0 +1,182 @@
+@layer components {
+  .project {
+    display: flex;
+    flex-direction: column;
+    gap: var(--block-space-double);
+  }
+
+  .project__sheet {
+    background-color: var(--color-canvas);
+    border-radius: 0.5em;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  .project__activity {
+    --page-size: 40rem;
+  }
+
+  .project__header {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    gap: var(--block-space);
+    padding: calc(var(--block-space) * 1.5) var(--inline-space-double) var(--block-space);
+    text-align: center;
+  }
+
+  .project__title {
+    font-size: var(--text-x-large);
+    font-weight: 800;
+    letter-spacing: -0.024em;
+    line-height: 1.15;
+    margin: 0;
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+
+    @container card-grid (inline-size >= 640px) {
+      font-size: var(--text-xx-large);
+    }
+  }
+
+  .project__description {
+    margin-block: calc(var(--block-space-half) / 2 - var(--block-space)) 0;
+    max-inline-size: 40rem;
+    text-wrap: pretty;
+  }
+
+  .project__meta {
+    color: var(--color-ink-dark);
+    font-size: var(--text-small);
+    margin: 0;
+    max-inline-size: 40rem;
+    text-wrap: balance;
+
+    .project__header & + & {
+      margin-block-start: calc(var(--block-space-half) / 2 - var(--block-space));
+    }
+  }
+
+  .tools {
+    --tools-columns: 3;
+    --tools-row-size: 17rem;
+
+    border-block-start: var(--border);
+    display: grid;
+    grid-template-columns: 1fr;
+    overflow: hidden;
+
+    &:not(:has(> :nth-child(3))) {
+      --tools-columns: 2;
+    }
+
+    &:not(:has(> :nth-child(2))) {
+      --tools-columns: 1;
+    }
+
+    &:has(> :nth-child(4)):not(:has(> :nth-child(5))) {
+      --tools-columns: 2;
+    }
+
+    &:not(:has(.rows)) {
+      --tools-row-size: auto;
+    }
+
+    @container card-grid (inline-size >= 800px) {
+      grid-auto-rows: minmax(var(--tools-row-size), auto);
+      grid-template-columns: repeat(var(--tools-columns), minmax(0, 1fr));
+    }
+  }
+
+  .tool {
+    border-block-end: var(--border);
+    border-inline-end: var(--border);
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    gap: var(--block-space-half);
+    margin-block-end: calc(-1 * 1px);
+    margin-inline-end: calc(-1 * 1px);
+    min-block-size: 0;
+    min-inline-size: 0;
+    padding: var(--block-space);
+    text-decoration: none;
+
+    @media (any-hover: hover) {
+      &:is(a):hover .tool__title {
+        text-decoration: underline;
+      }
+    }
+
+    &:focus-visible {
+      outline: 0.15rem solid var(--color-link);
+      outline-offset: -0.15rem;
+    }
+  }
+
+  .tool__title {
+    font-size: var(--text-medium);
+    font-weight: 700;
+    line-height: 1.15;
+    margin: 0;
+    text-align: center;
+  }
+
+  .tool__panel {
+    --rows-bg: transparent;
+    --rows-border-size: 0;
+    --rows-margin: 0;
+
+    background-color: var(--color-ink-lightest);
+    border-radius: 0.5em;
+    flex: 1 1 auto;
+    min-block-size: 0;
+    overflow: hidden;
+    padding: var(--block-space-half);
+
+    &:has(> .blank-slate) {
+      background-color: transparent;
+      padding: 0;
+    }
+
+    > .blank-slate {
+      block-size: 100%;
+    }
+
+    .row {
+      padding-inline: var(--inline-space-half);
+    }
+
+    .row__body {
+      padding-block: calc(var(--block-space-half) / 2);
+    }
+
+    .row__title {
+      font-size: var(--text-small);
+    }
+
+    .row__meta {
+      font-size: var(--text-x-small);
+    }
+
+    .row__end {
+      font-size: var(--text-x-small);
+    }
+  }
+
+  .tool__more {
+    color: var(--color-ink-dark);
+    font-size: var(--text-x-small);
+    margin: 0;
+    padding: calc(var(--block-space-half) / 2) var(--inline-space-half) 0;
+    text-align: center;
+  }
+
+  /* A slate that fills a panel sits square in it: tilted, the panel would clip its corners. */
+  .blank-slate--small {
+    font-size: var(--text-small);
+    margin: 0;
+    padding-block: var(--block-space-half);
+    rotate: 0deg;
+  }
+}

@@ -1,0 +1,35 @@
+queued:
+  account: davids_account
+  domain: example
+  message: queued
+  mail_from: sender@example.com
+  rcpt_to: recipient@example.com
+  subject: Hello
+  status: queued
+
+delivered:
+  account: davids_account
+  domain: example
+  message: delivered
+  mail_from: sender@example.com
+  rcpt_to: recipient@example.com
+  subject: Hello
+  status: delivered
+
+bounced:
+  account: davids_account
+  domain: example
+  message: bounced
+  mail_from: sender@example.com
+  rcpt_to: recipient@example.com
+  subject: Hello
+  status: bounced
+
+deferred:
+  account: davids_account
+  domain: example
+  message: deferred
+  mail_from: sender@example.com
+  rcpt_to: recipient@example.com
+  subject: Hello
+  status: deferred

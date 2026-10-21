@@ -1,0 +1,15 @@
+@layer components {
+  .settings__rows {
+    --rows-margin: var(--block-space-half) 0 0;
+
+    .row__body {
+      padding-block: 0.6em;
+    }
+  }
+
+  .settings__icon {
+    --icon-size: 1.5rem;
+
+    margin-inline: 0.25em;
+  }
+}

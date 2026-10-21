@@ -1,0 +1,72 @@
+@layer components {
+  .breadcrumbs {
+    align-items: center;
+    display: flex;
+    font-size: var(--text-medium);
+    font-weight: 700;
+    gap: var(--header-gap, var(--inline-space-half));
+    margin-inline: auto;
+    min-width: 0;
+
+    > * {
+      flex-shrink: 1;
+      max-inline-size: 40ch;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Room goes to the page's own crumb first, then the section after home, and a long crumb between them takes what is left.
+       Growing from zero instead of shrinking keeps a crumb that fits free of even a fraction of a pixel's ellipsis.
+       The section after home grows from 6ch, or a long page name leaves it a sliver. */
+    > :where(a:not(.breadcrumbs__home), strong) {
+      flex: 1 1 0;
+      max-inline-size: max-content;
+      min-inline-size: 2em;
+    }
+
+    > a {
+      color: var(--color-ink);
+    }
+
+    > .breadcrumbs__home + .breadcrumbs__separator + a {
+      flex-basis: 6ch;
+      flex-grow: 100;
+      min-inline-size: 0;
+    }
+
+    > strong {
+      color: var(--color-link);
+      flex-grow: 10000;
+      min-inline-size: 0;
+
+      &[role="button"] {
+        cursor: pointer;
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--color-link);
+        outline-offset: 1px;
+      }
+    }
+
+    &.breadcrumbs--expanded > strong {
+      max-inline-size: none;
+      overflow: visible;
+      overflow-wrap: anywhere;
+      white-space: normal;
+    }
+
+    > .breadcrumbs__separator {
+      flex-shrink: 0;
+    }
+
+    > .breadcrumbs__home {
+      --icon-size: 1.15em;
+
+      align-items: center;
+      display: inline-flex;
+      flex-shrink: 0;
+    }
+  }
+}

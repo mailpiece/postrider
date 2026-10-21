@@ -1,0 +1,27 @@
+@layer components {
+  .back-to-top.btn {
+    --btn-size: 2.5rem;
+    --icon-size: 50%;
+
+    box-shadow: var(--shadow);
+    inset-block-end: calc(var(--block-space) + var(--custom-safe-inset-bottom));
+    inset-inline-start: calc(var(--main-padding) + var(--custom-safe-inset-left));
+    position: fixed;
+    transition: opacity var(--duration-medium) ease-out, visibility 0s var(--duration-medium);
+    z-index: calc(var(--z-bar) - 1);
+
+    &:not(.back-to-top--shown) {
+      opacity: 0;
+      pointer-events: none;
+      visibility: hidden;
+    }
+
+    &.back-to-top--shown {
+      transition: opacity var(--duration-medium) ease-out, visibility 0s;
+    }
+
+    @media print {
+      display: none;
+    }
+  }
+}

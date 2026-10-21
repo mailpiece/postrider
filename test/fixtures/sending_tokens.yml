@@ -1,0 +1,5 @@
+example:
+  account: davids_account
+  domain: example
+  name: Example sending token
+  token_digest: <%= SendingToken.digest(DomainTestHelper::SENDING_TOKEN) %>

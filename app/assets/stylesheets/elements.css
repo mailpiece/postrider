@@ -1,0 +1,72 @@
+@layer reset {
+  * {
+    margin: 0;
+  }
+
+  dialog:modal {
+    margin: auto;
+  }
+
+  img,
+  picture,
+  video,
+  canvas,
+  svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    text-wrap: balance;
+  }
+}
+
+@layer base {
+  body {
+    background-color: var(--color-page);
+    letter-spacing: -0.006em;
+    line-height: 1.5;
+  }
+
+  :root {
+    color-scheme: light dark;
+  }
+
+  html[data-theme="light"] {
+    color-scheme: light;
+  }
+
+  html[data-theme="dark"] {
+    color-scheme: dark;
+  }
+
+  :is(img, video) {
+    html[data-theme="dark"] & {
+      opacity: 0.8;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      html:not([data-theme]) & {
+        opacity: 0.8;
+      }
+    }
+  }
+
+  /* Same specificity as base.css, whose text-decoration shorthand resets the thickness: this holds only because elements.css loads later. */
+  a:not([class]) {
+    text-decoration-thickness: max(1px, 0.07em);
+    text-underline-offset: 0.08em;
+  }
+
+  @media print {
+    a[href^="http"]::after {
+      content: " <" attr(href) ">";
+    }
+  }
+}

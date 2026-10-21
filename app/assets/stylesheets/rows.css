@@ -1,0 +1,216 @@
+@layer components {
+  /* On the page a list is a card of its own. Inside a surface that already is one, it is ruled lines. */
+  :is(.panel, .record, .project__sheet, .tool__panel),
+  .rows .rows {
+    --rows-border-radius: 0;
+    --rows-shadow: none;
+    --rows-side-size: 0;
+  }
+
+  .rows {
+    --row-padding-inline: calc(var(--inline-space) * 1.5);
+    --rows-corner: max(0px, calc(var(--rows-border-radius, 1em) - var(--rows-border-size, 1px)));
+
+    list-style: none;
+    margin-block: var(--rows-margin, var(--block-space));
+    padding: 0;
+    background-color: var(--rows-bg, var(--color-canvas));
+    border: solid var(--color-ink-lighter);
+    border-width: var(--rows-border-size, 1px) var(--rows-side-size, var(--rows-border-size, 1px));
+    border-radius: var(--rows-border-radius, 1em);
+    box-shadow: var(--rows-shadow, var(--shadow));
+
+    &:not(:has(.row:not([hidden]))) {
+      --rows-bg: transparent;
+      --rows-border-size: 0;
+      --rows-shadow: none;
+    }
+
+    /* A list within has no corner to take, so the card cuts what it holds. */
+    &:has(.rows) {
+      overflow: hidden;
+    }
+
+    @media print {
+      --rows-border-size: 0;
+      --rows-shadow: none;
+    }
+  }
+
+  .rows__heading {
+    margin: 0;
+    padding-inline: calc(var(--inline-space) * 1.5);
+
+    + .rows {
+      margin-block-start: var(--block-space-half);
+    }
+  }
+
+  /* Rows that lead to another list are not what a filter searches, so they go while one is typed. */
+  [data-filtering] .rows--links {
+    display: none;
+  }
+
+  /* :has cannot sit inside :has, so the heading goes with its section when a filter leaves no row in it. */
+  .rows__section:not(:has(.row:not([hidden]))) {
+    display: none;
+  }
+
+  .row {
+    --row-padding-block: calc(var(--block-space-half) * 0.75);
+
+    display: flex;
+    align-items: center;
+    gap: var(--inline-space);
+    margin: 0;
+    padding-inline: var(--row-padding-inline);
+    line-height: var(--leading-snug);
+    outline: none;
+
+    &[aria-selected="true"] {
+      background-color: var(--color-ink-lightest);
+    }
+
+    @media (any-hover: hover) {
+      &:has(> a.row__body:hover, > form > button.row__body:hover) {
+        background-color: var(--color-ink-lightest);
+      }
+    }
+
+    /* A title alone keeps the half block, or its row would be little more than the line. */
+    &:where(:not(:has(.row__meta:not(:empty)))) {
+      --row-padding-block: var(--block-space-half);
+    }
+
+    &[hidden] {
+      display: none;
+    }
+  }
+
+  /* A row has no corner of its own: its ground runs edge to edge, and the rows at the ends take the card's. */
+  .rows > :nth-child(1 of :not([hidden])) {
+    border-start-start-radius: var(--rows-corner);
+    border-start-end-radius: var(--rows-corner);
+  }
+
+  .rows > :nth-last-child(1 of :not([hidden])) {
+    border-end-start-radius: var(--rows-corner);
+    border-end-end-radius: var(--rows-corner);
+  }
+
+  /* A rule between two rows, and none over the first one a filter leaves in view. */
+  .row:not([hidden]) ~ .row {
+    border-block-start: var(--border);
+  }
+
+  /* A list has no end, so its rows are not all named for the view transition: only the one under the pointer
+     or holding the focus is, which is the one being opened. It says its own name in --row-transition-name. */
+  .row:is(:hover, :focus-within) {
+    view-transition-name: var(--row-transition-name, none);
+  }
+
+  .row--inactive {
+    color: var(--color-ink-dark);
+  }
+
+  .row__body {
+    display: flex;
+    flex-direction: column;
+    flex: 0 1 auto;
+    min-width: 0;
+    padding-block: var(--row-padding-block);
+    color: inherit;
+    text-decoration: none;
+
+    &:last-child {
+      flex-grow: 1;
+    }
+  }
+
+  button.row__body {
+    align-items: flex-start;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    font-weight: inherit;
+    padding-inline: 0;
+    text-align: start;
+
+    &:enabled:hover {
+      background: none;
+    }
+  }
+
+  .row__title,
+  .row__meta {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .row__title {
+    font-weight: normal;
+  }
+
+  .row__meta {
+    color: var(--color-ink-dark);
+    font-size: var(--text-small);
+    line-height: 1.2;
+  }
+
+  .row__title--wrap,
+  .row__meta--wrap {
+    overflow: visible;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  /* A state said in the meta line is the meta's size, whatever the list sets it to. */
+  .row__meta .status {
+    font-size: inherit;
+  }
+
+  .row__end {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: var(--inline-space);
+    color: var(--color-ink-dark);
+    font-size: var(--text-small);
+    white-space: nowrap;
+  }
+
+  .row[aria-selected="true"] .chip {
+    background-color: var(--color-canvas);
+  }
+
+  @media (any-hover: hover) {
+    .row:has(> a.row__body:hover, > form > button.row__body:hover) .chip {
+      background-color: var(--color-canvas);
+    }
+  }
+
+  /* In a narrow column a chip that would leave the title a few letters goes under it instead. */
+  @container layout (inline-size < 640px) {
+    .row:has(> .row__end > .chip) {
+      flex-wrap: wrap;
+      row-gap: 0.25em;
+      padding-block-end: var(--row-padding-block);
+
+      > .row__body {
+        flex: 1 1 10rem;
+        padding-block-end: 0;
+      }
+
+      > .row__body .row__meta {
+        overflow: visible;
+        overflow-wrap: anywhere;
+        white-space: normal;
+      }
+
+      > .row__end {
+        margin-inline-start: 0;
+      }
+    }
+  }
+}

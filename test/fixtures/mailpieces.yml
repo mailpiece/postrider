@@ -1,0 +1,34 @@
+queued:
+  account: davids_account
+  domain: example
+  postable: queued (Delivery)
+
+delivered:
+  account: davids_account
+  domain: example
+  postable: delivered (Delivery)
+
+received:
+  account: davids_account
+  domain: example
+  postable: received (InboundEmail)
+
+held:
+  account: davids_account
+  domain: example
+  postable: held (InboundEmail)
+
+bounced:
+  account: davids_account
+  domain: example
+  postable: bounced (Delivery)
+
+deferred:
+  account: davids_account
+  domain: example
+  postable: deferred (Delivery)
+
+other_account:
+  account: other_account
+  domain: other_account
+  postable: other_account (InboundEmail)

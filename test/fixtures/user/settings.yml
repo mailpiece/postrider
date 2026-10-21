@@ -1,0 +1,14 @@
+_fixture:
+  model_class: User::Settings
+
+david_settings:
+  account: davids_account
+  user: leo
+
+nonstaff_settings:
+  account: davids_account
+  user: nonstaff
+
+other_settings:
+  account: other_account
+  user: other

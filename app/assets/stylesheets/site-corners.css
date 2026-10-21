@@ -1,0 +1,39 @@
+@layer components {
+  .btn {
+    --btn-border-radius: var(--radius-lg);
+  }
+
+  .btn--plain {
+    --btn-border-radius: 0;
+  }
+
+  .btn--circle,
+  .btn[aria-label]:where(:has(.icon)),
+  .btn:where(:has(.for-screen-reader):has(.icon)) {
+    --btn-border-radius: 50%;
+  }
+
+  @media (max-width: 639px) {
+    .btn--circle-mobile {
+      --btn-border-radius: 50%;
+    }
+  }
+
+  .btn__group {
+    .btn {
+      --btn-border-radius: 0;
+    }
+  }
+
+  .input--upload {
+    --btn-border-radius: 1ch;
+  }
+
+  .input--select {
+    --input-border-radius: var(--radius-lg);
+  }
+
+  .flash__inner {
+    border-radius: var(--radius-lg);
+  }
+}

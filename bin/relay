@@ -1,0 +1,26 @@
+#!/usr/bin/env ruby
+require_relative "../config/environment"
+
+logger = Object.new
+def logger.log(message)
+  $stdout.puts "[relay] #{message}"
+  Rails.logger.info(message)
+end
+
+supervisor = Relay::Supervisor.new(logger: logger)
+
+shutdown = false
+%w[ TERM INT ].each do |signal|
+  trap(signal) { shutdown = true }
+end
+
+supervisor.start
+
+if supervisor.boot_failed?
+  supervisor.stop
+  exit 1
+end
+
+sleep 1 until shutdown
+
+supervisor.stop

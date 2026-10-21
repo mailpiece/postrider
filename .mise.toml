@@ -1,0 +1,15 @@
+min_version = "2026.7.5"
+
+[settings]
+idiomatic_version_file_enable_tools = ["ruby"]
+
+[tools]
+gum = "0.17.0"
+gitleaks = "8.28.0"
+prek = "0.4.11"
+
+[env]
+
+[bootstrap.packages]
+# Debian (see Brewfile for the macOS equivalents)
+"apt:zlib1g-dev" = "latest"

@@ -1,0 +1,9 @@
+davids_account:
+  name: Leo's Account
+  external_account_id: 1234567
+  contacts_count: 3
+
+other_account:
+  name: Other Account
+  external_account_id: 7654321
+  contacts_count: 100

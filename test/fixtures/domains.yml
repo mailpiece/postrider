@@ -1,0 +1,32 @@
+example:
+  account: davids_account
+  creator: leo
+  name: example.com
+  all_access: true
+  dkim_selector: postrider
+  dkim_private_key: <%= DomainTestHelper.dkim_key.to_json %>
+  dkim_status: ok
+  suppressions_count: 1
+
+private:
+  account: davids_account
+  creator: leo
+  name: private.example
+  dkim_selector: postrider
+  dkim_private_key: <%= DomainTestHelper.dkim_key.to_json %>
+  dkim_status: ok
+
+unverified:
+  account: davids_account
+  creator: leo
+  name: unverified.example
+  dkim_selector: postrider
+  dkim_private_key: <%= DomainTestHelper.dkim_key.to_json %>
+
+other_account:
+  account: other_account
+  creator: other
+  name: other-account.test
+  dkim_selector: postrider
+  dkim_private_key: <%= DomainTestHelper.dkim_key.to_json %>
+  dkim_status: ok

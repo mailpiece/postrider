@@ -1,0 +1,54 @@
+default: &default
+  adapter: sqlite3
+  # Pool = MX + submission sessions + web threads: envelope auth/accept hits the
+  # DB before a processing slot is held, so every accepted session can need a conn.
+  pool: <%= Integer(ENV.fetch("MX_MAX_CONNECTIONS", 50)) + Integer(ENV.fetch("SUBMISSION_MAX_CONNECTIONS", 50)) + Integer(ENV.fetch("RAILS_MAX_THREADS", 3)) %>
+  timeout: 5000
+
+development:
+  primary:
+    <<: *default
+    database: storage/development.sqlite3
+    schema_dump: schema.rb
+  cable:
+    <<: *default
+    database: storage/development_cable.sqlite3
+    migrations_paths: db/cable_migrate
+  cache:
+    <<: *default
+    database: storage/development_cache.sqlite3
+    migrations_paths: db/cache_migrate
+  queue:
+    <<: *default
+    database: storage/development_queue.sqlite3
+    migrations_paths: db/queue_migrate
+
+test:
+  primary:
+    <<: *default
+    database: storage/test.sqlite3
+    schema_dump: schema.rb
+  cable:
+    <<: *default
+    database: storage/test_cable.sqlite3
+    migrations_paths: db/cable_migrate
+
+production: &production
+  primary:
+    <<: *default
+    database: storage/production.sqlite3
+    schema_dump: schema.rb
+  cable:
+    <<: *default
+    database: storage/production_cable.sqlite3
+    migrations_paths: db/cable_migrate
+  cache:
+    <<: *default
+    database: storage/production_cache.sqlite3
+    migrations_paths: db/cache_migrate
+  queue:
+    <<: *default
+    database: storage/production_queue.sqlite3
+    migrations_paths: db/queue_migrate
+
+staging: *production

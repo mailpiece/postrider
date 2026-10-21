@@ -1,0 +1,4 @@
+@layer components {
+  .icon--cancel { --svg: url("cancel.svg"); }
+  .icon--link { --svg: url("link.svg"); }
+}

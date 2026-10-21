@@ -1,0 +1,116 @@
+@layer components {
+  /* One row under the header at every width: server filters at the start, the filter box at the end. */
+  .filter-bar {
+    align-items: center;
+    display: flex;
+    gap: var(--inline-space-half);
+    padding-block-start: 2px; /* prevents input focus-ring clipping on mobile */
+    position: relative;
+    view-transition-name: filter-bar;
+    z-index: 1;
+
+    .btn {
+      --btn-border-color: var(--color-ink-medium);
+      --input-background: var(--color-canvas);
+    }
+
+    &:has(dialog[open]) {
+      z-index: calc(var(--z-nav) + 1);
+    }
+  }
+
+  .filter-bar__terms:is(.input) {
+    --input-background: var(--color-canvas);
+    --input-border-radius: var(--radius-lg);
+    --input-padding: 0.5em 1.3em;
+
+    flex: 0 100 var(--filter-input-width, 15rem);
+    font-size: var(--text-x-small);
+    min-inline-size: 8rem;
+
+    &:not(:placeholder-shown) {
+      --input-background: color-mix(in oklch, var(--color-highlight) 30%, var(--color-canvas));
+    }
+
+    &::-webkit-search-cancel-button {
+      appearance: none;
+    }
+  }
+
+  /* The filter box. Its shrink factor dwarfs the filters', so it gives way first, down to its floor, and then the filters ellipsize. */
+  .filter-box {
+    flex: 0 100 var(--filter-input-width, 15rem);
+    margin-inline-start: auto;
+    min-inline-size: 8rem;
+    position: relative;
+
+    .filter-bar__terms {
+      --input-padding: 0.5em 2.7em 0.5em 1.3em;
+    }
+  }
+
+  .filter-box__hint,
+  .filter-box__clear:is(.btn) {
+    inset-block-start: 50%;
+    position: absolute;
+    translate: 0 -50%;
+  }
+
+  .filter-box__hint {
+    font-size: var(--text-xx-small);
+    inset-inline-end: 0.9rem;
+    line-height: 1.2;
+    pointer-events: none;
+  }
+
+  .filter-box__clear:is(.btn) {
+    --btn-background: transparent;
+    --btn-border-size: 0;
+    --btn-color: var(--color-ink-dark);
+    --btn-size: 1.5rem;
+
+    inset-inline-end: 0.4rem;
+
+    @media (any-hover: hover) {
+      &:hover {
+        --btn-background: var(--color-ink-lightest);
+        --btn-color: var(--color-ink);
+      }
+    }
+  }
+
+  .filter-bar__terms:is(:focus, :not(:placeholder-shown)) ~ .filter-box__hint,
+  .filter-bar__terms:placeholder-shown ~ .filter-box__clear {
+    display: none;
+  }
+
+  .filter__match {
+    background-color: var(--color-highlight);
+    border-radius: 0.2em;
+    color: var(--color-ink);
+    padding: 0;
+  }
+
+  /* Shown only while a typed query hides every row, and late, so it does not flash between keystrokes. */
+  .filter__empty {
+    display: none;
+  }
+
+  [data-filtering]:not([data-has-match]):has([data-quick-find-target~="item"]) > .filter__empty {
+    animation: fade-in var(--duration-medium) ease-out 500ms both;
+    display: block;
+  }
+
+  /* Below 16px, iOS zooms the page when a field takes focus */
+  @media (any-hover: none) {
+    :is(.filter-bar__terms):is(.input) {
+      font-size: max(16px, var(--text-x-small));
+    }
+  }
+
+  @container layout (inline-size < 640px) {
+    .filter-box__hint {
+      display: none;
+    }
+  }
+}

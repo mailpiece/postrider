@@ -1,0 +1,13 @@
+@layer components {
+  .tint-fade {
+    animation: tint-fade var(--duration-slow) ease-out;
+  }
+
+  @keyframes tint-fade {
+    from { box-shadow: inset 0 0 0 100vmax var(--tint-ink-10); }
+  }
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+  }
+}

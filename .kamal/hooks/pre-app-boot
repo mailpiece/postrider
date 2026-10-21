@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# PostRider publishes its SMTP ports (25/587) straight to the host, bypassing
+# kamal-proxy (which only speaks HTTP/S). Two containers can't both bind port
+# 25, so Kamal's boot-new-then-stop-old rollout races with itself on the smtp
+# role: `start_new_version` runs `docker run` — and fails to bind — while the
+# old container is still up. web sits behind kamal-proxy and rolls over
+# gaplessly, so it doesn't have this problem.
+#
+# pre-app-boot runs just before any role boots, on both `kamal deploy` and a
+# bare `kamal app boot`. Stop the running smtp container here so the ports are
+# free when the new one starts. We accept a brief SMTP outage — inbound mail
+# retries at the sender's MTA, and submission clients retry too.
+#
+# This talks to Docker directly over SSH rather than shelling out to
+# `kamal app stop`: the hook runs while the deploy lock is held, and a nested
+# kamal invocation would fail trying to re-acquire that same lock.
+
+# When booting a subset of roles that doesn't include smtp (e.g.
+# `kamal app boot --roles=web`), there's nothing to free.
+if [ -n "${KAMAL_ROLES:-}" ] && ! printf ',%s,' "$KAMAL_ROLES" | grep -q ',smtp,'; then
+  exit 0
+fi
+
+kamal_config=$(bin/kamal config ${KAMAL_DESTINATION:+-d "$KAMAL_DESTINATION"} 2>/dev/null)
+ssh_user=$(echo "$kamal_config" | yq -r '.":ssh_options".":user"')
+ssh_port=$(echo "$kamal_config" | yq -r '.":ssh_options".":port"')
+
+filters=(--filter "label=service=${KAMAL_SERVICE}" --filter "label=role=smtp")
+if [ -n "${KAMAL_DESTINATION:-}" ]; then
+  filters+=(--filter "label=destination=${KAMAL_DESTINATION}")
+fi
+
+# Build the remote command once; ${filters[*]} expands to plain `docker`
+# arguments (no paths or user input), so word-splitting on the remote is fine.
+remote_cmd="docker container ls --quiet ${filters[*]} | xargs --no-run-if-empty docker stop"
+
+IFS=',' read -ra hosts <<< "$KAMAL_HOSTS"
+for host in "${hosts[@]}"; do
+  echo "Freeing SMTP ports: stopping running smtp container on ${host}…" >&2
+  ssh -o BatchMode=yes -o ConnectTimeout=10 -p "$ssh_port" "${ssh_user}@${host}" "$remote_cmd" >&2
+done

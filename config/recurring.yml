@@ -1,0 +1,44 @@
+default: &default
+  clear_solid_queue_finished_jobs:
+    command: "SolidQueue::Job.clear_finished_in_batches(sleep_between_batches: 0.3)"
+    schedule: every hour at minute 12
+  fail_abandoned_inbound_emails:
+    command: "InboundEmail.fail_abandoned"
+    schedule: every hour at minute 18
+  incinerate_all_due_inbound_emails:
+    command: "InboundEmail.incinerate_all_due"
+    schedule: every hour at minute 24
+  incinerate_all_due_messages:
+    command: "Message.incinerate_all_due"
+    schedule: every hour at minute 36
+  purge_old_idempotent_requests:
+    command: "IdempotentRequest.purge_old"
+    schedule: every hour at minute 6
+  sweep_unattached_blobs:
+    command: "ActiveStorage::Blob.sweep_unattached"
+    schedule: every day at 4am
+  cleanup_webhook_deliveries:
+    command: "Webhook::Delivery.cleanup"
+    schedule: every 15 minutes
+  cleanup_transfers:
+    command: "Identity::Transfer.cleanup"
+    schedule: every 4 hours
+  renew_tls_certificate:
+    command: "Relay::Certificate.renew_if_due"
+    schedule: every hour at minute 42
+  recheck_verified_domain_dns:
+    command: "Domain.verified.check_dns_all_later"
+    schedule: every day at 3am
+  recheck_relay_dns:
+    command: "Relay::DnsCheck.instance.check_dns_later"
+    schedule: every sunday at 3:30am
+  refresh_mta_sts_policies:
+    command: "MtaStsPolicy.refresh_all"
+    schedule: every day at 4:30am
+  purge_expired_mta_sts_policies:
+    command: "MtaStsPolicy.purge_expired"
+    schedule: every day at 4:45am
+
+production: *default
+staging: *default
+development: *default

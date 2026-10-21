@@ -1,0 +1,81 @@
+@layer components {
+  /* A zero floor, so a long file name in a value never widens the sheet past its edge. */
+  .details {
+    display: grid;
+    gap: var(--block-space);
+    grid-template-columns: minmax(0, 1fr);
+    margin-block: var(--block-space);
+  }
+
+  .details__row {
+    display: grid;
+    gap: 0.125rem;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .details__label {
+    font-size: var(--text-small);
+    font-weight: 600;
+    color: var(--color-ink-dark);
+  }
+
+  .details__value {
+    overflow-wrap: anywhere;
+  }
+
+  .details--columns {
+    gap: 0;
+    margin-block: 0;
+
+    .details__row {
+      grid-template-columns: 9rem 1fr;
+      align-items: baseline;
+      gap: var(--inline-space-double);
+      padding-block: var(--block-space-half);
+
+      @media (width < 640px) {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0.125rem;
+      }
+    }
+
+    > :last-child {
+      padding-block-end: 0;
+    }
+  }
+
+  /* Label and value flush on what holds them, a hairline over each row and under the last. */
+  .details--lined {
+    .details__row {
+      grid-template-columns: 6.5rem minmax(0, 1fr);
+      gap: var(--inline-space-double);
+      padding-block: var(--block-space-half);
+      border-block-start: var(--border);
+
+      @media (width < 640px) {
+        grid-template-columns: 5.5rem minmax(0, 1fr);
+      }
+
+      &:last-child {
+        border-block-end: var(--border);
+      }
+    }
+
+    a {
+      color: inherit;
+      text-decoration-color: var(--color-ink-light);
+      text-underline-offset: 0.15em;
+    }
+  }
+
+  .details__heading {
+    display: grid;
+    gap: 0.25rem;
+    min-inline-size: 0;
+  }
+
+  .details__meta {
+    margin: 0;
+    color: var(--color-ink-dark);
+  }
+}

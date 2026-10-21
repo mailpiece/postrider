@@ -1,0 +1,113 @@
+@layer components {
+  /* The page's crumbs and actions. The sections above scroll away; the strip stays, as wide as the page under it. */
+  .strip {
+    --header-gap: 0.5ch;
+    --header-btn-size: 2rem;
+    --strip-gutter: max(var(--main-padding), (100% - var(--strip-size, 65rem)) / 2);
+
+    align-items: center;
+    border-image: conic-gradient(var(--color-page) 0 0) fill 0 / 0 / 0 100vmax;
+    display: flex;
+    gap: var(--inline-space);
+    inset-block-start: var(--custom-safe-inset-top);
+    margin-inline:
+      calc(var(--strip-gutter) + var(--custom-safe-inset-left))
+      calc(var(--strip-gutter) + var(--custom-safe-inset-right));
+    min-block-size: var(--strip-height);
+    /* The hairline takes the last pixel, so the crumbs sit one pixel higher to keep the same air below as above. */
+    padding-block: var(--block-space-half) calc(var(--block-space-half) + 1px);
+    position: sticky;
+    z-index: var(--z-nav);
+
+    &::after {
+      border-block-end: 1px solid var(--color-ink-lighter);
+      content: "";
+      inset: auto 0 0;
+      position: absolute;
+    }
+
+    &:has(dialog[open]) {
+      z-index: var(--z-nav-open);
+    }
+
+    &:has(~ #main > .page:not(.page--wide)) {
+      --strip-size: 40rem;
+    }
+
+    .header__title {
+      flex: 1 1 auto;
+      font-size: var(--text-normal);
+      font-weight: 700;
+      margin: 0;
+      text-align: start;
+    }
+
+    .breadcrumbs {
+      font-size: inherit;
+      margin-inline: 0;
+    }
+
+    .header__actions {
+      align-items: center;
+      flex: none;
+      font-size: var(--text-small);
+      inline-size: auto;
+    }
+
+    .btn--circle,
+    .btn--circle-mobile {
+      --btn-size: var(--header-btn-size);
+    }
+
+    @media (width >= 640px) {
+      --header-btn-size: 1.75rem;
+
+      .header__actions .btn--circle-mobile[aria-label] {
+        --btn-border-radius: var(--radius-lg);
+        --btn-gap: var(--inline-space-half);
+        --btn-padding: 0 0.9em;
+        --icon-size: 1em;
+
+        block-size: var(--header-btn-size);
+        min-block-size: 0;
+      }
+    }
+
+    @media print {
+      display: none;
+    }
+  }
+
+  .strip .header__actions:not(:has(*)) {
+    display: none;
+  }
+
+  /* A page titled with no crumbs and no actions, like sign-in, keeps its title centred over the card. */
+  .strip:not(:has(.breadcrumbs, .header__actions > *)) {
+    border-image: none;
+    justify-content: center;
+    position: static;
+
+    &::after,
+    .header__actions {
+      display: none;
+    }
+
+    .header__title {
+      flex: 0 1 auto;
+      font-size: var(--text-x-large);
+      font-weight: 800;
+      letter-spacing: -0.024em;
+      line-height: 1.15;
+      text-align: center;
+    }
+  }
+
+  .strip ~ #main {
+    padding-block-start: var(--block-space-half);
+  }
+
+  html:has(.strip) {
+    scroll-padding-block-start: calc(var(--strip-height) + var(--custom-safe-inset-top) + var(--block-space));
+  }
+}

@@ -1,0 +1,29 @@
+leo:
+  account: davids_account
+  identity: leo
+  name: Leo
+  role: owner
+  active: true
+  verified_at: <%= 1.year.ago %>
+
+nonstaff:
+  account: davids_account
+  identity: nonstaff
+  name: Non Staff
+  role: member
+  active: true
+  verified_at: <%= 1.year.ago %>
+
+other:
+  account: other_account
+  identity: other
+  name: Other
+  role: owner
+  active: true
+  verified_at: <%= 1.year.ago %>
+
+system:
+  account: davids_account
+  name: System
+  role: system
+  active: true

@@ -1,0 +1,79 @@
+:root {
+  --color-page: oklch(96.7% 0.003 264.5);
+  --color-ink-light: oklch(26% 0.05 264 / 12%);
+
+  --color-body: var(--color-page);
+  --color-text-subtle: var(--color-ink-dark);
+  --color-text-placeholder: var(--color-ink-medium);
+
+  /* Read by the shared shell's files under these names. */
+  --color-text: var(--color-ink);
+  --color-ink-ligher: var(--color-ink-lighter);
+  --card-bg-color: var(--color-canvas);
+  --color-always-black: var(--color-black);
+  --color-border-darker: var(--color-ink-light);
+  --font-size-medium: var(--text-medium);
+
+  --tint-ink-2: color-mix(in oklch, var(--color-ink) 2%, transparent);
+  --tint-ink-3: color-mix(in oklch, var(--color-ink) 3%, transparent);
+  --tint-ink-5: color-mix(in oklch, var(--color-ink) 5%, transparent);
+  --tint-ink-10: color-mix(in oklch, var(--color-ink) 10%, transparent);
+  --tint-ink-15: color-mix(in oklch, var(--color-ink) 15%, transparent);
+  --tint-ink-20: color-mix(in oklch, var(--color-ink) 20%, transparent);
+  --tint-ink-25: color-mix(in oklch, var(--color-ink) 25%, transparent);
+  --tint-ink-35: color-mix(in oklch, var(--color-ink) 35%, transparent);
+  --tint-ink-50: color-mix(in oklch, var(--color-ink) 50%, transparent);
+  --tint-ink-75: color-mix(in oklch, var(--color-ink) 75%, transparent);
+
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  --leading-snug: 1.35;
+
+  /* What the strip takes: its buttons, the padding around them and the hairline. The scroll padding reads it too. */
+  --strip-height: calc(3rem + 1px);
+
+  @media (width >= 640px) {
+    --strip-height: calc(2.75rem + 1px);
+  }
+
+  --shadow-card: 0 0 0 1px var(--tint-ink-5),
+                 0 1px 2px oklch(var(--lch-black) / 5%),
+                 0 4px 12px oklch(var(--lch-black) / 5%);
+  --shadow-modal: 0 0 0 1px var(--tint-ink-5),
+                  0 8px 24px oklch(var(--lch-black) / 10%),
+                  0 24px 64px oklch(var(--lch-black) / 15%);
+
+  --duration-fast: 75ms;
+  --duration-medium: 150ms;
+  --duration-slow: 300ms;
+}
+
+html[data-theme="dark"] {
+  --color-page: oklch(14% 0.02 232);
+  --color-ink-light: oklch(96% 0.0034 260 / 16%);
+
+  --shadow-card: 0 0 0 1px var(--tint-ink-5),
+                 0 1px 2px oklch(var(--lch-black) / 40%),
+                 0 4px 12px oklch(var(--lch-black) / 50%);
+  --shadow-modal: 0 0 0 1px var(--tint-ink-10),
+                  0 8px 24px oklch(var(--lch-black) / 50%),
+                  0 24px 64px oklch(var(--lch-black) / 70%);
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme]) {
+    --color-page: oklch(14% 0.02 232);
+    --color-ink-light: oklch(96% 0.0034 260 / 16%);
+
+    --shadow-card: 0 0 0 1px var(--tint-ink-5),
+                   0 1px 2px oklch(var(--lch-black) / 40%),
+                   0 4px 12px oklch(var(--lch-black) / 50%);
+    --shadow-modal: 0 0 0 1px var(--tint-ink-10),
+                    0 8px 24px oklch(var(--lch-black) / 50%),
+                    0 24px 64px oklch(var(--lch-black) / 70%);
+  }
+}

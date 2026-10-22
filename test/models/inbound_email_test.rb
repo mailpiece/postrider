@@ -1,10 +1,6 @@
 require "test_helper"
 
 class InboundEmailTest < ActiveSupport::TestCase
-  setup do
-    DnsResolver.stubs(:name).returns(nil)
-  end
-
   test "mail to the account's bounce address is a bounce" do
     Current.account.setting.update!(bounce_address: "bounces@example.com")
 
@@ -113,8 +109,8 @@ class InboundEmailTest < ActiveSupport::TestCase
     assert_empty email.events.notable
   end
 
-  test "forward records the client address and its PTR name on the receipt event" do
-    DnsResolver.stubs(:name).with("203.0.113.1").returns("mail.sender.example")
+  test "forward records the client address and its confirmed name on the receipt event" do
+    stub_mailauth(iprev: "pass", remote_host: "mail.sender.example")
     email = create_inbound_email
 
     email.forward(ip: "203.0.113.1", helo: "sender.example")
@@ -122,10 +118,11 @@ class InboundEmailTest < ActiveSupport::TestCase
     event = email.events.last
     assert_equal "203.0.113.1", event.particulars["remote_ip"]
     assert_equal "mail.sender.example", event.particulars["remote_host"]
+    assert_equal "pass", email.iprev
   end
 
-  test "forward records the receipt without a PTR name when reverse DNS fails" do
-    DnsResolver.stubs(:name).raises(DnsResolver::TransientError)
+  test "forward records the receipt without a name when none resolved back" do
+    stub_mailauth(iprev: "fail")
     email = create_inbound_email
 
     email.forward(ip: "203.0.113.1", helo: "sender.example")

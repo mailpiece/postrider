@@ -1,12 +1,14 @@
 # Stub at ::MailAuth.authenticate: the gem exposes no injector, and production calls this seam.
 module MailAuthTestHelper
-  def stub_mailauth(spf: "none", dkim: "none", dmarc: "none", dmarc_policy: nil, arc: "none", arc_sealer: nil)
+  def stub_mailauth(spf: "none", dkim: "none", dmarc: "none", dmarc_policy: nil, arc: "none", arc_sealer: nil,
+    iprev: "permerror", remote_host: nil)
     ::MailAuth.stubs(:authenticate).returns(
       ::MailAuth::Result.new(
         spf: ::MailAuth::SpfResult.new(status: spf, domain: nil),
         dkim: ::MailAuth::DkimResult.new(signatures: [ ::MailAuth::Signature.new(status: dkim, domain: nil) ]),
         dmarc: ::MailAuth::DmarcResult.new(status: dmarc, policy: dmarc_policy),
         arc: arc_result(arc, arc_sealer),
+        iprev: ::MailAuth::IprevResult.new(status: iprev, name: remote_host),
         authentication_results: "test; spf=#{spf}; dkim=#{dkim}; dmarc=#{dmarc}; arc=#{arc}"
       )
     )

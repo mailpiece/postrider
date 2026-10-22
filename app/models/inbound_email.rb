@@ -1,11 +1,7 @@
-require "timeout"
-
 class InboundEmail < ApplicationRecord
   include Eventable, Sourced, Incineratable, Postable, Forwarding
 
   class Abandoned < StandardError; end
-
-  REVERSE_DNS_TIMEOUT = 2.seconds
 
   belongs_to :account, default: -> { domain.account }
   belongs_to :domain
@@ -51,16 +47,15 @@ class InboundEmail < ApplicationRecord
     ForwardJob.perform_later(self, ip:, helo:)
   end
 
-  # Attachments and the reverse lookup come before the transaction: Active Storage
-  # uploads on commit, and a slow zone would hold the write lock.
+  # Authentication and attachments come before the transaction: a slow zone would
+  # hold the write lock, and Active Storage uploads on commit.
   def forward(ip:, helo:)
     processing!
     authenticate(ip:, helo:)
     extract_attachments
-    particulars = received_particulars(ip)
 
     transaction do
-      track_event to_bounce_address? ? "bounce_received" : "received", **particulars
+      track_event to_bounce_address? ? "bounce_received" : "received", **received_particulars(ip)
 
       if forwarding_applies?
         forward_or_hold
@@ -116,14 +111,8 @@ class InboundEmail < ApplicationRecord
       update!(**InboundAuthentication.verdicts(raw, ip:, helo:, mail_from:))
     end
 
+    # The host is named only once its name resolved back to the address.
     def received_particulars(ip)
-      { rcpt_to: rcpt_to, remote_ip: ip, remote_host: reverse_dns_name(ip) }.compact
-    end
-
-    # Off the SMTP thread so a slow reverse zone can't stall a connection.
-    def reverse_dns_name(ip)
-      Timeout.timeout(REVERSE_DNS_TIMEOUT) { DnsResolver.name(ip) }
-    rescue Timeout::Error, DnsResolver::TransientError
-      nil
+      { rcpt_to: rcpt_to, remote_ip: ip, remote_host: remote_host }.compact
     end
 end

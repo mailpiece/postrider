@@ -137,6 +137,18 @@ class InboundEmail::PayloadTest < ActiveSupport::TestCase
       payload[:authentication])
   end
 
+  test "surfaces the connecting host's reverse name under authentication once it resolved back" do
+    email = build_email
+    email.dmarc = "pass"
+    email.iprev = "pass"
+    email.remote_host = "mail.test.com"
+
+    payload = email.webhook_payload("inbound_email_received")
+
+    assert_equal({ dmarc: "pass", iprev: "pass", remote_host: "mail.test.com", from_aligned: false },
+      payload[:authentication])
+  end
+
   test "names authentication_results as the API does, carrying the string a relay gets as its header" do
     email = build_email
     email.spf = "pass"

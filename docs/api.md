@@ -289,7 +289,7 @@ Authenticate with a personal access token (`read` permission is sufficient): `Au
 
 **Single pieces** return the same parsed content as the inbound webhook payload — literally the same source, so one parser handles bodies, headers, and attachments for both push and pull. Authentication is the exception: the webhook nests those fields under an `authentication` object and omits the object entirely when nothing was recorded, while here they sit flat alongside the envelope and appear as `null` when unknown. The one exception is `from_aligned`, which is always a real boolean — `false` means not aligned, never not checked. The names match either way.
 
-Single pieces also carry what the index leaves out to keep list responses small — `arc_sealer`, `from_aligned`, and the full `authentication_results` string. See [the webhook payload](webhooks.md) for what each means.
+Single pieces also carry what the index leaves out to keep list responses small — `arc_sealer`, `iprev` and `remote_host`, `from_aligned`, and the full `authentication_results` string. See [the webhook payload](webhooks.md) for what each means.
 
 **Attachments** match the webhook format: `filename`, `contentType`, `size`, `checksum`, `cid` / `contentId`, `related` (for inline images), plus a `url` that downloads that file's bytes (`Content-Disposition: attachment`). The download URL requires the same `Bearer` auth, and the token's user must have access to the domain.
 

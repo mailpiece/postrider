@@ -24,7 +24,8 @@ class InboundEmail::Payload
     def verdicts
       compact(spf: @inbound_email.spf, dkim: @inbound_email.dkim, dmarc: @inbound_email.dmarc,
         dmarc_policy: @inbound_email.dmarc_policy, arc: @inbound_email.arc,
-        arc_sealer: @inbound_email.arc_sealer, authentication_results: @inbound_email.authentication_results)
+        arc_sealer: @inbound_email.arc_sealer, iprev: @inbound_email.iprev, remote_host: @inbound_email.remote_host,
+        authentication_results: @inbound_email.authentication_results)
     end
 
     def attachments

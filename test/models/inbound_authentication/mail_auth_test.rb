@@ -53,6 +53,24 @@ class InboundAuthentication::MailAuthTest < ActiveSupport::TestCase
     assert_equal "lists.example.org", verdicts[:arc_sealer]
   end
 
+  test "records the connecting host's name once it resolved back" do
+    stub_mailauth(iprev: "pass", remote_host: "mail.sender.example")
+
+    verdicts = authenticate
+
+    assert_equal "pass", verdicts[:iprev]
+    assert_equal "mail.sender.example", verdicts[:remote_host]
+  end
+
+  test "records no host name when the reverse name did not resolve back" do
+    stub_mailauth(iprev: "fail")
+
+    verdicts = authenticate
+
+    assert_equal "fail", verdicts[:iprev]
+    assert_nil verdicts[:remote_host]
+  end
+
   test "records no sealer when the message carries no chain" do
     stub_mailauth(spf: "pass", dkim: "pass", dmarc: "pass")
 
@@ -90,6 +108,8 @@ class InboundAuthentication::MailAuthTest < ActiveSupport::TestCase
     assert_nil verdicts[:dmarc_policy]
     assert_nil verdicts[:arc]
     assert_nil verdicts[:arc_sealer]
+    assert_nil verdicts[:iprev]
+    assert_nil verdicts[:remote_host]
     assert_nil verdicts[:authentication_results]
   end
 

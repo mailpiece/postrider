@@ -5,8 +5,8 @@ json.(@postable, :mail_from, :rcpt_to, :status, :created_at)
 json.partial! "mailpieces/content", postable: @postable
 
 if @mailpiece.inbound_email?
-  json.(@postable, :forwarded_at, :spf, :dkim, :dmarc, :dmarc_policy, :arc, :arc_sealer, :from_aligned,
-    :authentication_results)
+  json.(@postable, :forwarded_at, :spf, :dkim, :dmarc, :dmarc_policy, :arc, :arc_sealer, :iprev, :remote_host,
+    :from_aligned, :authentication_results)
   json.incinerated_at @postable.incinerated_at if @postable.incinerated?
 else
   json.incinerated_at @postable.message.incinerated_at if @postable.message.incinerated?

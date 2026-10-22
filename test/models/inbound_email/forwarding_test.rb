@@ -6,7 +6,6 @@ class InboundEmail::ForwardingTest < ActiveSupport::TestCase
 
   setup do
     stub_env RELAY_HOSTNAME: "mx.example"
-    DnsResolver.stubs(:name).returns(nil)
     publish_sealing_key
   end
 
@@ -256,7 +255,7 @@ class InboundEmail::ForwardingTest < ActiveSupport::TestCase
     def stub_verdicts(dmarc: "none", from_aligned: false, arc: "none", authentication_results: "mx.example; dmarc=#{dmarc}")
       InboundAuthentication.stubs(:verdicts).returns(
         spf: "none", dkim: "none", dmarc: dmarc, dmarc_policy: nil,
-        arc: arc, arc_sealer: nil, from_aligned: from_aligned,
+        arc: arc, arc_sealer: nil, iprev: "permerror", remote_host: nil, from_aligned: from_aligned,
         authentication_results: authentication_results
       )
     end

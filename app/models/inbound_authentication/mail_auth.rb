@@ -22,6 +22,7 @@ class InboundAuthentication::MailAuth
       spf: result&.spf&.status, dkim: result&.dkim&.status,
       dmarc: result&.dmarc&.status, dmarc_policy: result&.dmarc&.policy,
       arc: result&.arc&.status, arc_sealer: result&.arc&.newest&.seal&.domain,
+      iprev: result&.iprev&.status, remote_host: result&.iprev&.name,
       from_aligned: from_aligned?(result), authentication_results: result&.authentication_results
     }
   end

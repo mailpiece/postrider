@@ -24,10 +24,10 @@ GIT
 
 GIT
   remote: https://github.com/mailpiece/mailauth.git
-  revision: 4d844d3b7397e887c4dcaff2a715c85c864c34b8
+  revision: 158653d60077f146c5a22740ee640f2b76fb214e
   branch: main
   specs:
-    mailauth (0.5.0)
+    mailauth (0.6.0)
       mailresolver
       public_suffix
       simpleidn
@@ -659,7 +659,7 @@ CHECKSUMS
   logger (1.7.0) sha256=196edec7cc44b66cfb40f9755ce11b392f21f7967696af15d274dde7edff0203
   loofah (2.25.2) sha256=2007f746959ac65552456e04b433e83deb22759ab38c838b4445c70e43425918
   mail (2.9.1) sha256=06574eca475253d6c18145dd70af80d0eb970182d55053497c5f4d797ea160e8
-  mailauth (0.5.0)
+  mailauth (0.6.0)
   mailbounce (0.5.0)
   mailreport (0.5.0)
   mailresolver (0.6.0)

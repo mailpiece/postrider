@@ -161,18 +161,6 @@ module Relay
       ENV.fetch("TRUSTED_PROXIES", "").split(",").map(&:strip).compact_blank.map { |proxy| IPAddr.new(proxy) }
     end
 
-    def posthog_api_key
-      ENV["POSTHOG_API_KEY"]
-    end
-
-    def posthog_host
-      ENV.fetch("POSTHOG_HOST", "https://us.i.posthog.com")
-    end
-
-    def code_version
-      ENV.fetch("KAMAL_VERSION", "unknown")
-    end
-
     private
       # Leading dot required so "google.com" doesn't also match "notgoogle.com".
       def mx_suffix(suffix)

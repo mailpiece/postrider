@@ -331,7 +331,7 @@ The password is a **sending token**, generated per domain in the tenant UI. The 
 
 ## Configuration (ENV)
 
-Every variable PostRider reads, A–Z. Provide them however your deployment does: `postrider.env`, Kamal, systemd. Two are **required**: `SECRET_KEY_BASE`, and a hostname for the relay (`RELAY_HOSTNAME`, or failing that the host of `BASE_URL`, which is what an install with web and mail on one name runs on). And keep the secrets (`SECRET_KEY_BASE`, `POSTHOG_API_KEY`) out of version control. DKIM and ARC keys, the certificate, the ACME account key and webhook signing secrets are encrypted with a key derived from `SECRET_KEY_BASE`; rotating it means new DKIM and ARC keys published in DNS, a reissued certificate and new webhook secrets. Email addresses are stored plain.
+Every variable PostRider reads, A–Z. Provide them however your deployment does: `postrider.env`, Kamal, systemd. Two are **required**: `SECRET_KEY_BASE`, and a hostname for the relay (`RELAY_HOSTNAME`, or failing that the host of `BASE_URL`, which is what an install with web and mail on one name runs on). And keep `SECRET_KEY_BASE` out of version control. DKIM and ARC keys, the certificate, the ACME account key and webhook signing secrets are encrypted with a key derived from `SECRET_KEY_BASE`; rotating it means new DKIM and ARC keys published in DNS, a reissued certificate and new webhook secrets. Email addresses are stored plain.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
@@ -357,8 +357,6 @@ Every variable PostRider reads, A–Z. Provide them however your deployment does
 | `MX_PORT` | `25` (`2525` in development) | Inbound listener port |
 | `OUTBOUND_MAX_MESSAGE_SIZE` | `10485760` (10 MB) | Reject larger outbound (submission) messages at the listener |
 | `OUTBOUND_RELAY` | — | `host:port` to relay all outbound mail through, bypassing MX resolution. Handy as a hosted-relay escape hatch or a local dev sink |
-| `POSTHOG_API_KEY` | — | PostHog project token for error tracking. Leave unset to turn it off |
-| `POSTHOG_HOST` | `https://us.i.posthog.com` | PostHog endpoint; change for EU cloud or self-hosted |
 | `RAILS_LOG_LEVEL` | `info` | Rails log verbosity |
 | `RELAY_HOSTNAME` | host of `BASE_URL` | This server's public hostname — MX target, TLS certificate name, and PTR/HELO name. Every record the app tells you to publish is generated from it. Set it when mail answers on a different name than the web UI; unset, the relay takes the host of `BASE_URL`, and one of the two is required |
 | `RELAY_MAIL_DOMAIN` | `RELAY_HOSTNAME` | The relay's outbound identity: domain of the relay-owned VERP bounce Return-Path (`bounces+…@…`) used by every domain that hasn't set up a custom one, and the target each domain's `mailer.<domain>` CNAME points at. It needs an MX pointing at the relay (self-MX when it equals `RELAY_HOSTNAME`). Set it to a name of its own — see [Sending identity](#sending-identity) |

@@ -66,7 +66,3 @@ gem "mailsmtp", github: "mailpiece/mailsmtp", branch: "main"
 gem "mailverp", github: "mailpiece/mailverp", branch: "main"
 gem "mta_sts", github: "mailpiece/mta_sts", branch: "main"
 gem "filter_path_parameters", github: "mailpiece/filter_path_parameters", branch: "main"
-
-# Error tracking
-gem "posthog-ruby"
-gem "posthog-rails"

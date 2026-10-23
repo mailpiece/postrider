@@ -52,4 +52,29 @@ Rails.application.configure do
   end
 
   config.content_security_policy_report_only = report_only
+
+  # The pages in public/ carry no script and no inline styles, so everything falls back to default-src 'none'.
+  static_policy = "default-src 'none'; img-src 'self'; style-src 'self'; " \
+    "base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+
+  static_policy += "; report-uri #{report_uri}" if report_uri
+
+  static_policy_header = report_only ? ActionDispatch::Constants::CONTENT_SECURITY_POLICY_REPORT_ONLY \
+                                     : ActionDispatch::Constants::CONTENT_SECURITY_POLICY
+
+  # Files served straight from public/ return before the CSP middleware runs.
+  config.public_file_server.headers = (config.public_file_server.headers || {}) \
+    .merge(static_policy_header => static_policy)
+
+  # A real 404 or 500 renders its page through the exceptions app, past the file server.
+  if config.exceptions_app.nil?
+    public_exceptions = ActionDispatch::PublicExceptions.new(Rails.public_path)
+    config.exceptions_app = ->(env) do
+      public_exceptions.call(env).tap do |_status, headers, _body|
+        if headers[Rack::CONTENT_TYPE].to_s.start_with?("text/html")
+          headers[static_policy_header] = static_policy
+        end
+      end
+    end
+  end
 end unless ENV["DISABLE_CSP"]

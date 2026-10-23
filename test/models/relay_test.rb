@@ -137,6 +137,46 @@ class RelayTest < ActiveSupport::TestCase
     end
   end
 
+  test "per-IP rate limits default to 20 messages, 60 TLS sessions and 60 AUTH attempts a minute, and read their variables" do
+    with_env(MX_MAX_MESSAGES_PER_IP: nil, MX_MAX_TLS_SESSIONS_PER_IP: nil, SUBMISSION_MAX_TLS_SESSIONS_PER_IP: nil, SUBMISSION_MAX_AUTH_ATTEMPTS_PER_IP: nil) do
+      assert_equal 20, Relay.mx_max_messages_per_ip
+      assert_equal 60, Relay.mx_max_tls_sessions_per_ip
+      assert_equal 60, Relay.submission_max_tls_sessions_per_ip
+      assert_equal 60, Relay.submission_max_auth_attempts_per_ip
+    end
+
+    with_env(MX_MAX_MESSAGES_PER_IP: 5, MX_MAX_TLS_SESSIONS_PER_IP: 6, SUBMISSION_MAX_TLS_SESSIONS_PER_IP: 7, SUBMISSION_MAX_AUTH_ATTEMPTS_PER_IP: 8) do
+      assert_equal 5, Relay.mx_max_messages_per_ip
+      assert_equal 6, Relay.mx_max_tls_sessions_per_ip
+      assert_equal 7, Relay.submission_max_tls_sessions_per_ip
+      assert_equal 8, Relay.submission_max_auth_attempts_per_ip
+    end
+  end
+
+  test "stress_threshold defaults to 0.8 and reads STRESS_THRESHOLD as a Float" do
+    with_env(STRESS_THRESHOLD: nil) do
+      assert_equal 0.8, Relay.stress_threshold
+    end
+
+    with_env(STRESS_THRESHOLD: "0.5") do
+      assert_equal 0.5, Relay.stress_threshold
+    end
+
+    with_env(STRESS_THRESHOLD: "") do
+      assert_nil Relay.stress_threshold
+    end
+  end
+
+  test "inbound_storage_limit is nil when INBOUND_STORAGE_LIMIT is unset and reads it in bytes" do
+    with_env(INBOUND_STORAGE_LIMIT: nil) do
+      assert_nil Relay.inbound_storage_limit
+    end
+
+    with_env(INBOUND_STORAGE_LIMIT: 5.gigabytes) do
+      assert_equal 5.gigabytes, Relay.inbound_storage_limit
+    end
+  end
+
   test "trusted_proxies is empty when TRUSTED_PROXIES is unset" do
     with_env(TRUSTED_PROXIES: nil) do
       assert_equal [], Relay.trusted_proxies

@@ -14,6 +14,10 @@ module Smtp
       status 452, "Requested action not taken: insufficient system storage", enhanced: "4.7.0"
     end
 
+    class StorageFull < MailSmtp::Error
+      status 452, "Requested action not taken: insufficient system storage", enhanced: "4.3.1"
+    end
+
     class RelayDenied < MailSmtp::Error
       status 550, "Requested action not taken: mailbox unavailable", enhanced: "5.7.1"
     end

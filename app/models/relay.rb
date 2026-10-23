@@ -108,8 +108,36 @@ module Relay
       Integer(ENV.fetch("SUBMISSION_MAX_CONNECTIONS_PER_IP", 30))
     end
 
+    def mx_max_messages_per_ip
+      Integer(ENV.fetch("MX_MAX_MESSAGES_PER_IP", 20))
+    end
+
+    def mx_max_tls_sessions_per_ip
+      Integer(ENV.fetch("MX_MAX_TLS_SESSIONS_PER_IP", 60))
+    end
+
+    def submission_max_tls_sessions_per_ip
+      Integer(ENV.fetch("SUBMISSION_MAX_TLS_SESSIONS_PER_IP", 60))
+    end
+
+    def submission_max_auth_attempts_per_ip
+      Integer(ENV.fetch("SUBMISSION_MAX_AUTH_ATTEMPTS_PER_IP", 60))
+    end
+
+    def stress_threshold
+      if value = ENV.fetch("STRESS_THRESHOLD", "0.8").presence
+        Float(value)
+      end
+    end
+
     def mx_max_recipients
       Integer(ENV.fetch("MX_MAX_RECIPIENTS", 50))
+    end
+
+    def inbound_storage_limit
+      if limit = ENV["INBOUND_STORAGE_LIMIT"].presence
+        Integer(limit)
+      end
     end
 
     def outbound_relay

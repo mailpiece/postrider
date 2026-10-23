@@ -94,7 +94,8 @@ class SmtpListener < MailSmtp::Server
     end
 
     def log_accepted(session, bytesize)
-      Rails.logger.info "[smtp] #{self.class.name} accepted #{bytesize} bytes from #{envelope_from(session)} to #{session.envelope.to.join(", ")}"
+      log(session, Logger::INFO,
+        "[smtp] #{self.class.name} accepted #{bytesize} bytes from #{envelope_from(session)} to #{session.envelope.to.join(", ")}")
     end
 
     def envelope_from(session)

@@ -77,6 +77,9 @@ class SubmissionListener < SmtpListener
         max_processings: Relay.submission_max_processings,
         max_connections: Relay.submission_max_connections,
         max_connections_per_ip: Relay.submission_max_connections_per_ip,
+        max_tls_sessions_per_ip: Relay.submission_max_tls_sessions_per_ip,
+        max_auth_attempts_per_ip: Relay.submission_max_auth_attempts_per_ip,
+        stress_threshold: Relay.stress_threshold,
         auth: :required,
         starttls: :required,
         eight_bit_mime: false

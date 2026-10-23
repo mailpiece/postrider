@@ -181,6 +181,27 @@ class MxListenerTest < ActiveSupport::TestCase
     end
   end
 
+  test "refuses mail at MAIL FROM with a 452 once stored mail reaches INBOUND_STORAGE_LIMIT" do
+    deliver(from: "sender@example.com", to: "everyone@mx-listener-test.example", raw: "Subject: Hi\r\n\r\nBody.\r\n")
+
+    with_env(INBOUND_STORAGE_LIMIT: ActiveStorage::Blob.sum(:byte_size)) do
+      error = assert_raises(Net::SMTPServerBusy) do
+        deliver(from: "sender@example.com", to: "everyone@mx-listener-test.example", raw: "Subject: Hi\r\n\r\nAgain.\r\n")
+      end
+
+      assert_match "452", error.message
+      assert_equal 1, inbound_email_count
+    end
+  end
+
+  test "accepts mail while stored mail is below INBOUND_STORAGE_LIMIT" do
+    with_env(INBOUND_STORAGE_LIMIT: ActiveStorage::Blob.sum(:byte_size) + 1.megabyte) do
+      deliver(from: "sender@example.com", to: "everyone@mx-listener-test.example", raw: "Subject: Hi\r\n\r\nBody.\r\n")
+
+      assert_equal 1, inbound_email_count
+    end
+  end
+
   test "a message to several recipients is stored once and shared by every recipient's row" do
     blobs = ActiveStorage::Blob.uncached { ActiveStorage::Blob.count }
 
@@ -238,6 +259,7 @@ class MxListenerTest < ActiveSupport::TestCase
     Domain.stubs(:for_address).raises(RuntimeError, "boom")
 
     Rails.error.expects(:report).with(instance_of(RuntimeError), handled: false, source: "smtp").at_least_once
+    Rails.error.stubs(:report).with(instance_of(RuntimeError), handled: false, source: "application.active_support")
 
     # Domain.accepts? goes through for_address, so this blows up at RCPT TO.
     # A 5xx here would permanently abandon mail we could still take tomorrow.
@@ -319,6 +341,21 @@ class MxListenerTest < ActiveSupport::TestCase
         socket.write("NOOP\r\n")
         assert_match(/\A250/, socket.gets.to_s)
       end
+
+      socket.write("NOOP\r\n")
+      assert_match(/\A421/, socket.gets.to_s)
+      assert_nil socket.gets
+    end
+  end
+
+  test "drops a connection on its second junk command while stressed" do
+    @listener.stubs(:stressed?).returns(true)
+
+    Socket.tcp("127.0.0.1", @port) do |socket|
+      socket.gets
+
+      socket.write("NOOP\r\n")
+      assert_match(/\A250/, socket.gets.to_s)
 
       socket.write("NOOP\r\n")
       assert_match(/\A421/, socket.gets.to_s)

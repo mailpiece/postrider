@@ -347,13 +347,16 @@ Every variable PostRider reads, A–Z. Provide them however your deployment does
 | `FORCE_SSL` | on | Redirect HTTP→HTTPS, enable HSTS and secure cookies. Needs a TLS proxy in front (or `DISABLE_SSL=true`) |
 | `HELO_HOSTNAME` | `RELAY_HOSTNAME` | HELO/EHLO name for outbound delivery; override only if it should differ |
 | `INBOUND_MAX_MESSAGE_SIZE` | `26214400` (25 MB) | Reject larger inbound (MX) messages at the listener |
+| `INBOUND_STORAGE_LIMIT` | none | Bytes of all stored mail and attachments, outbound included, at which the MX listener answers `MAIL FROM` with a `452` until the sweep frees room. Unset means no ceiling |
 | `MAILER_FROM_ADDRESS` | none | Support address shown on the sign-in and forwarding confirmation pages, and in the confirmation mail. Only the address is used. PostRider sends its own mail from `noreply@<domain>` through itself, so it needs no outside mail account |
 | `MTA_STS` | — | Set `true` to enforce RFC 8461 MTA-STS on outbound delivery (see [MTA-STS](#mta-sts)) |
 | `MULTI_TENANT` | `false` | Multi-tenant signups; keep `false` for a self-hosted install |
 | `MX_MAX_CONNECTIONS` / `SUBMISSION_MAX_CONNECTIONS` | `50` | Concurrent connections each listener accepts |
 | `MX_MAX_CONNECTIONS_PER_IP` / `SUBMISSION_MAX_CONNECTIONS_PER_IP` | `10` / `30` | Concurrent connections from a single IP |
+| `MX_MAX_MESSAGES_PER_IP` | `20` | Messages one IP may start per minute on the MX listener; the next `MAIL FROM` gets a `450` |
 | `MX_MAX_PROCESSINGS` / `SUBMISSION_MAX_PROCESSINGS` | `10` | Messages processed concurrently per listener. Also sizes the database pool |
 | `MX_MAX_RECIPIENTS` | `50` | Recipients per inbound SMTP transaction; further `RCPT TO`s get a `452` |
+| `MX_MAX_TLS_SESSIONS_PER_IP` / `SUBMISSION_MAX_TLS_SESSIONS_PER_IP` | `60` | STARTTLS handshakes one IP may start per minute on each listener; the next gets a `454` |
 | `MX_PORT` | `25` (`2525` in development) | Inbound listener port |
 | `OUTBOUND_MAX_MESSAGE_SIZE` | `10485760` (10 MB) | Reject larger outbound (submission) messages at the listener |
 | `OUTBOUND_RELAY` | — | `host:port` to relay all outbound mail through, bypassing MX resolution. Handy as a hosted-relay escape hatch or a local dev sink |
@@ -366,8 +369,10 @@ Every variable PostRider reads, A–Z. Provide them however your deployment does
 | `SECRET_KEY_BASE` | — | Rails secret key base. Generate one with `bin/rails secret` |
 | `SENDING_IPS` | — | Comma-separated `name=address=helo` list of source IPs for direct-to-MX delivery. The first entry is the default every send binds to for now; each address needs matching PTR/rDNS for its HELO name. Unset = the host's default IP |
 | `SMTP_LOG_LEVEL` | `INFO` | Listener log verbosity. `DEBUG` logs the full SMTP conversation line by line (AUTH credentials are redacted, but it's still verbose) — keep it off in production and access-controlled. Read once at boot, so changing it means restarting the listeners |
+| `STRESS_THRESHOLD` | `0.8` | Share of a listener's `MAX_CONNECTIONS` at which it is stressed: timeouts shorten, and one protocol error or a second junk command ends the session. Empty disables it |
 | `STRUCTURED_LOGGING` | — | Set `true` to also write each Rails event (requests, jobs, mail) to stdout as a line of JSON, for a log shipper to index. SQL and view events are left out |
 | `SUBMISSION_HOSTNAME` | `RELAY_HOSTNAME` | What clients configure as their outgoing SMTP server — the submission listener's banner/Received identity |
+| `SUBMISSION_MAX_AUTH_ATTEMPTS_PER_IP` | `60` | `AUTH` commands one IP may send per minute on the submission listener, successful ones included; the next gets a `454`. Keep it above `SUBMISSION_RATE_LIMIT`, since most clients authenticate once per message |
 | `SUBMISSION_PORT` | `587` (`2587` in development) | Submission listener port |
 | `SUBMISSION_RATE_LIMIT` | `30` | Submissions per account per minute |
 | `TRUSTED_PROXIES` | — | Comma-separated CIDR ranges whose `X-Forwarded-For` entries are trusted, on top of the private network ranges Rails trusts already (see [Client IP](#client-ip)) |

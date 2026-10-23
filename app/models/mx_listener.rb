@@ -1,5 +1,6 @@
 class MxListener < SmtpListener
   def mail_from(_session, address)
+    raise Smtp::Errors::StorageFull, "Storage limit reached, try again later" if Rails.application.executor.wrap { MailStorage.full? }
     sender_in(address)
   end
 
@@ -13,7 +14,7 @@ class MxListener < SmtpListener
 
     address = recipient_in(address)
 
-    if Domain.accepts?(address) || Delivery::ReturnPath.address?(address)
+    if Rails.application.executor.wrap { Domain.accepts?(address) || Delivery::ReturnPath.address?(address) }
       address
     else
       raise Smtp::Errors::RelayDenied, "Relay access denied for #{address}"
@@ -61,6 +62,9 @@ class MxListener < SmtpListener
         max_processings: Relay.mx_max_processings,
         max_connections: Relay.mx_max_connections,
         max_connections_per_ip: Relay.mx_max_connections_per_ip,
+        max_messages_per_ip: Relay.mx_max_messages_per_ip,
+        max_tls_sessions_per_ip: Relay.mx_max_tls_sessions_per_ip,
+        stress_threshold: Relay.stress_threshold,
         auth: :disabled,
         starttls: :optional,
         # Tolerate missing angle brackets: a 501 is permanent and costs mail from old senders.

@@ -39,7 +39,7 @@ class SmtpListener < MailSmtp::Server
   def process_line(session, line)
     if junk_command?(session, line)
       session.junk_commands += 1
-      raise MailSmtp::ServiceUnavailable, "Too many junk commands" if session.junk_commands > MAX_JUNK_COMMANDS
+      raise MailSmtp::ServiceUnavailable, "Too many junk commands" if session.junk_commands > max_junk_commands
     end
 
     super
@@ -49,6 +49,11 @@ class SmtpListener < MailSmtp::Server
     # Skip AUTH continuations: base64 credentials can begin with command letters.
     def junk_command?(session, line)
       AUTH_VALUE_PHASES.exclude?(session.phase) && line.match?(JUNK_COMMANDS)
+    end
+
+    # Postfix's smtpd_junk_command_limit under stress.
+    def max_junk_commands
+      stressed? ? 1 : MAX_JUNK_COMMANDS
     end
 
     # Empty address is the null reverse-path <> used by bounces (RFC 5321 §4.5.5).

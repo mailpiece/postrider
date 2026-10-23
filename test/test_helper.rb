@@ -24,11 +24,11 @@ module ActiveSupport
     include DnsTestHelper, EnvTestHelper, DomainTestHelper, MailAuthTestHelper
 
     def perform_enqueued_jobs(...)
-      saved_account = Current.account
-      Current.account = nil
+      saved_account, saved_user = Current.account, Current.user
+      Current.account = Current.user = nil
       super
     ensure
-      Current.account = saved_account
+      Current.account, Current.user = saved_account, saved_user
     end
 
     setup do

@@ -12,6 +12,7 @@ class DomainsControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href=?]", new_domain_path
     assert_select "li##{dom_id(domains(:example))}"
     assert_select ".filter__empty a[href=?]", search_path
+    assert_select ".rows .row[data-quick-find-target=item]"
     [ missing, domains(:unverified) ].each { |domain| assert_select "li##{dom_id(domain)}", count: 0 }
   end
 

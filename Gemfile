@@ -17,6 +17,7 @@ gem "solid_cache", "~> 1.0"
 gem "solid_queue", "~> 1.5"
 gem "sqlite3", ">= 2.9.6"
 gem "thruster", require: false
+gem "tzinfo-data"
 
 # Features
 gem "bcrypt", "~> 3.1.22"

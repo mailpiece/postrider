@@ -1,10 +1,10 @@
 {
-  "name": "PostRider",
+  "name": "Postrider",
   "runArgs": [
     "--name",
     "postrider"
   ],
-  "image": "ghcr.io/rails/devcontainer/images/ruby:4.0.7",
+  "image": "ghcr.io/rails/devcontainer/images/ruby:4.0.8",
   "workspaceFolder": "/rails",
   "workspaceMount": "source=${localWorkspaceFolder},target=/rails,type=bind,consistency=cached",
   "containerEnv": {

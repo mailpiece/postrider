@@ -209,11 +209,13 @@ class DomainsControllerTest < ActionDispatch::IntegrationTest
 
     get edit_domain_path(domain)
     assert_response :success
-    assert_select ".dns-check__header", text: /Inbound\s+MX\s+OK/
-    assert_select ".dns-check__header", text: /DKIM, for sending\s+TXT\s+Missing/
-    assert_select ".dns-check__header", text: /DMARC\s+TXT\s+Invalid/
-    assert_select ".dns-check__header", text: /Return-Path\s+CNAME\s+Not checked/
-    assert_select ".dns-record button[aria-label=?]", "Copy name", count: 4
+    assert_select ".dns-item__head", text: /Inbound\s+MX\s+OK/
+    assert_select ".dns-item__head", text: /DKIM\s+TXT\s+Missing/
+    assert_select ".dns-item__head", text: /DMARC\s+TXT\s+Invalid/
+    assert_select ".dns-item__head", text: /Return-Path\s+CNAME\s+Not checked/
+    assert_select ".dns-item__line input[readonly][aria-label=?]", "Name", count: 4
+    assert_select ".settings-index__body p", text: /Receives mail\. Not verified for sending yet: the DKIM record is missing\./
+    assert_equal %w[ DKIM DMARC Return-Path Inbound ], css_select(".dns-item__head strong").map(&:text)
   end
 
   test "json renders DNS statuses as lowercase enum keys" do

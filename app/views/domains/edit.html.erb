@@ -21,34 +21,32 @@
     <section>
       <h2 class="settings-index__heading">DNS records</h2>
       <div class="settings-index__body">
-        <p class="margin-none txt-align-center">
+        <p class="flex flex-wrap align-center justify-center gap-half margin-none txt-align-center">
           <% if @domain.verified? %>
             <span class="status status--success status--badge">Verified</span>
           <% else %>
-            <span class="status status--warning status--badge">Not verified for sending</span>
+            <span class="status status--warning status--badge">Not verified</span>
+          <% end %>
+
+          <span class="txt-small"><%= domain_state_sentence @domain %></span>
+
+          <% if @domain.dns_checked? %>
+            <span class="txt-x-small txt-subtle">Checked <%= local_datetime_tag @domain.dns_checked_at, style: :ago %></span>
           <% end %>
         </p>
 
-        <% unless @domain.verified? %>
-          <p class="txt-small txt-subtle margin-none txt-align-center">Publishing DKIM is what turns on sending from this domain, and forwarding too: the confirmation link goes out from it. Forwarded mail itself is sealed with the relay's own ARC key.</p>
-        <% end %>
+        <% records = [
+             [ @domain.mx_record, "Inbound", @domain.mx_status, @domain.mx_error ],
+             [ @domain.dkim_record, "DKIM", @domain.dkim_status, @domain.dkim_error ],
+             [ @domain.dmarc_record, "DMARC", @domain.dmarc_status, @domain.dmarc_error ],
+             [ @domain.return_path_record, "Return-Path", @domain.return_path_status, @domain.return_path_error ]
+           ] %>
+        <% found, needed = records.partition { |_record, _title, status, error| status == "ok" && error.blank? } %>
 
-        <p class="txt-small txt-subtle margin-none txt-align-center">Publish these at your DNS provider.<% if @domain.dns_checked? %> Last checked <%= local_datetime_tag @domain.dns_checked_at, style: :datetime %>.<% end %></p>
-
-        <div class="dns-checks">
-          <%= render "domains/dns_record", record: @domain.mx_record, title: "Inbound",
-                status: dns_status_tag(@domain.mx_status), error: @domain.mx_error %>
-          <p class="txt-small txt-subtle margin-none">MX or CNAME: a CNAME at the same name pointing to <code class="txt-mono"><%= @domain.inbound_cname_record.value %></code> works in place of the MX.</p>
-
-          <%= render "domains/dns_record", record: @domain.dkim_record, title: "DKIM, for sending",
-                status: dns_status_tag(@domain.dkim_status), error: @domain.dkim_error %>
-
-          <p class="txt-small txt-subtle margin-none">The next two align bounces under this domain. DMARC reports go to <code class="txt-mono">dmarc-reports@<%= @domain.name %></code>, which only reaches us while this domain's inbound MX points here.</p>
-
-          <%= render "domains/dns_record", record: @domain.dmarc_record, title: "DMARC",
-                status: dns_status_tag(@domain.dmarc_status), error: @domain.dmarc_error %>
-          <%= render "domains/dns_record", record: @domain.return_path_record, title: "Return-Path",
-                status: dns_status_tag(@domain.return_path_status), error: @domain.return_path_error %>
+        <div class="dns-list <%= "dns-list--attention" if needed.any? %>">
+          <% (needed + found).each do |record, title, status, error| %>
+            <%= render "domains/edit/dns_record", record: record, title: title, status: status, error: error %>
+          <% end %>
         </div>
       </div>
     </section>

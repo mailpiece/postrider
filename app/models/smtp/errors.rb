@@ -30,6 +30,10 @@ module Smtp
       status 550, "Requested action not taken: mailbox unavailable", enhanced: "5.7.1"
     end
 
+    class SendingDisabled < MailSmtp::Error
+      status 550, "Requested action not taken: mailbox unavailable", enhanced: "5.7.1"
+    end
+
     class AccountInactive < MailSmtp::Error
       status 550, "Requested action not taken: mailbox unavailable", enhanced: "5.7.1"
     end

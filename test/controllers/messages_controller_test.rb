@@ -206,6 +206,15 @@ class MessagesControllerTest < ActionDispatch::IntegrationTest
     assert_response :forbidden
   end
 
+  test "a domain whose sending is turned off gets a 422" do
+    domains(:example).update!(sending: false)
+
+    post messages_path, params: { from: "a@example.com", to: [ "b@example.com" ], subject: "hi", text: "hello" },
+      headers: sending_token_env, as: :json
+
+    assert_response :unprocessable_entity
+  end
+
   test "envelope_from cannot spoof an address the token is not authorized for" do
     assert_no_difference -> { Message.count } do
       post messages_path, params: {

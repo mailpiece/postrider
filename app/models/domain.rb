@@ -5,6 +5,7 @@ class Domain < ApplicationRecord
   include DnsChecks
   include BlockedPhrases
   include AllowedIps
+  include Switches
 
   belongs_to :creator, class_name: "User", default: -> { Current.user }
   belongs_to :account, default: -> { creator.account }
@@ -62,7 +63,7 @@ class Domain < ApplicationRecord
   end
 
   def accepts?(email)
-    account.active? && verified? && (specifically_registered?(email) || discard? || forward?)
+    account.active? && verified? && (bounce_address?(email) || (receiving? && (specifically_registered?(email) || discard? || forward?)))
   end
 
   def specifically_registered?(email)
@@ -87,6 +88,10 @@ class Domain < ApplicationRecord
 
     def destroy_system_messages
       messages.system.destroy_all
+    end
+
+    def bounce_address?(email)
+      local_part(email).split("+", 2).first.to_s.downcase == bounce_local_part
     end
 
     def bounce_local_part

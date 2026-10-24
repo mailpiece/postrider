@@ -96,6 +96,8 @@ Rails.application.routes.draw do
       resource :blocked_phrases, only: %i[ show update ]
       resource :allowed_ips, only: %i[ show update ]
       resource :catch_all, only: %i[ edit update ]
+      resource :receiving, only: %i[ create destroy ]
+      resource :sending, only: %i[ create destroy ]
     end
 
     resources :webhooks do

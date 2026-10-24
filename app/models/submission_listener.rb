@@ -17,6 +17,8 @@ class SubmissionListener < SmtpListener
     if !sending_token.domain.verified?
       raise Smtp::Errors::DomainNotVerified, "#{sending_token.domain.name} isn't verified for sending: " \
         "publish #{sending_token.domain.dkim_record.hostname} TXT, then check DNS"
+    elsif !sending_token.domain.sending?
+      raise Smtp::Errors::SendingDisabled, "#{sending_token.domain.name} isn't sending: turned off in its settings"
     elsif sending_token.authorizes_sending_as?(address)
       address
     else

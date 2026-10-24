@@ -24,6 +24,7 @@ class Message < ApplicationRecord
   validates :raw, presence: true, unless: :incinerated?
   validate :raw_within_max_message_size
   validate :domain_verified_for_sending, on: :create, unless: :forwarded?
+  validate :domain_sending, on: :create, unless: :forwarded?
 
   normalizes :tags, with: ->(value) { Array.wrap(value).map(&:to_s).map(&:strip).reject(&:blank?).uniq }
   normalizes :metadata, with: ->(value) {
@@ -81,6 +82,12 @@ class Message < ApplicationRecord
     def domain_verified_for_sending
       if domain && !domain.verified?
         errors.add(:domain, "isn't verified for sending — publish its DKIM record, then check DNS")
+      end
+    end
+
+    def domain_sending
+      if domain && !domain.sending?
+        errors.add(:domain, "isn't sending: turned off in its settings")
       end
     end
 end

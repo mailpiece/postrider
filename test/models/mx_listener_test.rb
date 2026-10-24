@@ -80,6 +80,17 @@ class MxListenerTest < ActiveSupport::TestCase
     assert_equal 0, InboundEmail.where(domain: @domain).count
   end
 
+  test "rejects mail for a domain whose receiving is turned off" do
+    @domain.update!(receiving: false)
+
+    error = assert_raises(Net::SMTPFatalError) do
+      deliver(from: "sender@example.com", to: "everyone@mx-listener-test.example", raw: "Subject: Hi\r\n\r\nBody.\r\n")
+    end
+
+    assert_match "550", error.message
+    assert_equal 0, InboundEmail.where(domain: @domain).count
+  end
+
   test "rejects mail to an unregistered local part on an otherwise-registered domain" do
     error = assert_raises(Net::SMTPFatalError) do
       deliver(from: "sender@example.com", to: "nobody@mx-listener-test.example", raw: "Subject: Hi\r\n\r\nBody.\r\n")

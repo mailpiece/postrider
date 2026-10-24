@@ -178,6 +178,12 @@ class MailboxTest < ActiveSupport::TestCase
     end
   end
 
+  test "a forward is not confirmable while its domain's sending is off" do
+    domains(:example).update!(sending: false)
+
+    assert_not mailboxes(:unconfirmed_forwarding).forward_confirmable?
+  end
+
   test "a confirmation is sent only on the save that changes the destination" do
     mailbox = mailboxes(:inbox)
 

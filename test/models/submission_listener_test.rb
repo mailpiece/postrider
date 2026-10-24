@@ -339,6 +339,19 @@ class SubmissionListenerTest < ActiveSupport::TestCase
     assert_equal 0, submitted_messages.count
   end
 
+  test "rejects MAIL FROM for a domain whose sending is turned off" do
+    domains(:example).update_column :sending, false
+
+    error = assert_raises(Net::SMTPFatalError) do
+      deliver(from: "sender@example.com", to: "recipient@example.com")
+    end
+
+    assert_match "550 5.7.1", error.message
+    assert_equal 0, submitted_messages.count
+  ensure
+    domains(:example).update_column :sending, true
+  end
+
   test "rejects a visible From header the token isn't authorized for, even when the envelope sender is authorized" do
     spoofed = "From: ceo@victim.example\r\nTo: recipient@example.com\r\nSubject: Hi\r\n\r\nBody.\r\n"
 

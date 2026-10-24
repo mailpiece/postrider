@@ -66,6 +66,15 @@ class DomainsControllerTest < ActionDispatch::IntegrationTest
     assert_equal [ domains(:example).id, domains(:private).id ], response.parsed_body.pluck("id")
   end
 
+  test "index as JSON says whether each domain receives and sends" do
+    sign_in_as :leo
+    domains(:private).update!(sending: false)
+
+    get domains_path, as: :json
+
+    assert_equal [ true, false ], response.parsed_body.pluck("sending")
+  end
+
   test "settings lists the domain's settings as rows" do
     sign_in_as :leo
 
@@ -205,6 +214,8 @@ class DomainsControllerTest < ActionDispatch::IntegrationTest
     get domain_path(domains(:example)), as: :json
     assert_response :success
     assert_equal "example.com", response.parsed_body["name"]
+    assert_equal true, response.parsed_body["receiving"]
+    assert_equal true, response.parsed_body["sending"]
 
     assert_difference -> { Current.account.domains.count }, 1 do
       post domains_path, params: { domain: { name: "created-via-json.example" } }, as: :json

@@ -196,9 +196,20 @@ Authenticate with a personal access token (`read` permission is sufficient): `Au
 | `GET /domains/unverified` | Domains whose DKIM record is missing, wrong or not yet checked, in the index's format |
 
 
-Each entry carries `id`, `name`, `catch_all_policy`, the `mx_status`, `dkim_status`, `dmarc_status` and `return_path_status` of its last DNS check (`null` until checked), `verified`, `created_at` and `url`.
+Each entry carries `id`, `name`, `catch_all_policy`, the `mx_status`, `dkim_status`, `dmarc_status` and `return_path_status` of its last DNS check (`null` until checked), `verified`, `receiving`, `sending`, `created_at` and `url`.
+
+A domain with `receiving` false refuses inbound mail, and one with `sending` false refuses new messages; both are `true` until an admin turns them off.
 
 An account admin's `write` token changes what a domain does with mail for an address with no mailbox: `PATCH /domains/:domain_id/catch_all` with `{ "catch_all_policy": "disabled" }` (or `discard`, `forward`) returns the domain.
+
+The same token turns a domain's mail on or off, and each returns the domain:
+
+| Endpoint                                 | Does                                                                          |
+| ---------------------------------------- | ----------------------------------------------------------------------------- |
+| `POST /domains/:domain_id/receiving`     | Turns receiving on                                                            |
+| `DELETE /domains/:domain_id/receiving`   | Turns receiving off: inbound mail is refused with a permanent error, bounces of the domain's own mail still come in |
+| `POST /domains/:domain_id/sending`       | Turns sending on                                                              |
+| `DELETE /domains/:domain_id/sending`     | Turns sending off: new messages are refused, forwards and queued mail still go out |
 
 ## Creating a domain
 
@@ -212,7 +223,7 @@ Content-Type: application/json
 { "domain": { "name": "lists.example.com" } }
 ```
 
-Returns `201` with the domain in the index's format: `{ "id", "name", "catch_all_policy", "mx_status", "dkim_status", "dmarc_status", "return_path_status", "verified", "created_at", "url" }`. Every active user in the account gets access to the new domain.
+Returns `201` with the domain in the index's format: `{ "id", "name", "catch_all_policy", "mx_status", "dkim_status", "dmarc_status", "return_path_status", "verified", "receiving", "sending", "created_at", "url" }`. Every active user in the account gets access to the new domain.
 
 The domain can't send until its DKIM record checks out. The records to publish are on the domain's settings page in the app; once they are in place, [check the domain's DNS](#checking-a-domains-dns).
 

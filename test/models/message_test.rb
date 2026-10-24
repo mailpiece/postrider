@@ -565,6 +565,24 @@ class MessageTest < ActiveSupport::TestCase
     assert_includes message.errors[:domain], "isn't verified for sending — publish its DKIM record, then check DNS"
   end
 
+  test "a domain whose sending is turned off cannot originate mail" do
+    domains(:example).update!(sending: false)
+
+    message = Message.submit(domain: domains(:example), from: "a@example.com", to: [ "b@example.com" ],
+      subject: "hi", text: "hello")
+
+    assert_includes message.errors[:domain], "isn't sending: turned off in its settings"
+  end
+
+  test "a forward still goes out from a domain whose sending is turned off" do
+    domains(:example).update!(sending: false)
+
+    message = Message.submit_raw(domain: domains(:example), mail_from: "jane@remote.example",
+      raw: "Subject: Hi\r\n\r\nBody", tags: [], recipients: [ "dest@elsewhere.example" ], origin: :forwarded)
+
+    assert message.persisted?
+  end
+
   # A forward travels under the relay's seal, so it never needs the tenant's key.
   test "a forward from that same domain is not held to it" do
     message = Message.submit_raw(domain: domains(:unverified), mail_from: "jane@remote.example",

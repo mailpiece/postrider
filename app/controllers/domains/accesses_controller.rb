@@ -9,7 +9,7 @@ class Domains::AccessesController < ApplicationController
     @domain.accesses.revise granted: grantees, revoked: revokees if grantees_changed?
 
     if @domain.accessible_to?(Current.user)
-      redirect_to edit_domain_path(@domain), notice: "Access updated"
+      redirect_to domain_people_path(@domain), notice: "Access updated"
     else
       redirect_to domains_path, notice: "Access updated. You removed yourself from #{@domain.name}"
     end

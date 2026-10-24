@@ -136,7 +136,7 @@ class MailboxesControllerTest < ActionDispatch::IntegrationTest
     follow_redirect!
     assert_no_match "Confirmation sent", response.body
     assert_select ".record p", text: "Verify this domain's DKIM, then send the confirmation."
-    assert_select ".record a[href=?]", edit_domain_path(domains(:unverified)), text: "See the DNS records"
+    assert_select ".record a[href=?]", domain_dns_records_path(domains(:unverified)), text: "See the DNS records"
     assert_select "button", text: "Send a confirmation link", count: 0
     assert_equal "someone@example.com", mailbox.reload.forward_to
   end

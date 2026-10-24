@@ -25,7 +25,7 @@
               project_fact("Blocked phrases", @domain.blocked_phrase_list.size.nonzero? || "None") %>
 
         <% unless @domain.verified? %>
-          <%= link_to "See the DNS records", edit_domain_path(@domain), class: "btn" %>
+          <%= link_to "See the DNS records", domain_dns_records_path(@domain), class: "btn" %>
         <% end %>
       <% end %>
     </header>

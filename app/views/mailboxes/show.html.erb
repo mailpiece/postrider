@@ -47,7 +47,7 @@
           <%= button_to "Send a confirmation link", domain_mailbox_forwardings_path(@domain, @mailbox), class: "btn txt-small" %>
         <% else %>
           <p class="txt-small txt-subtle margin-none txt-align-center">Verify this domain's DKIM, then send the confirmation.</p>
-          <%= link_to "See the DNS records", edit_domain_path(@domain), class: "btn txt-small" %>
+          <%= link_to "See the DNS records", domain_dns_records_path(@domain), class: "btn txt-small" %>
         <% end %>
       </div>
     <% end %>

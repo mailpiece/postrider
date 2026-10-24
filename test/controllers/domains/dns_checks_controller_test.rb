@@ -1,7 +1,7 @@
 require "test_helper"
 
 class Domains::DnsChecksControllerTest < ActionDispatch::IntegrationTest
-  test "checking DNS enqueues the check and redirects to the domain" do
+  test "checking DNS enqueues the check and redirects to the DNS records" do
     sign_in_as :leo
     domain = domains(:example)
 
@@ -9,7 +9,7 @@ class Domains::DnsChecksControllerTest < ActionDispatch::IntegrationTest
       post domain_dns_check_path(domain)
     end
 
-    assert_redirected_to edit_domain_path(domain)
+    assert_redirected_to domain_dns_records_path(domain)
     assert_match "Checking DNS", flash[:notice]
   end
 

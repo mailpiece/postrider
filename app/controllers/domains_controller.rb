@@ -12,8 +12,6 @@ class DomainsController < ApplicationController
   end
 
   def edit
-    @users = Current.account.users.active.alphabetically.includes(:identity)
-    @accessed_user_ids = @domain.users.ids
   end
 
   def new

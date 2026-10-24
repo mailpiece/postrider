@@ -59,4 +59,54 @@
     border-inline-start: var(--border);
     padding-inline-start: var(--inline-space-double);
   }
+
+  .dns-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--block-space);
+    text-align: start;
+  }
+
+  .dns-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25em;
+  }
+
+  .dns-item__head {
+    align-items: center;
+    display: flex;
+    font-size: var(--text-small);
+    gap: var(--inline-space-half);
+
+    strong {
+      font-weight: 700;
+    }
+  }
+
+  .dns-list--attention .dns-item--found {
+    color: var(--color-ink-dark);
+
+    .input {
+      color: inherit;
+    }
+  }
+
+  .dns-item__error {
+    color: var(--color-warning-text);
+    font-size: var(--text-x-small);
+    margin: 0;
+  }
+
+  .dns-item__line {
+    align-items: center;
+    display: flex;
+    gap: var(--inline-space-half);
+    min-inline-size: 0;
+
+    .input {
+      flex: 1 1 auto;
+      min-inline-size: 0;
+    }
+  }
 }

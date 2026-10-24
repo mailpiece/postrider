@@ -90,6 +90,8 @@ Rails.application.routes.draw do
   resources :domains, only: %i[ index show new edit create destroy ] do
     scope module: :domains do
       resource :dns_check, only: :create
+      resource :dns_records, only: :show
+      resource :people, only: :show
       resource :accesses, only: :update
       resource :blocked_phrases, only: %i[ show update ]
       resource :allowed_ips, only: %i[ show update ]

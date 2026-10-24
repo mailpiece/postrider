@@ -8,7 +8,7 @@ class Domains::DnsChecksController < ApplicationController
     @domain.check_dns_later
 
     respond_to do |format|
-      format.html { redirect_to edit_domain_path(@domain), notice: "Checking DNS. Give it a moment, then refresh" }
+      format.html { redirect_to domain_dns_records_path(@domain), notice: "Checking DNS. Give it a moment, then refresh" }
       format.json { head :accepted }
     end
   end

@@ -12,7 +12,7 @@ class Domains::AccessesControllerTest < ActionDispatch::IntegrationTest
 
     patch domain_accesses_path(@domain), params: { domain: { all_access: false }, user_ids: [ users(:leo).id, @member.id ] }
 
-    assert_redirected_to edit_domain_path(@domain)
+    assert_redirected_to domain_people_path(@domain)
     assert @domain.accessible_to?(@member)
   end
 

@@ -66,36 +66,13 @@ class DomainsControllerTest < ActionDispatch::IntegrationTest
     assert_equal [ domains(:example).id, domains(:private).id ], response.parsed_body.pluck("id")
   end
 
-  test "settings renders the access list for an admin, with current access checked" do
-    sign_in_as :leo
-
-    get edit_domain_path(domains(:private))
-
-    assert_response :success
-    assert_select "h2", text: "Who can use this domain"
-    assert_select "input[name=?][value=?][checked=checked]", "user_ids[]", users(:leo).id.to_s
-    assert_select "input[name=?][value=?]:not([checked])", "user_ids[]", users(:nonstaff).id.to_s
-  end
-
-  test "settings marks the signed-in user's own switch, so removing yourself warns first" do
-    sign_in_as :leo
-
-    get edit_domain_path(domains(:private))
-
-    assert_select "input[value=?][data-accesses-form-target=?]", users(:leo).id.to_s, "meCheckbox"
-    assert_select "input[value=?][data-accesses-form-target=?]", users(:nonstaff).id.to_s, "meCheckbox", count: 0
-  end
-
-  test "settings reflects an open domain as toggled, so the switches read as locked on" do
+  test "settings lists the domain's settings as rows" do
     sign_in_as :leo
 
     get edit_domain_path(domains(:example))
-    assert_select "[data-controller~=toggle-class].toggler--toggled"
-    assert_select "input#domain_all_access[checked=checked]"
 
-    get edit_domain_path(domains(:private))
-    assert_select "[data-controller~=toggle-class].toggler--toggled", count: 0
-    assert_select "input#domain_all_access:not([checked])"
+    assert_response :success
+    assert_equal [ "DNS records", "People" ], css_select(".settings__rows .row__title").map(&:text)
   end
 
   test "the domain page hides the admin toolbar from a member" do
@@ -181,7 +158,7 @@ class DomainsControllerTest < ActionDispatch::IntegrationTest
     assert_select "a.tool[href=?] .blank-slate", domain_blocked_phrases_path(domain), text: /No blocked phrases yet/
     assert_select "a.tool[href=?] .blank-slate", domain_allowed_ips_path(domain), text: /Any IP can send through the API/
     assert_select ".strip a[href=?]", edit_domain_path(domain), text: "Settings"
-    assert_select ".project__header a[href=?]", edit_domain_path(domain), text: "See the DNS records"
+    assert_select ".project__header a[href=?]", domain_dns_records_path(domain), text: "See the DNS records"
     assert_select ".project__description", text: "Its DNS records have not been checked yet."
     assert_select ".trail__sentence", text: "#{users(:leo).name} added this domain"
   end
@@ -197,7 +174,7 @@ class DomainsControllerTest < ActionDispatch::IntegrationTest
       text: "Does not receive mail yet: the inbound record could not be looked up (DNS timeout). Verified for sending."
   end
 
-  test "the unverified list and the settings page render DNS statuses as human-readable labels" do
+  test "the unverified list renders DNS statuses as human-readable labels" do
     sign_in_as :leo
     domain = domains(:unverified)
     domain.update!(mx_status: :ok, dkim_status: :missing, dmarc_status: :invalid, dns_checked_at: Time.current)
@@ -206,16 +183,6 @@ class DomainsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select ".row__meta", text: /Not verified · DNS problems · DKIM record is missing · DMARC record is not valid · checked/
     assert_select ".row__meta .status", text: "DNS problems"
-
-    get edit_domain_path(domain)
-    assert_response :success
-    assert_select ".dns-item__head", text: /Inbound\s+MX\s+OK/
-    assert_select ".dns-item__head", text: /DKIM\s+TXT\s+Missing/
-    assert_select ".dns-item__head", text: /DMARC\s+TXT\s+Invalid/
-    assert_select ".dns-item__head", text: /Return-Path\s+CNAME\s+Not checked/
-    assert_select ".dns-item__line input[readonly][aria-label=?]", "Name", count: 4
-    assert_select ".settings-index__body p", text: /Receives mail\. Not verified for sending yet: the DKIM record is missing\./
-    assert_equal %w[ DKIM DMARC Return-Path Inbound ], css_select(".dns-item__head strong").map(&:text)
   end
 
   test "json renders DNS statuses as lowercase enum keys" do

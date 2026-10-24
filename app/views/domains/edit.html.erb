@@ -9,59 +9,23 @@
       <strong>Settings</strong>
     </span>
   </h1>
-  <div class="header__actions header__actions--end">
-    <%= button_to domain_dns_check_path(@domain), class: "btn btn--circle-mobile", aria: { label: "Check DNS" } do %>
-      <%= icon_tag "refresh" %><span>Check DNS</span>
-    <% end %>
-  </div>
+  <div class="header__actions header__actions--end"></div>
 <% end %>
 
-<div class="page settings-index">
-  <div class="settings-index__card panel shadow">
-    <section>
-      <h2 class="settings-index__heading">DNS records</h2>
-      <div class="settings-index__body">
-        <p class="flex flex-wrap align-center justify-center gap-half margin-none txt-align-center">
-          <% if @domain.verified? %>
-            <span class="status status--success status--badge">Verified</span>
-          <% else %>
-            <span class="status status--warning status--badge">Not verified</span>
-          <% end %>
-
-          <span class="txt-small"><%= domain_state_sentence @domain %></span>
-
-          <% if @domain.dns_checked? %>
-            <span class="txt-x-small txt-subtle">Checked <%= local_datetime_tag @domain.dns_checked_at, style: :ago %></span>
-          <% end %>
-        </p>
-
-        <% records = [
-             [ @domain.mx_record, "Inbound", @domain.mx_status, @domain.mx_error ],
-             [ @domain.dkim_record, "DKIM", @domain.dkim_status, @domain.dkim_error ],
-             [ @domain.dmarc_record, "DMARC", @domain.dmarc_status, @domain.dmarc_error ],
-             [ @domain.return_path_record, "Return-Path", @domain.return_path_status, @domain.return_path_error ]
-           ] %>
-        <% found, needed = records.partition { |_record, _title, status, error| status == "ok" && error.blank? } %>
-
-        <div class="dns-list <%= "dns-list--attention" if needed.any? %>">
-          <% (needed + found).each do |record, title, status, error| %>
-            <%= render "domains/edit/dns_record", record: record, title: title, status: status, error: error %>
-          <% end %>
-        </div>
-      </div>
-    </section>
-  </div>
-
-  <div class="settings-index__card panel shadow">
-    <%= render "domains/accesses", domain: @domain, users: @users, accessed_user_ids: @accessed_user_ids %>
-
-    <div class="txt-align-center pad-block-end">
-      <%= button_to domain_path(@domain), method: :delete,
-            class: "btn txt-negative borderless txt-small",
-            data: { turbo_confirm: "Remove #{@domain.name}? Inbound mail to this domain will be rejected, and nothing can be sent from it." } do %>
-        <%= icon_tag "trash" %>
-        <span>Remove this domain</span>
-      <% end %>
+<div class="page">
+  <%= render layout: "shared/filter", locals: { what: "settings" } do %>
+    <div data-controller="navigable-list" data-action="keydown->navigable-list#navigate turbo:before-visit@document->navigable-list#rememberSelection turbo:frame-load->navigable-list#forgetSelection"
+          data-navigable-list-actionable-items-value="true">
+      <%= render "account/settings/rows", rows: domain_settings_rows(@domain) %>
     </div>
+  <% end %>
+
+  <div class="txt-align-center margin-block-start-double pad-block-end">
+    <%= button_to domain_path(@domain), method: :delete,
+          class: "btn txt-negative borderless txt-small",
+          data: { turbo_confirm: "Remove #{@domain.name}? Inbound mail to this domain will be rejected, and nothing can be sent from it." } do %>
+      <%= icon_tag "trash" %>
+      <span>Remove this domain</span>
+    <% end %>
   </div>
 </div>

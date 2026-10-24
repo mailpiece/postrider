@@ -14,12 +14,32 @@ module DomainsHelper
   DNS_RECORD_PROBLEMS = { "missing" => "is missing", "invalid" => "is not valid" }.freeze
   DNS_RECORD_NAMES = { mx: "Inbound", dkim: "DKIM", dmarc: "DMARC", return_path: "Return-Path" }.freeze
 
+  DnsRecordItem = Data.define(:record, :title, :status, :error, :found)
+
   def catch_all_policy_options
     CATCH_ALL_POLICY_LABELS.map { |policy, label| [ label, policy ] }
   end
 
   def catch_all_policy_sentence(domain)
     CATCH_ALL_POLICY_SENTENCES.fetch(domain.catch_all_policy)
+  end
+
+  def domain_settings_rows(domain)
+    [
+      { icon: "globe", title: "DNS records", hint: domain_state_sentence(domain), path: domain_dns_records_path(domain) },
+      { icon: "everyone", title: "People", hint: domain.all_access? ? "Everyone" : pluralize(domain.users.count, "person"), path: domain_people_path(domain) }
+    ]
+  end
+
+  def domain_dns_records(domain)
+    items = [
+      dns_record_item(domain.mx_record, "Inbound", domain.mx_status, domain.mx_error),
+      dns_record_item(domain.dkim_record, "DKIM", domain.dkim_status, domain.dkim_error),
+      dns_record_item(domain.dmarc_record, "DMARC", domain.dmarc_status, domain.dmarc_error),
+      dns_record_item(domain.return_path_record, "Return-Path", domain.return_path_status, domain.return_path_error)
+    ]
+
+    items.partition { !it.found }.flatten
   end
 
   # Problems first, each naming its record; the check's own sentence stays on the domain's page.
@@ -58,6 +78,10 @@ module DomainsHelper
   end
 
   private
+    def dns_record_item(record, title, status, error)
+      DnsRecordItem.new(record:, title:, status:, error:, found: status == "ok" && error.blank?)
+    end
+
     def domain_dns_problems_status(problems)
       tag.span "DNS problem".pluralize(problems.size), class: "status status--warning"
     end

@@ -1,6 +1,6 @@
-<%# locals: (record:, title:, status:, error:) %>
+<%# locals: (record:, title:, status:, error:, found:) %>
 
-<div class="dns-item <%= "dns-item--found" if status == "ok" && error.blank? %>">
+<div class="dns-item <%= "dns-item--found" if found %>">
   <div class="dns-item__head">
     <strong><%= title %></strong>
     <span class="chip"><%= record.type %></span>

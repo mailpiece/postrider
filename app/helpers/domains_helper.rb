@@ -27,6 +27,7 @@ module DomainsHelper
   def domain_settings_rows(domain)
     [
       { icon: "globe", title: "DNS records", hint: domain_state_sentence(domain), path: domain_dns_records_path(domain) },
+      { icon: "email", title: "Receiving and sending", hint: domain_switches_hint(domain), path: domain_switches_path(domain) },
       { icon: "everyone", title: "People", hint: domain.all_access? ? "Everyone" : pluralize(domain.users.count, "person"), path: domain_people_path(domain) }
     ]
   end
@@ -68,6 +69,13 @@ module DomainsHelper
     end
   end
 
+  def domain_switches_sentence(domain)
+    if switched_off = domain_switched_off(domain)
+      settings = Current.user.admin? ? link_to("settings", domain_switches_path(domain)) : "settings"
+      safe_join [ "Not #{switched_off} mail: turned off in ", settings, "." ]
+    end
+  end
+
   # Newest first as [ time, sentence ]: the domain's own events, its last DNS check and who added it.
   def domain_trail(domain)
     lines = domain_trail_events(domain).ordered.limit(5).map { |event| [ event.created_at, event.description ] }
@@ -78,6 +86,28 @@ module DomainsHelper
   end
 
   private
+    def domain_switched_off(domain)
+      if !domain.receiving? && !domain.sending?
+        "receiving or sending"
+      elsif !domain.receiving?
+        "receiving"
+      elsif !domain.sending?
+        "sending"
+      end
+    end
+
+    def domain_switches_hint(domain)
+      if domain.receiving? && domain.sending?
+        "On"
+      elsif domain.sending?
+        "Receiving off"
+      elsif domain.receiving?
+        "Sending off"
+      else
+        "Off"
+      end
+    end
+
     def dns_record_item(record, title, status, error)
       DnsRecordItem.new(record:, title:, status:, error:, found: status == "ok" && error.blank?)
     end

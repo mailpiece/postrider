@@ -98,6 +98,7 @@ Rails.application.routes.draw do
       resource :catch_all, only: %i[ edit update ]
       resource :receiving, only: %i[ create destroy ]
       resource :sending, only: %i[ create destroy ]
+      resource :switches, only: :show
     end
 
     resources :webhooks do

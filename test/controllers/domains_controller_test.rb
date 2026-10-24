@@ -81,7 +81,33 @@ class DomainsControllerTest < ActionDispatch::IntegrationTest
     get edit_domain_path(domains(:example))
 
     assert_response :success
-    assert_equal [ "DNS records", "People" ], css_select(".settings__rows .row__title").map(&:text)
+    assert_equal [ "DNS records", "Receiving and sending", "People" ], css_select(".settings__rows .row__title").map(&:text)
+  end
+
+  test "settings says receiving and sending are on" do
+    sign_in_as :leo
+
+    get edit_domain_path(domains(:example))
+
+    assert_select ".settings__rows a[href=?] .row__meta", domain_switches_path(domains(:example)), text: "On"
+  end
+
+  test "settings says sending is off" do
+    sign_in_as :leo
+    domains(:example).update!(sending: false)
+
+    get edit_domain_path(domains(:example))
+
+    assert_select ".settings__rows a[href=?] .row__meta", domain_switches_path(domains(:example)), text: "Sending off"
+  end
+
+  test "settings says both are off" do
+    sign_in_as :leo
+    domains(:example).update!(receiving: false, sending: false)
+
+    get edit_domain_path(domains(:example))
+
+    assert_select ".settings__rows a[href=?] .row__meta", domain_switches_path(domains(:example)), text: "Off"
   end
 
   test "the domain page hides the admin toolbar from a member" do
@@ -181,6 +207,24 @@ class DomainsControllerTest < ActionDispatch::IntegrationTest
 
     assert_select ".project__description",
       text: "Does not receive mail yet: the inbound record could not be looked up (DNS timeout). Verified for sending."
+  end
+
+  test "the domain page says when receiving and sending are turned off" do
+    sign_in_as :leo
+    domains(:example).update!(receiving: false, sending: false)
+
+    get domain_path(domains(:example))
+
+    assert_select ".project__description", text: "Its DNS records have not been checked yet. Not receiving or sending mail: turned off in settings."
+    assert_select ".project__description a[href=?]", domain_switches_path(domains(:example)), text: "settings"
+  end
+
+  test "the domain page says nothing of the switches while both are on" do
+    sign_in_as :leo
+
+    get domain_path(domains(:example))
+
+    assert_select ".project__description", text: "Its DNS records have not been checked yet."
   end
 
   test "the unverified list renders DNS statuses as human-readable labels" do

@@ -26,7 +26,7 @@ module Mailbox::ForwardConfirmable
   end
 
   def forward_confirmable?
-    forward_to.present? && domain.verified? && account.active? && !domain.suppressions.active.exists?(address: forward_to)
+    forward_to.present? && domain.verified? && domain.sending? && account.active? && !domain.suppressions.active.exists?(address: forward_to)
   end
 
   def forward_confirmation_sender

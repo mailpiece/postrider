@@ -77,6 +77,11 @@ class Event::DescriptionTest < ActiveSupport::TestCase
     assert_equal "Allowed IPs changed", describe("domain_allowed_ips_changed")
   end
 
+  test "turning receiving or sending off names the domain" do
+    assert_equal "Receiving turned off for example.com", describe("domain_receiving_turned_off", eventable: domains(:example))
+    assert_equal "Sending turned off for example.com", describe("domain_sending_turned_off", eventable: domains(:example))
+  end
+
   test "a paused recipient domain is named" do
     assert_equal "Paused sending to gmail.com because its mail servers refuse this server's IP",
       describe("recipient_domain_paused", recipient_domain: "gmail.com")

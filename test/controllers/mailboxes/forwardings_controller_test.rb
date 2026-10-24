@@ -41,6 +41,15 @@ class Mailboxes::ForwardingsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "A confirmation can't be sent: check the forwarding address, and verify this domain's DKIM", flash[:alert]
   end
 
+  test "a domain whose sending is turned off sends no confirmation and says so" do
+    sign_in_as :leo
+    @domain.update!(sending: false)
+
+    post domain_mailbox_forwardings_path(@domain, mailboxes(:unconfirmed_forwarding))
+
+    assert_equal "A confirmation can't be sent: turn sending on for this domain", flash[:alert]
+  end
+
   test "once the domain is verified the confirmation is sent" do
     sign_in_as :leo
     domain = domains(:unverified)

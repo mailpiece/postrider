@@ -23,9 +23,17 @@ class Mailboxes::ForwardingsController < ApplicationController
     def ensure_forward_confirmable
       unless @mailbox.forward_confirmable?
         respond_to do |format|
-          format.html { redirect_to [ @domain, @mailbox ], alert: "A confirmation can't be sent: check the forwarding address, and verify this domain's DKIM" }
-          format.json { render json: { error: "A confirmation can't be sent: check the forwarding address, and verify this domain's DKIM" }, status: :unprocessable_entity }
+          format.html { redirect_to [ @domain, @mailbox ], alert: unconfirmable_reason }
+          format.json { render json: { error: unconfirmable_reason }, status: :unprocessable_entity }
         end
+      end
+    end
+
+    def unconfirmable_reason
+      if @domain.verified? && !@domain.sending?
+        "A confirmation can't be sent: turn sending on for this domain"
+      else
+        "A confirmation can't be sent: check the forwarding address, and verify this domain's DKIM"
       end
     end
 end

@@ -20,8 +20,11 @@ class SendingTokensController < ApplicationController
     @sending_token = @domain.sending_tokens.new(sending_token_params)
 
     if @sending_token.save
+      no_store
+
       respond_to do |format|
-        format.html { redirect_to [ @domain, @sending_token ], notice: "Sending token created", flash: { sending_token: @sending_token.token } }
+        format.turbo_stream
+        format.html { render :create, status: :created }
         format.json { render :create, status: :created }
       end
     else

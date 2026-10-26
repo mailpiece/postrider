@@ -8,26 +8,22 @@ class My::AccessTokensController < ApplicationController
     @access_tokens = my_access_tokens.order(created_at: :desc)
   end
 
-  def show
-    @access_token = my_access_tokens.find(params[:id])
-  end
-
   def new
     @access_token = my_access_tokens.new
   end
 
   def create
-    access_token = my_access_tokens.create!(access_token_params)
+    @access_token = my_access_tokens.create!(access_token_params)
+    no_store
 
     respond_to do |format|
-      format.html do
-        redirect_to my_access_token_path(access_token), flash: { access_token: access_token.token }
-      end
+      format.turbo_stream
+      format.html { render :create, status: :created }
 
       format.json do
         render status: :created, json: \
-          { id: access_token.id, token: access_token.token, description: access_token.description,
-            permission: access_token.permission, created_at: access_token.created_at.utc }
+          { id: @access_token.id, token: @access_token.token, description: @access_token.description,
+            permission: @access_token.permission, created_at: @access_token.created_at.utc }
       end
     end
   end

@@ -77,7 +77,7 @@ Rails.application.routes.draw do
     resource :sudo, only: %i[ new create ]
     resource :other_sessions, only: :destroy
     resource :identity, only: :show
-    resources :access_tokens
+    resources :access_tokens, except: %i[ show edit update ]
     resources :passkeys, except: %i[ show new ]
     resource :timezone
     resource :menu

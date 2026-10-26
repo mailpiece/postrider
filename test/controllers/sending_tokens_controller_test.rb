@@ -7,6 +7,7 @@ class SendingTokensControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_response :created
+    assert_equal "no-store", response.headers["Cache-Control"]
     body = response.parsed_body
     token = domains(:example).sending_tokens.order(:created_at).last
     assert_equal token.id, body["id"]
@@ -95,21 +96,50 @@ class SendingTokensControllerTest < ActionDispatch::IntegrationTest
     get new_domain_sending_token_path(domains(:example))
 
     assert_response :success
+    assert_select "meta[name=turbo-cache-control][content=no-cache]"
     assert_select "form[action=?] input[name=?][placeholder=?]", domain_sending_tokens_path(domains(:example)), "sending_token[name]", "Name this sending token…"
   end
 
-  test "creating a sending token in the browser redirects to a one-time reveal of the secret, with a success flash" do
+  test "creating a sending token in the browser reveals the secret in the response" do
+    sign_in_as :leo
+    confirm_sudo
+
+    assert_difference -> { domains(:example).sending_tokens.count }, 1 do
+      post domain_sending_tokens_path(domains(:example)), params: { sending_token: { name: "Mailer" } }
+    end
+
+    assert_response :created
+    assert_equal "no-store", response.headers["Cache-Control"]
+    assert_revealed domains(:example).sending_tokens.order(:created_at).last
+  end
+
+  test "creating a sending token from the form reveals the secret in a turbo stream" do
+    sign_in_as :leo
+    confirm_sudo
+
+    post domain_sending_tokens_path(domains(:example)), params: { sending_token: { name: "Mailer" } }, as: :turbo_stream
+
+    assert_response :success
+    assert_equal "no-store", response.headers["Cache-Control"]
+    assert_select "turbo-stream[action=replace][target=?]", "new_sending_token"
+    assert_revealed domains(:example).sending_tokens.order(:created_at).last
+  end
+
+  test "a created sending token is revealed once, and no page shows it again" do
     sign_in_as :leo
     confirm_sudo
 
     post domain_sending_tokens_path(domains(:example)), params: { sending_token: { name: "Mailer" } }
+    secret = secret_in_body
+    sending_token = domains(:example).sending_tokens.order(:created_at).last
 
-    assert_response :redirect
-    follow_redirect!
+    get domain_sending_token_path(domains(:example), sending_token)
     assert_response :success
-    assert_select "input[readonly]"
-    assert_select "strong", text: "Token (shown once)"
-    assert_match "Sending token created", response.body
+    assert_not_includes response.body, secret
+
+    get domain_sending_tokens_path(domains(:example))
+    assert_response :success
+    assert_not_includes response.body, secret
   end
 
   test "creating a sending token in the browser asks for a passkey first" do
@@ -148,4 +178,14 @@ class SendingTokensControllerTest < ActionDispatch::IntegrationTest
     assert_select ".details__value code", text: "POST #{messages_url}"
     assert_includes messages_url, "/#{accounts(:davids_account).external_account_id}/messages"
   end
+
+  private
+    def secret_in_body
+      response.body[/value="(postrider_\w+)"/, 1]
+    end
+
+    def assert_revealed(sending_token)
+      assert_equal sending_token, SendingToken.authenticate(secret_in_body)
+      assert_match(/<div id="new_sending_token"[^>]* data-turbo-temporary[ >]/, response.body)
+    end
 end

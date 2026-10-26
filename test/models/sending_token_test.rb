@@ -29,7 +29,7 @@ class SendingTokenTest < ActiveSupport::TestCase
   test "a new token is prefixed" do
     token = domains(:example).sending_tokens.create!(name: "API")
 
-    assert_match(/\Apostrider_[a-zA-Z0-9]{24}\z/, token.token)
+    assert_match(/\Apostrider_[1-9A-HJ-NP-Za-km-z]{44}\z/, token.token)
   end
 
   test "a token from before the prefix still authenticates" do

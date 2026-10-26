@@ -3,9 +3,6 @@ require "openssl"
 class SendingToken < ApplicationRecord
   include Refusable, Tracked
 
-  TOKEN_PREFIX = "postrider_"
-  TOKEN_LENGTH = 24
-
   SMTP_USERNAME = "postrider"
 
   attr_reader :token
@@ -43,7 +40,7 @@ class SendingToken < ApplicationRecord
 
   private
     def assign_token
-      @token = TOKEN_PREFIX + SecureRandom.alphanumeric(TOKEN_LENGTH)
+      @token = Identity::AccessToken.generate_token(:sending)
       self.token_digest = self.class.digest(@token)
     end
 end

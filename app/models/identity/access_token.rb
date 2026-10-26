@@ -1,7 +1,9 @@
 require "openssl"
 
 class Identity::AccessToken < ApplicationRecord
-  TOKEN_LENGTH = 24
+  PREFIXES = { personal: "postrider_pat_", sending: "postrider_" }
+  BASE58 = [ *"1".."9", *"A".."H", *"J".."N", *"P".."Z", *"a".."k", *"m".."z" ]
+  BODY_LENGTH = 44
 
   attr_reader :token
 
@@ -15,6 +17,10 @@ class Identity::AccessToken < ApplicationRecord
     find_by(token_digest: digest(token))
   end
 
+  def self.generate_token(kind)
+    PREFIXES.fetch(kind) + SecureRandom.alphanumeric(BODY_LENGTH, chars: BASE58)
+  end
+
   def self.digest(token)
     OpenSSL::Digest::SHA256.hexdigest(token.to_s)
   end
@@ -25,7 +31,7 @@ class Identity::AccessToken < ApplicationRecord
 
   private
     def assign_token
-      @token = SecureRandom.alphanumeric(TOKEN_LENGTH)
+      @token = self.class.generate_token(:personal)
       self.token_digest = self.class.digest(@token)
     end
 end

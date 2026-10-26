@@ -5,7 +5,7 @@ class SendingTokenTest < ActiveSupport::TestCase
     token = domains(:example).sending_tokens.create!(name: "API")
 
     assert token.token.present?
-    assert_equal SendingToken.digest(token.token), token.token_digest
+    assert_equal TokenDigester.digest(token.token), token.token_digest
     assert_equal token, SendingToken.authenticate(token.token)
   end
 

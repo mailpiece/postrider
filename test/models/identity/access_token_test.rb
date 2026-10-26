@@ -10,7 +10,7 @@ class Identity::AccessTokenTest < ActiveSupport::TestCase
     plaintext = access_token.token
 
     assert plaintext.present?
-    assert_equal Identity::AccessToken.digest(plaintext), access_token.token_digest
+    assert_equal TokenDigester.digest(plaintext), access_token.token_digest
     assert_nil Identity::AccessToken.find(access_token.id).token
     assert_equal access_token, Identity::AccessToken.authenticate(plaintext)
   end

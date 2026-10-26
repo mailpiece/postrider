@@ -1,5 +1,3 @@
-require "openssl"
-
 class SendingToken < ApplicationRecord
   include Refusable, Tracked
 
@@ -19,11 +17,9 @@ class SendingToken < ApplicationRecord
   scope :ordered, -> { order(:created_at) }
 
   def self.authenticate(token)
-    find_by(token_digest: digest(token))
-  end
-
-  def self.digest(token)
-    OpenSSL::Digest::SHA256.hexdigest(token.to_s)
+    if token.is_a?(String) && token.present?
+      find_by(token_digest: TokenDigester.digest(token))
+    end
   end
 
   def authorizes_sending_as?(address)
@@ -41,6 +37,6 @@ class SendingToken < ApplicationRecord
   private
     def assign_token
       @token = Identity::AccessToken.generate_token(:sending)
-      self.token_digest = self.class.digest(@token)
+      self.token_digest = TokenDigester.digest(@token)
     end
 end

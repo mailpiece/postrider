@@ -56,21 +56,11 @@ class Account::SettingsControllerTest < ActionDispatch::IntegrationTest
     assert_equal accounts(:davids_account).name, response.parsed_body["name"]
   end
 
-  test "the footer links staff to the adminland, and to nothing else" do
+  test "the footer doesn't link staff to the adminland" do
     sign_in_as :leo
 
     get account_settings_path
 
-    assert_select "nav.pad-block a", count: 1
-    assert_select "nav.pad-block a[href=?]", adminland_settings_path(script_name: nil), text: "Adminland"
-  end
-
-  test "the footer is not drawn for everyone else" do
-    sign_in_as :nonstaff
-
-    get account_settings_path
-
-    assert_select "nav.pad-block", count: 0
     assert_select "a[href=?]", adminland_settings_path(script_name: nil), count: 0
   end
 end

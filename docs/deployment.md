@@ -240,7 +240,7 @@ Litestream, set up as in [Litestream backups](#litestream-backups-optional), str
 
 Raw mail and attachments are not copied. They live in Active Storage on the volume (`ACTIVE_STORAGE_SERVICE` is `local`), and Litestream copies only the databases. `RETENTION_DAYS` deletes them anyway, so a Litestream restore brings back the mail log, the domains and the settings, without the raw mail of the days before.
 
-Keep `SECRET_KEY_BASE` apart from the server too: without it the DKIM and ARC keys, the certificate and the webhook secrets in the databases can't be read, and no sending token works unless `OAUTH_TOKEN_PEPPER` is set.
+Keep `SECRET_KEY_BASE` apart from the server too: without it the DKIM and ARC keys, the certificate and the webhook secrets in the databases can't be read, and no sending token or personal access token works unless `OAUTH_TOKEN_PEPPER` is set.
 
 `backups` and `restore-check` are the aliases from `config/deploy.yml`. `restore-check` writes `restored.sqlite3` beside the live database. Delete it afterwards; a second run refuses to overwrite it.
 
@@ -304,7 +304,7 @@ docker start postrider
 ```
 
 > [!WARNING]
-> Back up `postrider.env` separately. Without its `SECRET_KEY_BASE` the DKIM and ARC keys, the certificate and the webhook secrets in the backup can't be read, and no sending token works unless `OAUTH_TOKEN_PEPPER` is set.
+> Back up `postrider.env` separately. Without its `SECRET_KEY_BASE` the DKIM and ARC keys, the certificate and the webhook secrets in the backup can't be read, and no sending token or personal access token works unless `OAUTH_TOKEN_PEPPER` is set.
 
 A backup also keeps mail past `RETENTION_DAYS`: the sweep incinerates mail in the live volume, not in archives you've taken.
 
@@ -331,7 +331,7 @@ The password is a **sending token**, generated per domain in the tenant UI. The 
 
 ## Configuration (ENV)
 
-Every variable PostRider reads, A–Z. Provide them however your deployment does: `postrider.env`, Kamal, systemd. Two are **required**: `SECRET_KEY_BASE`, and a hostname for the relay (`RELAY_HOSTNAME`, or failing that the host of `BASE_URL`, which is what an install with web and mail on one name runs on). And keep `SECRET_KEY_BASE` out of version control. DKIM and ARC keys, the certificate, the ACME account key and webhook signing secrets are encrypted with a key derived from `SECRET_KEY_BASE`, and sending tokens are digested with one unless `OAUTH_TOKEN_PEPPER` is set; rotating it means new DKIM and ARC keys published in DNS, a reissued certificate, new webhook secrets and, without `OAUTH_TOKEN_PEPPER`, new sending tokens. Email addresses are stored plain.
+Every variable PostRider reads, A–Z. Provide them however your deployment does: `postrider.env`, Kamal, systemd. Two are **required**: `SECRET_KEY_BASE`, and a hostname for the relay (`RELAY_HOSTNAME`, or failing that the host of `BASE_URL`, which is what an install with web and mail on one name runs on). And keep `SECRET_KEY_BASE` out of version control. DKIM and ARC keys, the certificate, the ACME account key and webhook signing secrets are encrypted with a key derived from `SECRET_KEY_BASE`, and sending tokens and personal access tokens are digested with one unless `OAUTH_TOKEN_PEPPER` is set; rotating it means new DKIM and ARC keys published in DNS, a reissued certificate, new webhook secrets and, without `OAUTH_TOKEN_PEPPER`, new tokens. Email addresses are stored plain.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
@@ -358,7 +358,7 @@ Every variable PostRider reads, A–Z. Provide them however your deployment does
 | `MX_MAX_RECIPIENTS` | `50` | Recipients per inbound SMTP transaction; further `RCPT TO`s get a `452` |
 | `MX_MAX_TLS_SESSIONS_PER_IP` / `SUBMISSION_MAX_TLS_SESSIONS_PER_IP` | `60` | STARTTLS handshakes one IP may start per minute on each listener; the next gets a `454` |
 | `MX_PORT` | `25` (`2525` in development) | Inbound listener port |
-| `OAUTH_TOKEN_PEPPER` | derived from `SECRET_KEY_BASE` | Key sending tokens are digested with, so they survive a new `SECRET_KEY_BASE`. At least 32 characters, e.g. from `bin/rails secret`. With Kamal, add it to `.kamal/secrets` **and** to the `env.secret` list in `config/deploy.yml`: Kamal passes a container only the secrets that list names. Set it before upgrading to a version that keys token digests, or before making any token, and then keep it: changing, adding or removing it later invalidates every token |
+| `OAUTH_TOKEN_PEPPER` | derived from `SECRET_KEY_BASE` | Key sending tokens and personal access tokens are digested with, so they survive a new `SECRET_KEY_BASE`. At least 32 characters, e.g. from `bin/rails secret`. With Kamal, add it to `.kamal/secrets` **and** to the `env.secret` list in `config/deploy.yml`: Kamal passes a container only the secrets that list names. Set it before upgrading to a version that keys token digests, or before making any token, and then keep it: changing, adding or removing it later invalidates every token |
 | `OUTBOUND_MAX_MESSAGE_SIZE` | `10485760` (10 MB) | Reject larger outbound (submission) messages at the listener |
 | `OUTBOUND_RELAY` | — | `host:port` to relay all outbound mail through, bypassing MX resolution. Handy as a hosted-relay escape hatch or a local dev sink |
 | `RAILS_LOG_LEVEL` | `info` | Rails log verbosity |

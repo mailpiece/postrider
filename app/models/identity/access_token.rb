@@ -1,5 +1,3 @@
-require "openssl"
-
 class Identity::AccessToken < ApplicationRecord
   PREFIXES = { personal: "postrider_pat_", sending: "postrider_" }
   BASE58 = [ *"1".."9", *"A".."H", *"J".."N", *"P".."Z", *"a".."k", *"m".."z" ]
@@ -14,15 +12,13 @@ class Identity::AccessToken < ApplicationRecord
   before_validation :assign_token, on: :create
 
   def self.authenticate(token)
-    find_by(token_digest: digest(token))
+    if token.is_a?(String) && token.present?
+      find_by(token_digest: TokenDigester.digest(token))
+    end
   end
 
   def self.generate_token(kind)
     PREFIXES.fetch(kind) + SecureRandom.alphanumeric(BODY_LENGTH, chars: BASE58)
-  end
-
-  def self.digest(token)
-    OpenSSL::Digest::SHA256.hexdigest(token.to_s)
   end
 
   def allows?(method)
@@ -32,6 +28,6 @@ class Identity::AccessToken < ApplicationRecord
   private
     def assign_token
       @token = self.class.generate_token(:personal)
-      self.token_digest = self.class.digest(@token)
+      self.token_digest = TokenDigester.digest(@token)
     end
 end

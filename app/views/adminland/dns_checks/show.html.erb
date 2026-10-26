@@ -32,8 +32,6 @@
               <span class="status status--warning status--badge">Not ready</span>
             <% end %>
 
-            <span class="txt-small">Publish these at your DNS provider.</span>
-
             <% if @dns_check.dns_checked? %>
               <span class="txt-x-small txt-subtle">Checked <%= local_datetime_tag @dns_check.dns_checked_at, style: :ago %></span>
             <% end %>

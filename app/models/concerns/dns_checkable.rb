@@ -20,6 +20,11 @@ module DnsCheckable
     dns_checked_at.present?
   end
 
+  # What needs work first, then the rest, each in the order it is listed.
+  def dns_listings_needing_work_first
+    dns_listings.partition(&:needs_work?).flatten
+  end
+
   # What's wrong first, in check order, said the way the check said it.
   def dns_error
     dns_checked_records.filter_map { |record| public_send("#{record}_error") }.first

@@ -30,17 +30,6 @@ module DomainsHelper
     ]
   end
 
-  def domain_dns_records(domain)
-    items = [
-      dns_record_item(domain.mx_record, "Inbound", domain.mx_status, domain.mx_error),
-      dns_record_item(domain.dkim_record, "DKIM", domain.dkim_status, domain.dkim_error),
-      dns_record_item(domain.dmarc_record, "DMARC", domain.dmarc_status, domain.dmarc_error),
-      dns_record_item(domain.return_path_record, "Return-Path", domain.return_path_status, domain.return_path_error)
-    ]
-
-    items.partition { !it.found }.flatten
-  end
-
   # Problems first, each naming its record; the check's own sentence stays on the domain's page.
   def domain_meta(domain)
     if domain.dns_checked?

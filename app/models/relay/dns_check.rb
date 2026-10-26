@@ -54,6 +54,10 @@ class Relay::DnsCheck < ApplicationRecord
     ]
   end
 
+  def dns_listings
+    dns_records.map { |record| DnsCheckable::Listing.new(self, record.check, record.purpose, record) }
+  end
+
   # Let's Encrypt asks the relay itself for its challenge record, so each challenge
   # name is delegated to this host by NS, one per name the certificate covers.
   def acme_delegation_records

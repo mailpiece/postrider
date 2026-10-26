@@ -20,6 +20,15 @@ module Domain::DnsRecords
     [ mx_record, dkim_record ]
   end
 
+  def dns_listings
+    [
+      DnsCheckable::Listing.new(self, :mx, "Inbound", mx_record),
+      DnsCheckable::Listing.new(self, :dkim, "DKIM", dkim_record),
+      DnsCheckable::Listing.new(self, :dmarc, "DMARC", dmarc_record),
+      DnsCheckable::Listing.new(self, :return_path, "Return-Path", return_path_record)
+    ]
+  end
+
   def return_path_enabled?
     verified? && advanced_verified?
   end

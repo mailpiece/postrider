@@ -39,12 +39,10 @@
             <% end %>
           </p>
 
-          <% items = relay_dns_records(@dns_check) %>
+          <% listings = @dns_check.dns_listings_needing_work_first %>
 
-          <div class="dns-list <%= "dns-list--attention" if items.any? { it.checked && !it.found } %>">
-            <% items.each do |item| %>
-              <%= render "domains/dns_records/dns_record", record: item.record, title: item.title, status: item.status, error: item.error, found: item.found, checked: item.checked %>
-            <% end %>
+          <div class="dns-list <%= "dns-list--attention" if listings.any?(&:needs_work?) %>">
+            <%= render partial: "domains/dns_records/dns_record", collection: listings, as: :listing %>
           </div>
         <% end %>
       </div>

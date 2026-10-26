@@ -14,8 +14,6 @@ module DomainsHelper
   DNS_RECORD_PROBLEMS = { "missing" => "is missing", "invalid" => "is not valid" }.freeze
   DNS_RECORD_NAMES = { mx: "Inbound", dkim: "DKIM", dmarc: "DMARC", return_path: "Return-Path" }.freeze
 
-  DnsRecordItem = Data.define(:record, :title, :status, :error, :found)
-
   def catch_all_policy_options
     CATCH_ALL_POLICY_LABELS.map { |policy, label| [ label, policy ] }
   end
@@ -106,10 +104,6 @@ module DomainsHelper
       else
         "Off"
       end
-    end
-
-    def dns_record_item(record, title, status, error)
-      DnsRecordItem.new(record:, title:, status:, error:, found: status == "ok" && error.blank?)
     end
 
     def domain_dns_problems_status(problems)

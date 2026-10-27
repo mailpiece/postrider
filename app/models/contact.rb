@@ -7,6 +7,7 @@ class Contact < ApplicationRecord
   enum :decision, %w[ approved denied ].index_by(&:itself), default: :denied
 
   normalizes :email, with: ->(email) { normalize_email(email) }
+  normalizes :name, with: ->(name) { HomographicSpoofing.sanitize_email_name(scrubbed(name)) }
 
   validates :email, presence: true, uniqueness: { scope: :domain_id }
 
@@ -15,8 +16,14 @@ class Contact < ApplicationRecord
   scope :ordered, -> { order(created_at: :desc) }
   scope :matching, ->(query) { where("email LIKE ?", "%#{query}%") }
 
+  # A look-alike address is kept as punycode, so it reads apart from the one it imitates.
   def self.normalize_email(email)
-    email.to_s.strip.downcase
+    HomographicSpoofing.sanitize_email_address(scrubbed(email.to_s).strip.downcase)
+  end
+
+  # A From with invalid bytes must still file its contact: the gem raises on them.
+  def self.scrubbed(string)
+    string.dup.force_encoding(Encoding::UTF_8).scrub
   end
 
   def self.email_counts(contacts)
@@ -24,9 +31,12 @@ class Contact < ApplicationRecord
   end
 
   def self.for_sender(domain, email, name: nil)
+    email = scrubbed(email.to_s)
+
     if email.present?
-      domain.contacts.find_or_create_by(email: normalize_email(email)) do |contact|
+      domain.contacts.find_or_create_by(email: email) do |contact|
         contact.name = name
+        contact.lookalike = HomographicSpoofing.email_address_spoof?(email)
       end
     end
   end

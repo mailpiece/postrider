@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.2].define(version: 2026_10_24_120000) do
+ActiveRecord::Schema[8.2].define(version: 2026_10_27_100000) do
   create_table "accesses", id: :uuid, force: :cascade do |t|
     t.uuid "account_id", null: false
     t.uuid "user_id", null: false
@@ -107,6 +107,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_24_120000) do
     t.string "decision", limit: 255, default: "denied", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "lookalike", default: false, null: false
     t.index ["account_id", "number"], name: "index_contacts_on_account_id_and_number", unique: true
     t.index ["domain_id", "decision"], name: "index_contacts_on_domain_id_and_decision"
     t.index ["domain_id", "email"], name: "index_contacts_on_domain_id_and_email", unique: true

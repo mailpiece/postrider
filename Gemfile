@@ -26,6 +26,7 @@ gem "rqrcode"
 gem "jbuilder"
 gem "platform_agent"
 gem "surfguard", github: "basecamp/surfguard" # The SSRF address policy behind webhook and outbound delivery
+gem "homographic_spoofing" # Look-alike sender addresses are stored and shown as punycode
 
 # Operations
 gem "autotuner"

@@ -19,6 +19,32 @@ class ContactTest < ActiveSupport::TestCase
     assert_equal "Friend", contacts(:approved).name
   end
 
+  test "for_sender keeps a look-alike address as punycode and marks the contact" do
+    contact = Contact.for_sender(domains(:example), "jacopo@basecаmp.com", name: "Jacopo")
+
+    assert_equal "jacopo@xn--basecmp-6fg.com", contact.email
+    assert contact.lookalike?
+    assert_equal contact, Contact.for_sender(domains(:example), "jacopo@basecаmp.com")
+  end
+
+  test "for_sender takes the direction override out of a display name" do
+    contact = Contact.for_sender(domains(:example), "jacopo@basecamp.com", name: "Jacopo\u202Epmac")
+
+    assert_not_includes contact.name, "\u202E"
+  end
+
+  test "for_sender files an address with invalid bytes rather than failing the forward" do
+    contact = Contact.for_sender(domains(:example), "jane@remote\xFF.example", name: "Jane\xFF")
+
+    assert contact.persisted?
+    assert contact.email.valid_encoding?
+    assert contact.name.valid_encoding?
+  end
+
+  test "for_sender leaves a plain address unmarked" do
+    assert_not Contact.for_sender(domains(:example), "jacopo@basecamp.com").lookalike?
+  end
+
   test "for_sender without an address is nobody to record" do
     assert_nil Contact.for_sender(domains(:example), nil)
     assert_nil Contact.for_sender(domains(:example), "")

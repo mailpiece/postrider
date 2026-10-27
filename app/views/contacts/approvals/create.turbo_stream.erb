@@ -1,0 +1,3 @@
+<%= turbo_stream.remove @contact %>
+<%= turbo_stream.replace [ @contact, :sender ], partial: "contacts/sender", locals: { contact: @contact, email_counts: Contact.email_counts([ @contact ]) } %>
+<%= turbo_stream_flash notice: "Now forwarding mail from #{@contact.email}" %>

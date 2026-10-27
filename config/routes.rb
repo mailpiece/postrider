@@ -119,6 +119,9 @@ Rails.application.routes.draw do
     end
   end
   namespace :contacts do
+    resource :pending, only: :show do
+      resource :denial, only: :create, module: :pendings
+    end
     resource :denied, only: :show
   end
 

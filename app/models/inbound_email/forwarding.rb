@@ -111,6 +111,8 @@ module InboundEmail::Forwarding
         "unauthenticated_sender"
       elsif contact.nil?
         "unidentified_sender"
+      elsif contact.pending?
+        "pending_sender"
       elsif contact.denied?
         "denied_sender"
       else

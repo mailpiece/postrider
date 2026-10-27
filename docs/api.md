@@ -427,10 +427,11 @@ Authenticate with a personal access token (`read` permission is sufficient): `Au
 | Endpoint                 | Returns                                                                          |
 | ------------------------ | -------------------------------------------------------------------------------- |
 | `GET /contacts`          | Paged list of the approved senders, those whose mail is forwarded, on domains this token's user can use, newest first |
-| `GET /contacts/denied`   | Senders whose mail is held, in the index's format                                |
+| `GET /contacts/pending`  | Senders waiting in the Screener, their mail held until someone says yes, in the index's format |
+| `GET /contacts/denied`   | Senders screened out, their mail held, in the index's format                  |
 
 
-Each entry carries `id`, `number`, `email`, `name`, `decision` (`approved` or `denied`) and `created_at`.
+Each entry carries `id`, `number`, `email`, `name`, `decision` (`pending`, `approved` or `denied`), `lookalike` and `created_at`. An address that imitates another with look-alike letters is kept as punycode, and `lookalike` is `true` for it.
 
 ## Reading mail
 

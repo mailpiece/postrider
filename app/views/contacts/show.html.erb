@@ -12,7 +12,7 @@
 
 <div class="page flex flex-column gap">
   <ul class="rows" style="--rows-margin: 0">
-    <%= render "contacts/contact", contact: @contact, email_counts: @email_counts %>
+    <%= render "contacts/sender", contact: @contact, email_counts: @email_counts %>
   </ul>
 
   <% if @page.used? %>

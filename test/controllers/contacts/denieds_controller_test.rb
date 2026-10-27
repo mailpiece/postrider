@@ -11,6 +11,7 @@ class Contacts::DeniedsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".breadcrumbs a[href=?]", contacts_path, text: "Contacts"
     assert_select ".row__title", text: /stranger@sender\.example/
     assert_select ".row__title", text: /friend@sender\.example/, count: 0
+    assert_select ".row__title", text: /newcomer@sender\.example/, count: 0
   end
 
   test "show renders json" do

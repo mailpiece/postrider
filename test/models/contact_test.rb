@@ -1,10 +1,10 @@
 require "test_helper"
 
 class ContactTest < ActiveSupport::TestCase
-  test "for_sender creates a denied contact on first contact, capturing the display name" do
+  test "for_sender creates a pending contact on first contact, capturing the display name" do
     contact = Contact.for_sender(domains(:example), "Jane@Remote.Example", name: "Jane")
 
-    assert contact.denied?
+    assert contact.pending?
     assert_equal "jane@remote.example", contact.email
     assert_equal "Jane", contact.name
     assert_equal accounts(:davids_account), contact.account
@@ -56,6 +56,39 @@ class ContactTest < ActiveSupport::TestCase
     end
 
     assert contacts(:denied).approved?
+  end
+
+  test "approve forwards the held mail of a pending contact" do
+    assert_enqueued_with(job: Contact::ForwardHeldJob, args: [ contacts(:pending) ]) do
+      assert_changes -> { contacts(:pending).reload.decision }, from: "pending", to: "approved" do
+        contacts(:pending).approve
+      end
+    end
+  end
+
+  test "deny turns a pending contact away, its mail still held" do
+    assert_no_enqueued_jobs only: Contact::ForwardHeldJob do
+      assert_changes -> { contacts(:pending).reload.decision }, from: "pending", to: "denied" do
+        contacts(:pending).deny
+      end
+    end
+
+    assert_equal "held", contacts(:pending).mail_state
+  end
+
+  test "deny_all denies every contact in the relation, and nobody else" do
+    assert_changes -> { contacts(:pending).reload.decision }, from: "pending", to: "denied" do
+      assert_no_changes -> { contacts(:approved).reload.decision } do
+        Contact.pending.deny_all
+      end
+    end
+  end
+
+  test "latest_held_emails finds each contact's latest held email" do
+    latest = create_inbound_email(status: :held, contact: contacts(:denied))
+    create_inbound_email(status: :delivered, contact: contacts(:denied))
+
+    assert_equal({ contacts(:denied).id => latest }, Contact.latest_held_emails([ contacts(:denied), contacts(:pending) ]))
   end
 
   test "deny records the decision and forwards nothing" do

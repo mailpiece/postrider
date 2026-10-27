@@ -1,0 +1,13 @@
+<li id="<%= dom_id contact, :sender %>" class="row">
+  <%= avatar_tag contact.name, contact.email, class: "contact__avatar" %>
+  <div class="row__body flex-item-grow">
+    <strong class="row__title"><%= contact_address(contact) %></strong>
+    <span class="row__meta">
+      <%= pluralize email_counts[contact.id], "email" %> <%= contact.mail_state %> ·
+      first seen <%= local_datetime_tag contact.created_at, style: :date %>
+    </span>
+  </div>
+  <span class="row__end">
+    <%= render "contacts/decision", contact: contact %>
+  </span>
+</li>

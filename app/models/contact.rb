@@ -4,7 +4,7 @@ class Contact < ApplicationRecord
   has_many :inbound_emails, dependent: :nullify
   has_many :mailpieces, through: :inbound_emails
 
-  enum :decision, %w[ approved denied ].index_by(&:itself), default: :denied
+  enum :decision, %w[ pending approved denied ].index_by(&:itself), default: :pending
 
   normalizes :email, with: ->(email) { normalize_email(email) }
   normalizes :name, with: ->(name) { HomographicSpoofing.sanitize_email_name(scrubbed(name)) }
@@ -30,6 +30,16 @@ class Contact < ApplicationRecord
     Hash.new(0).merge InboundEmail.where(contact: contacts).group(:contact_id).count
   end
 
+  # Keys sort by creation, so the highest held id per contact is its latest held email.
+  def self.latest_held_emails(contacts)
+    ids = InboundEmail.held.where(contact: contacts).group(:contact_id).maximum(:id)
+    InboundEmail.where(id: ids.values).index_by(&:contact_id)
+  end
+
+  def self.deny_all
+    update_all decision: "denied", updated_at: Time.current
+  end
+
   def self.for_sender(domain, email, name: nil)
     email = scrubbed(email.to_s)
 
@@ -50,7 +60,7 @@ class Contact < ApplicationRecord
   end
 
   def mail_state
-    denied? ? "held" : "forwarded"
+    approved? ? "forwarded" : "held"
   end
 
   def approve

@@ -3,6 +3,7 @@ module MailpiecesHelper
   # words below mean nothing to someone deciding whether to release a message.
   # Past tense: a reason is what we concluded at the hold, and a contact may be approved since.
   HOLD_EXPLANATIONS = {
+    "pending_sender" => "Held because this sender was waiting in the Screener.",
     "denied_sender" => "Held because this sender was not approved.",
     "unidentified_sender" => "Held because we couldn't read a From address on it.",
     "unauthenticated_sender" => "Held because we couldn't confirm the sender is genuine.",
@@ -45,7 +46,13 @@ module MailpiecesHelper
 
   def phishing_mark(inbound_email)
     if inbound_email.lookalike_sender?
-      tag.span("Phishing?", class: "envelope__phishing", title: "Sent as #{inbound_email.mail_from}: its letters imitate another address, a common phishing trick")
+      phishing_tag "Sent as #{inbound_email.mail_from}: its letters imitate another address, a common phishing trick"
+    end
+  end
+
+  def contact_phishing_mark(contact)
+    if contact.lookalike?
+      phishing_tag "Its letters imitate another address, a common phishing trick"
     end
   end
 
@@ -130,6 +137,10 @@ module MailpiecesHelper
   end
 
   private
+    def phishing_tag(title)
+      tag.span "Phishing?", class: "envelope__phishing", title: title
+    end
+
     def verdict_semantic(verdict)
       VERDICT_SEMANTICS.fetch(verdict, "neutral")
     end

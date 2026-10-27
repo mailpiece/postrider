@@ -14,7 +14,8 @@
     <div data-controller="navigable-list" data-action="keydown->navigable-list#navigate turbo:before-visit@document->navigable-list#rememberSelection turbo:frame-load->navigable-list#forgetSelection"
           data-navigable-list-actionable-items-value="true">
       <ul class="rows rows--links">
-        <%= render "shared/count_row", title: "Denied", path: contacts_denied_path, count: Current.user.accessible_contacts.denied.count %>
+        <%= render "shared/count_row", title: "Screener", path: contacts_pending_path, count: Current.user.accessible_contacts.pending.count %>
+        <%= render "shared/count_row", title: "Screened out", path: contacts_denied_path, count: Current.user.accessible_contacts.denied.count %>
       </ul>
 
       <% if @page.used? %>
@@ -27,7 +28,13 @@
           </ul>
         </section>
       <% else %>
-        <div class="blank-slate fit-content center"><strong><%= Current.user.accessible_contacts.exists? ? "No approved contacts." : "No senders yet." %></strong></div>
+        <% if Current.user.accessible_contacts.exists? %>
+          <div class="blank-slate fit-content center"><strong>No approved contacts.</strong></div>
+        <% elsif Current.account.mailboxes.forwarding.exists? %>
+          <div class="blank-slate fit-content center"><strong>No senders yet.</strong></div>
+        <% else %>
+          <div class="blank-slate fit-content center"><strong>No senders yet.</strong> Contacts appear once a mailbox forwards. Anyone who writes to it waits in the Screener for your yes.</div>
+        <% end %>
       <% end %>
     </div>
   <% end %>

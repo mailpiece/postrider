@@ -2,7 +2,7 @@ class ContactsController < ApplicationController
   def index
     set_page_and_extract_portion_from Current.user.accessible_contacts.approved.ordered
     @email_counts = Contact.email_counts(@page.records)
-    fresh_when etag: [ @page.records, @email_counts, Current.user.accessible_contacts ]
+    fresh_when etag: [ @page.records, @email_counts, Current.user.accessible_contacts, Current.account.mailboxes.forwarding ]
   end
 
   def show

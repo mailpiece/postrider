@@ -3,7 +3,7 @@ require "test_helper"
 class ContactsControllerTest < ActionDispatch::IntegrationTest
   include ActionView::RecordIdentifier
 
-  test "index lists the approved contacts and nothing else" do
+  test "index lists the approved contacts as links, with no switch" do
     sign_in_as :leo
 
     get contacts_path
@@ -11,7 +11,8 @@ class ContactsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select ".breadcrumbs strong", text: "Contacts"
     assert_select "li##{dom_id(contacts(:approved))}"
-    assert_select "##{dom_id(contacts(:approved), :approval)}[checked]"
+    assert_select "li##{dom_id(contacts(:approved))} a.row__body[href=?]", contact_path(contacts(:approved))
+    assert_select ".switch__input", count: 0
     assert_select "li##{dom_id(contacts(:denied))}", count: 0
   end
 
@@ -20,10 +21,19 @@ class ContactsControllerTest < ActionDispatch::IntegrationTest
 
     get contacts_path
 
-    assert_select ".rows--links a[href=?]", contacts_denied_path, text: "Denied"
+    assert_select ".rows--links a[href=?]", contacts_denied_path, text: "Screened out"
     assert_select ".rows--links .row__end", text: "2"
     assert_select ".rows--links + .rows__section .rows__heading", text: "Approved"
     assert_select "[data-controller=pagination][data-pagination-paginate-on-intersection-value=true]"
+  end
+
+  test "index counts the pending contacts, over the denied ones" do
+    sign_in_as :leo
+
+    get contacts_path
+
+    assert_select ".rows--links .row:first-child a[href=?]", contacts_pending_path, text: "Screener"
+    assert_select ".rows--links .row:first-child .row__end", text: "1"
   end
 
   test "index says so when no contact is approved" do
@@ -36,6 +46,16 @@ class ContactsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".blank-slate", text: "No approved contacts."
     assert_select ".rows--links a[href=?]", contacts_denied_path
     assert_select ".rows--links + .blank-slate"
+  end
+
+  test "index explains the Screener while no mailbox forwards" do
+    sign_in_as :leo
+    mailboxes(:forwarding).update!(forward_confirmed_at: nil)
+    Contact.destroy_all
+
+    get contacts_path
+
+    assert_select ".blank-slate", text: /Anyone who writes to it waits in the Screener/
   end
 
   test "the navigation's Contacts link opens the approved contacts" do
@@ -68,6 +88,26 @@ class ContactsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".breadcrumbs a[href=?]", contacts_path, text: "Contacts"
     assert_select ".envelope__subject", text: "Held hello"
     assert_select ".envelope__subject", text: "Forwarded hello"
+  end
+
+  test "show has the switch, asking before it forwards held mail" do
+    sign_in_as :leo
+
+    get contact_path(contacts(:denied))
+
+    assert_select "li##{dom_id(contacts(:denied), :sender)} label", text: /Forward their mail/
+    assert_select "##{dom_id(contacts(:denied), :approval)}:not([checked])"
+    assert_select "form[data-forward-switch-confirmation-value=?]",
+      "Forward 1 held email from stranger@sender.example to forwarding@elsewhere.example?"
+  end
+
+  test "show asks nothing before switching an approved contact off" do
+    sign_in_as :leo
+
+    get contact_path(contacts(:approved))
+
+    assert_select "##{dom_id(contacts(:approved), :approval)}[checked]"
+    assert_select "form[data-forward-switch-confirmation-value]", count: 0
   end
 
   test "show omits the mail of other contacts" do

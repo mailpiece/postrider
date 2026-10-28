@@ -8,7 +8,11 @@ module Delivery::Delivering
   RETRY_SCHEDULE = [ 15.minutes, 1.hour, 2.hours, 4.hours, 8.hours, 16.hours, 1.day ].freeze
 
   def deliver_later
-    Delivery::DeliverJob.perform_later(self)
+    if paced?
+      Delivery::PaceJob.perform_later(self)
+    else
+      Delivery::DeliverJob.perform_later(self)
+    end
   end
 
   def deliver

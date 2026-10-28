@@ -33,6 +33,8 @@ class Event::Description
     when "domain_receiving_turned_on"     then "Receiving turned on for #{domain_name}"
     when "domain_sending_turned_off"      then "Sending turned off for #{domain_name}"
     when "domain_sending_turned_on"       then "Sending turned on for #{domain_name}"
+    when "domain_bulk_turned_on"          then "Bulk mail turned on for #{domain_name}"
+    when "domain_bulk_turned_off"         then "Bulk mail turned off for #{domain_name}"
     when "recipient_domain_paused"        then "Paused sending to #{paused_mail} because its mail servers refuse this server's IP"
     when "recipient_domain_resumed"       then "Resumed sending to #{paused_mail}"
     when "sending_token_created"          then "Created sending token #{token_name}"

@@ -22,6 +22,18 @@ class PauseTest < ActiveSupport::TestCase
     assert_not Pause.exists?(pause.id)
   end
 
+  test "pauses that have ended resume, while those without an end wait for an operator" do
+    ended = Pause.create!(provider: "outlook", recipient_domain: "hotmail.com", ends_at: 1.minute.ago)
+    running = Pause.create!(provider: "yahoo", recipient_domain: "yahoo.com", ends_at: 1.minute.from_now)
+    held = Pause.create!(provider: "example.com", recipient_domain: "example.com")
+
+    Pause.resume_all_due
+
+    assert_not Pause.exists?(ended.id)
+    assert Pause.exists?(running.id)
+    assert Pause.exists?(held.id)
+  end
+
   test "a pause outlives the delivery that tripped it" do
     pause = Pause.create!(provider: "example.com", recipient_domain: "example.com", delivery: deliveries(:deferred))
     deliveries(:deferred).delete

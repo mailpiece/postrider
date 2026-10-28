@@ -38,6 +38,9 @@ default: &default
   purge_expired_mta_sts_policies:
     command: "MtaStsPolicy.purge_expired"
     schedule: every day at 4:45am
+  resume_all_due_pauses:
+    command: "Pause.resume_all_due"
+    schedule: every 5 minutes
 
 production: *default
 staging: *default

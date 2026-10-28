@@ -6,6 +6,11 @@ class Pause < ApplicationRecord
   validates :recipient_domain, :provider, presence: true
 
   scope :ordered, -> { order(created_at: :desc, id: :desc) }
+  scope :due, -> { where(ends_at: ..Time.current) }
+
+  def self.resume_all_due
+    due.find_each(&:resume)
+  end
 
   def resume
     transaction do

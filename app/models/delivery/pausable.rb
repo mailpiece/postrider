@@ -3,6 +3,8 @@ module Delivery::Pausable
 
   BLOCKLIST_WORDING = /spamhaus|block ?list|blacklist|dnsbl|\brbl\b|\bip(?: address)? reputation|reputation of (?:the sending |your )?ip\b|your ip/i
 
+  SLOW_DOWN_WORDING = /rate limited|unusual rate|unexpected volume/i
+
   included do
     has_one :pause
   end
@@ -34,13 +36,19 @@ module Delivery::Pausable
       rejection.about_us? && rejection.response.match?(BLOCKLIST_WORDING)
     end
 
+    def told_to_slow_down?(rejection)
+      rejection.about_us? && rejection.response.match?(SLOW_DOWN_WORDING)
+    end
+
     # Keyed on the first MX, as the hold is, not on whichever host answered.
-    def pause_mail_provider(result)
-      pause = Pause.create_with(delivery_id: id, recipient_domain: recipient_domain, smtp_output: result.output)
+    def pause_mail_provider(result, ends_at: nil)
+      pause = Pause.create_with(delivery_id: id, recipient_domain: recipient_domain, smtp_output: result.output, ends_at: ends_at)
         .create_or_find_by!(provider: mail_provider(destination_hosts.first))
 
       if pause.previously_new_record?
         track_recipient_domain_event "paused", provider: pause.provider, smtp_output: result.output
+      elsif ends_at.nil?
+        pause.update!(ends_at: nil)
       end
     end
 end

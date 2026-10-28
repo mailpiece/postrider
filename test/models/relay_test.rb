@@ -117,6 +117,16 @@ class RelayTest < ActiveSupport::TestCase
     end
   end
 
+  test "slow_down_pause_period defaults to 60 minutes and reads SLOW_DOWN_PAUSE_MINUTES" do
+    with_env(SLOW_DOWN_PAUSE_MINUTES: nil) do
+      assert_equal 60.minutes, Relay.slow_down_pause_period
+    end
+
+    with_env(SLOW_DOWN_PAUSE_MINUTES: 15) do
+      assert_equal 15.minutes, Relay.slow_down_pause_period
+    end
+  end
+
   test "max_inbound_message_size defaults to 25 MB and reads INBOUND_MAX_MESSAGE_SIZE" do
     with_env(INBOUND_MAX_MESSAGE_SIZE: nil) do
       assert_equal 25 * 1024 * 1024, Relay.max_inbound_message_size
@@ -153,19 +163,19 @@ class RelayTest < ActiveSupport::TestCase
     end
   end
 
-  test "bulk_messages_per_hour defaults to 120 for Outlook.com and Yahoo and 1800 elsewhere, and reads their variables" do
-    with_env(BULK_OUTLOOK_MESSAGES_PER_HOUR: nil, BULK_YAHOO_MESSAGES_PER_HOUR: nil, BULK_GMAIL_MESSAGES_PER_HOUR: nil, BULK_OTHER_MESSAGES_PER_HOUR: nil) do
-      assert_equal 120, Relay.bulk_messages_per_hour("outlook")
-      assert_equal 120, Relay.bulk_messages_per_hour("yahoo")
-      assert_equal 1800, Relay.bulk_messages_per_hour("gmail")
-      assert_equal 1800, Relay.bulk_messages_per_hour("example.com")
+  test "bulk_messages_per_day defaults to 2880 for Outlook.com and Yahoo and 43200 elsewhere, and reads their variables" do
+    with_env(BULK_OUTLOOK_MESSAGES_PER_DAY: nil, BULK_YAHOO_MESSAGES_PER_DAY: nil, BULK_GMAIL_MESSAGES_PER_DAY: nil, BULK_OTHER_MESSAGES_PER_DAY: nil) do
+      assert_equal 2880, Relay.bulk_messages_per_day("outlook")
+      assert_equal 2880, Relay.bulk_messages_per_day("yahoo")
+      assert_equal 43200, Relay.bulk_messages_per_day("gmail")
+      assert_equal 43200, Relay.bulk_messages_per_day("example.com")
     end
 
-    with_env(BULK_OUTLOOK_MESSAGES_PER_HOUR: 2, BULK_YAHOO_MESSAGES_PER_HOUR: 3, BULK_GMAIL_MESSAGES_PER_HOUR: 4, BULK_OTHER_MESSAGES_PER_HOUR: 5) do
-      assert_equal 2, Relay.bulk_messages_per_hour("outlook")
-      assert_equal 3, Relay.bulk_messages_per_hour("yahoo")
-      assert_equal 4, Relay.bulk_messages_per_hour("gmail")
-      assert_equal 5, Relay.bulk_messages_per_hour("example.com")
+    with_env(BULK_OUTLOOK_MESSAGES_PER_DAY: 2, BULK_YAHOO_MESSAGES_PER_DAY: 3, BULK_GMAIL_MESSAGES_PER_DAY: 4, BULK_OTHER_MESSAGES_PER_DAY: 5) do
+      assert_equal 2, Relay.bulk_messages_per_day("outlook")
+      assert_equal 3, Relay.bulk_messages_per_day("yahoo")
+      assert_equal 4, Relay.bulk_messages_per_day("gmail")
+      assert_equal 5, Relay.bulk_messages_per_day("example.com")
     end
   end
 

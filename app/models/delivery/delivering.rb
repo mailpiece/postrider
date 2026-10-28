@@ -46,7 +46,7 @@ module Delivery::Delivering
         when :session_fail
           exhaust
         when :soft_fail
-          defer(result)
+          record_deferral(result)
         else
           raise "Unknown delivery status #{result.status.inspect} for delivery #{id}"
         end
@@ -148,6 +148,21 @@ module Delivery::Delivering
         pause_mail_provider(result) if !relaying? && blocklisted_by_recipient?(rejection)
         defer(result)
       end
+    end
+
+    def record_deferral(result)
+      rejection = MailBounce.classify(response: result.output, sending_ip: Relay.own_addresses)
+
+      if !relaying? && (blocklisted_by_recipient?(rejection) || told_to_slow_down?(rejection))
+        # A refusal at connect arrives here too, so a permanent one still holds until resumed.
+        if rejection.permanent?
+          pause_mail_provider(result)
+        else
+          pause_mail_provider(result, ends_at: Relay.slow_down_pause_period.from_now)
+        end
+      end
+
+      defer(result)
     end
 
     def suppress(reason:)

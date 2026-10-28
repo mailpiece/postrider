@@ -325,6 +325,90 @@ class DeliveryTest < ActiveSupport::TestCase
     end
   end
 
+  test "Outlook.com rate limiting our IP pauses it for SLOW_DOWN_PAUSE_MINUTES" do
+    @delivery.stubs(:destination_hosts).returns(%w[ example-com.olc.protection.outlook.com ])
+
+    with_env(SENDING_IPS: "primary=203.0.113.7=mx.example", SLOW_DOWN_PAUSE_MINUTES: 30) do
+      stub_smtp(:soft_fail, "451", "4.7.650 The mail server [203.0.113.7] has been temporarily rate limited due to IP reputation. (S775)")
+
+      freeze_time do
+        assert_raises(RuntimeError) { @delivery.deliver }
+
+        assert_equal 30.minutes.from_now, Pause.find_by!(provider: "outlook").ends_at
+      end
+    end
+
+    assert @delivery.reload.deferred?
+    assert_equal "outlook", @delivery.events.find_by!(action: "recipient_domain_paused").particulars["provider"]
+  end
+
+  test "Yahoo deferring our IP for its volume as we connect pauses it for a while" do
+    @delivery.stubs(:destination_hosts).returns(%w[ mta5.am0.yahoodns.net ])
+
+    with_env(SENDING_IPS: "primary=203.0.113.7=mx.example") do
+      stub_smtp(:soft_fail, nil, "No SMTP servers available: mta5.am0.yahoodns.net: 421 4.7.0 [TSS04] Messages from 203.0.113.7 temporarily deferred due to unexpected volume or user complaints")
+
+      assert_raises(RuntimeError) { @delivery.deliver }
+    end
+
+    assert Pause.find_by!(provider: "yahoo").ends_at
+  end
+
+  test "Gmail rate limiting our IP pauses it for a while" do
+    @delivery.stubs(:destination_hosts).returns(%w[ gmail-smtp-in.l.google.com ])
+
+    with_env(SENDING_IPS: "primary=203.0.113.7=mx.example") do
+      stub_smtp(:soft_fail, "421", "4.7.28 [203.0.113.7      15] Our system has detected an unusual rate of unsolicited mail originating from your IP address.")
+
+      assert_raises(RuntimeError) { @delivery.deliver }
+    end
+
+    assert Pause.find_by!(provider: "gmail").ends_at
+  end
+
+  test "a blocklisting as we connect pauses until resumed" do
+    with_env(SENDING_IPS: "primary=203.0.113.7=mx.example") do
+      stub_smtp(:soft_fail, nil, "No SMTP servers available: mx.example.com: 554 5.7.1 Service unavailable; Client host [203.0.113.7] blocked using zen.spamhaus.org")
+
+      assert_raises(RuntimeError) { @delivery.deliver }
+    end
+
+    assert_nil Pause.find_by!(provider: "example.com").ends_at
+  end
+
+  test "a blocklisting keeps a pause to slow down from ending on its own" do
+    Pause.create!(provider: "example.com", recipient_domain: "example.com", ends_at: 1.hour.from_now)
+    @delivery.stubs(:provider_paused?).returns(false)
+
+    with_env(SENDING_IPS: "primary=203.0.113.7=mx.example") do
+      stub_smtp(:hard_fail, "550", "5.7.1 [203.0.113.7] is listed on Spamhaus")
+
+      assert_raises(RuntimeError) { @delivery.deliver }
+    end
+
+    assert_nil Pause.find_by!(provider: "example.com").ends_at
+  end
+
+  test "a temporary failure that quotes our IP without telling us to slow down never pauses" do
+    with_env(SENDING_IPS: "primary=203.0.113.7=mx.example") do
+      stub_smtp(:soft_fail, "451", "4.3.0 Temporary failure for 203.0.113.7, please try again")
+
+      assert_no_difference -> { Pause.count } do
+        assert_raises(RuntimeError) { @delivery.deliver }
+      end
+    end
+  end
+
+  test "a temporary failure that does not quote our IP never pauses" do
+    with_env(SENDING_IPS: "primary=203.0.113.7=mx.example") do
+      stub_smtp(:soft_fail, "451", "4.7.1 Greylisted, please try again later")
+
+      assert_no_difference -> { Pause.count } do
+        assert_raises(RuntimeError) { @delivery.deliver }
+      end
+    end
+  end
+
   test "without SENDING_IPS our IP is the one the last DNS check found for the relay hostname" do
     Relay::DnsCheck.instance.addresses.create!(address: "203.0.113.7", expected_ptr_hostname: "mx.example")
 

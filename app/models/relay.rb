@@ -79,6 +79,10 @@ module Relay
       Integer(ENV.fetch("HELD_RETENTION_DAYS", 90)).days
     end
 
+    def slow_down_pause_period
+      Integer(ENV.fetch("SLOW_DOWN_PAUSE_MINUTES", 60)).minutes
+    end
+
     def submission_rate_limit
       Integer(ENV.fetch("SUBMISSION_RATE_LIMIT", 30))
     end

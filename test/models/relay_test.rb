@@ -117,6 +117,16 @@ class RelayTest < ActiveSupport::TestCase
     end
   end
 
+  test "slow_down_pause_period defaults to 60 minutes and reads SLOW_DOWN_PAUSE_MINUTES" do
+    with_env(SLOW_DOWN_PAUSE_MINUTES: nil) do
+      assert_equal 60.minutes, Relay.slow_down_pause_period
+    end
+
+    with_env(SLOW_DOWN_PAUSE_MINUTES: 15) do
+      assert_equal 15.minutes, Relay.slow_down_pause_period
+    end
+  end
+
   test "max_inbound_message_size defaults to 25 MB and reads INBOUND_MAX_MESSAGE_SIZE" do
     with_env(INBOUND_MAX_MESSAGE_SIZE: nil) do
       assert_equal 25 * 1024 * 1024, Relay.max_inbound_message_size

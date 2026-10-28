@@ -370,6 +370,7 @@ Every variable PostRider reads, A–Z. Provide them however your deployment does
 | `RETENTION_DAYS` | `30` | Days before raw content and attachments are deleted (metadata rows stay) |
 | `SECRET_KEY_BASE` | — | Rails secret key base. Generate one with `bin/rails secret` |
 | `SENDING_IPS` | — | Comma-separated `name=address=helo` list of source IPs for direct-to-MX delivery. The first entry is the default every send binds to for now; each address needs matching PTR/rDNS for its HELO name. Unset = the host's default IP |
+| `SLOW_DOWN_PAUSE_MINUTES` | `60` | Minutes sending to a mail provider stays paused after it answers with a temporary refusal that quotes this server's IP and tells it to slow down, such as Outlook.com's rate limit for IP reputation. Mail waits and retries as usual, and the pause ends on its own |
 | `SMTP_LOG_LEVEL` | `INFO` | Listener log verbosity. `DEBUG` logs the full SMTP conversation line by line (AUTH credentials are redacted, but it's still verbose) — keep it off in production and access-controlled. Read once at boot, so changing it means restarting the listeners |
 | `STRESS_THRESHOLD` | `0.8` | Share of a listener's `MAX_CONNECTIONS` at which it is stressed: timeouts shorten, and one protocol error or a second junk command ends the session. Empty disables it |
 | `STRUCTURED_LOGGING` | — | Set `true` to also write each Rails event (requests, jobs, mail) to stdout as a line of JSON, for a log shipper to index. SQL and view events are left out |

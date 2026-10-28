@@ -28,6 +28,17 @@ class Adminland::PausesControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "index says when a pause resumes on its own" do
+    Pause.create!(provider: "outlook", recipient_domain: "hotmail.com", ends_at: 1.hour.from_now)
+    sign_in_as :leo
+
+    untenanted do
+      get adminland_pauses_path
+
+      assert_select ".row__meta", text: /Resumes/
+    end
+  end
+
   test "index says when nothing is paused" do
     sign_in_as :leo
 

@@ -56,6 +56,30 @@ class Delivery::PacingTest < ActiveSupport::TestCase
     end
   end
 
+  test "deliveries to Outlook.com go out at BULK_OUTLOOK_MESSAGES_PER_HOUR" do
+    @delivery.stubs(:destination_hosts).returns(%w[ hotmail-com.olc.protection.outlook.com ])
+
+    with_env(BULK_OUTLOOK_MESSAGES_PER_HOUR: 2) do
+      freeze_time do
+        @delivery.pace
+
+        assert_enqueued_with(job: Delivery::DeliverJob, args: [ @delivery ], at: 30.minutes.from_now) { @delivery.pace }
+      end
+    end
+  end
+
+  test "a rate above one a second still spaces deliveries apart" do
+    @delivery.stubs(:destination_hosts).returns(%w[ mx1.example.com ])
+
+    with_env(BULK_OTHER_MESSAGES_PER_HOUR: 7200) do
+      freeze_time do
+        @delivery.pace
+
+        assert_enqueued_with(job: Delivery::DeliverJob, args: [ @delivery ], at: 0.5.seconds.from_now) { @delivery.pace }
+      end
+    end
+  end
+
   test "deliveries to any other mail server go out 2 seconds apart" do
     @delivery.stubs(:destination_hosts).returns(%w[ mx1.example.com ])
 

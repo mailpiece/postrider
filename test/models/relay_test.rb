@@ -153,6 +153,22 @@ class RelayTest < ActiveSupport::TestCase
     end
   end
 
+  test "bulk_messages_per_hour defaults to 120 for Outlook.com and Yahoo and 1800 elsewhere, and reads their variables" do
+    with_env(BULK_OUTLOOK_MESSAGES_PER_HOUR: nil, BULK_YAHOO_MESSAGES_PER_HOUR: nil, BULK_GMAIL_MESSAGES_PER_HOUR: nil, BULK_OTHER_MESSAGES_PER_HOUR: nil) do
+      assert_equal 120, Relay.bulk_messages_per_hour("outlook")
+      assert_equal 120, Relay.bulk_messages_per_hour("yahoo")
+      assert_equal 1800, Relay.bulk_messages_per_hour("gmail")
+      assert_equal 1800, Relay.bulk_messages_per_hour("example.com")
+    end
+
+    with_env(BULK_OUTLOOK_MESSAGES_PER_HOUR: 2, BULK_YAHOO_MESSAGES_PER_HOUR: 3, BULK_GMAIL_MESSAGES_PER_HOUR: 4, BULK_OTHER_MESSAGES_PER_HOUR: 5) do
+      assert_equal 2, Relay.bulk_messages_per_hour("outlook")
+      assert_equal 3, Relay.bulk_messages_per_hour("yahoo")
+      assert_equal 4, Relay.bulk_messages_per_hour("gmail")
+      assert_equal 5, Relay.bulk_messages_per_hour("example.com")
+    end
+  end
+
   test "stress_threshold defaults to 0.8 and reads STRESS_THRESHOLD as a Float" do
     with_env(STRESS_THRESHOLD: nil) do
       assert_equal 0.8, Relay.stress_threshold

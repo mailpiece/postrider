@@ -342,6 +342,7 @@ Every variable PostRider reads, A–Z. Provide them however your deployment does
 | `ASSUME_SSL` | on | Treat requests as HTTPS, for secure cookies behind a TLS-terminating proxy. Use `DISABLE_SSL=true` for plain HTTP |
 | `BASE_URL` | none | The public URL of your PostRider instance, e.g. `https://postrider.example.com`. Set it: a mailbox forwarding confirmation carries a link to it, so it cannot be sent without it. The sign-in link printed from the console is built from it too |
 | `BIND_ADDRESS` | `0.0.0.0` | Address both listeners bind to |
+| `BULK_OUTLOOK_MESSAGES_PER_HOUR` / `BULK_YAHOO_MESSAGES_PER_HOUR` / `BULK_GMAIL_MESSAGES_PER_HOUR` / `BULK_OTHER_MESSAGES_PER_HOUR` | `120` / `120` / `1800` / `1800` | Messages an hour a bulk domain's mail goes out at to Outlook.com, Yahoo, Gmail, and each other recipient domain, shared by every bulk domain on the server. Lower them to warm up a new IP. Transactional mail, retries and mail sent through `OUTBOUND_RELAY` are not paced |
 | `DELIVERY_JOB_CONCURRENCY` / `WEBHOOK_JOB_CONCURRENCY` / `FORWARDING_JOB_CONCURRENCY` | `2` / `1` / `1` | Per-queue job concurrency (`config/queue.yml`) |
 | `DISABLE_SSL` | — | Set `true` to turn off all SSL options at once (`assume_ssl` + `force_ssl`) — for serving the web UI over plain HTTP with no proxy |
 | `FORCE_SSL` | on | Redirect HTTP→HTTPS, enable HSTS and secure cookies. Needs a TLS proxy in front (or `DISABLE_SSL=true`) |

@@ -68,7 +68,7 @@ GIT
 
 GIT
   remote: https://github.com/mailpiece/mailverp.git
-  revision: e38968943b2ac53b76f9c38bf715f36689df14ee
+  revision: 73836e058f0217087f1e4e9650fab83ad6992388
   branch: main
   specs:
     mailverp (0.5.0)

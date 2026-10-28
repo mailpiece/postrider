@@ -16,6 +16,16 @@ class Domains::SwitchesControllerTest < ActionDispatch::IntegrationTest
     assert_select "form[action=?] input.switch__input[checked]", domain_sending_path(@domain)
   end
 
+  test "bulk mail has a switch that is off until it is turned on" do
+    sign_in_as :leo
+
+    get domain_switches_path(@domain)
+
+    assert_select "form[action=?] input.switch__input:not([checked])", domain_bulk_path(@domain)
+    assert_select ".row__title", text: "This is a bulk sending domain"
+    assert_select ".row__meta", text: "Transactional: sent right away"
+  end
+
   test "a switch that is on submits to turn it off" do
     sign_in_as :leo
 

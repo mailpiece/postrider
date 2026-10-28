@@ -535,10 +535,10 @@ class DeliveryTest < ActiveSupport::TestCase
     assert_equal "suppressed", @delivery.webhook_payload("delivery_failed")[:reason]
   end
 
-  test "a full mailbox bounces without suppressing an address that plainly exists" do
+  test "a full mailbox bounces and suppresses the recipient" do
     stub_smtp(:hard_fail, "552", "5.2.2 Mailbox full")
 
-    assert_no_difference -> { Current.account.suppressions.count } do
+    assert_difference -> { Current.account.suppressions.count }, 1 do
       @delivery.deliver
     end
 
@@ -554,6 +554,83 @@ class DeliveryTest < ActiveSupport::TestCase
     end
 
     assert @delivery.reload.exhausted?
+  end
+
+  test "running out of retries on a full mailbox suppresses the recipient" do
+    @delivery.attempts.create!(code: "452", output: "452-4.2.2 The recipient's inbox is out of storage space.", mx_host: "gmail-smtp-in.l.google.com")
+
+    assert_difference -> { Current.account.suppressions.count }, 1 do
+      @delivery.exhaust
+    end
+
+    assert @delivery.reload.exhausted?
+    assert_equal "full", Current.account.suppressions.find_by(address: "recipient@example.com").reason
+  end
+
+  test "running out of retries on anything but the mailbox does not suppress the recipient" do
+    @delivery.attempts.create!(code: "451", output: "4.7.1 Greylisted, please try again later", mx_host: "mx.example.com")
+
+    assert_no_difference -> { Current.account.suppressions.count } do
+      @delivery.exhaust
+    end
+
+    assert @delivery.reload.exhausted?
+  end
+
+  test "running out of retries on a transient unknown user does not suppress the recipient" do
+    @delivery.attempts.create!(code: "450", output: "450 4.1.1 <recipient@example.com>: Recipient address rejected: User unknown in local recipient table", mx_host: "mx.example.com")
+
+    assert_no_difference -> { Current.account.suppressions.count } do
+      @delivery.exhaust
+    end
+
+    assert @delivery.reload.exhausted?
+  end
+
+  test "running out of retries on the relay's own mail does not suppress the recipient" do
+    @message.update!(origin: :system)
+    @delivery.attempts.create!(code: "452", output: "452 4.2.2 Mailbox full", mx_host: "mx.example.com")
+
+    assert_no_difference -> { Current.account.suppressions.count } do
+      @delivery.exhaust
+    end
+
+    assert @delivery.reload.exhausted?
+  end
+
+  test "running out of retries while relaying through a smarthost does not suppress the recipient" do
+    @delivery.attempts.create!(code: "454", output: "454 Throttling failure: Daily message quota exceeded.", mx_host: "smarthost.example")
+
+    with_env(OUTBOUND_RELAY: "smarthost.example:2525") do
+      assert_no_difference -> { Current.account.suppressions.count } do
+        @delivery.exhaust
+      end
+    end
+
+    assert @delivery.reload.exhausted?
+  end
+
+  test "running out of retries while a pause holds the delivery does not suppress the recipient" do
+    @delivery.attempts.create!(code: "452", output: "452 4.2.2 Mailbox full", mx_host: "mx.example.com")
+    Pause.create!(provider: "example.com", recipient_domain: "example.com")
+    assert_raises(RuntimeError) { @delivery.deliver }
+
+    assert_no_difference -> { Current.account.suppressions.count } do
+      @delivery.exhaust
+    end
+
+    assert @delivery.reload.exhausted?
+  end
+
+  test "a permanent session failure for a malformed address suppresses the recipient" do
+    stub_smtp(:session_fail, "501", "501 5.1.3 Bad recipient address syntax")
+
+    assert_difference -> { Current.account.suppressions.count }, 1 do
+      @delivery.deliver
+    end
+
+    assert @delivery.reload.exhausted?
+    assert_equal "invalid", Current.account.suppressions.find_by(address: "recipient@example.com").reason
   end
 
   test "a permanent session failure tracks a delivery_failed event" do
@@ -709,8 +786,8 @@ class DeliveryTest < ActiveSupport::TestCase
     end
   end
 
-  test "record_async_bounce leaves a full mailbox alone, however permanent the report reads" do
-    assert_no_difference -> { Current.account.suppressions.count } do
+  test "record_async_bounce suppresses a full mailbox the report calls permanent" do
+    assert_difference -> { Current.account.suppressions.count }, 1 do
       deliveries(:delivered).record_async_bounce(dsn_raw: failing_dsn(status: "5.2.2"))
     end
 

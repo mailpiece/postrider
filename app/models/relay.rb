@@ -87,12 +87,12 @@ module Relay
       Integer(ENV.fetch("SUBMISSION_RATE_LIMIT", 30))
     end
 
-    def bulk_messages_per_hour(provider)
+    def bulk_messages_per_day(provider)
       case provider
-      when "outlook" then Integer(ENV.fetch("BULK_OUTLOOK_MESSAGES_PER_HOUR", 120))
-      when "yahoo" then Integer(ENV.fetch("BULK_YAHOO_MESSAGES_PER_HOUR", 120))
-      when "gmail" then Integer(ENV.fetch("BULK_GMAIL_MESSAGES_PER_HOUR", 1800))
-      else Integer(ENV.fetch("BULK_OTHER_MESSAGES_PER_HOUR", 1800))
+      when "outlook" then Integer(ENV.fetch("BULK_OUTLOOK_MESSAGES_PER_DAY", 2880))
+      when "yahoo" then Integer(ENV.fetch("BULK_YAHOO_MESSAGES_PER_DAY", 2880))
+      when "gmail" then Integer(ENV.fetch("BULK_GMAIL_MESSAGES_PER_DAY", 43200))
+      else Integer(ENV.fetch("BULK_OTHER_MESSAGES_PER_DAY", 43200))
       end
     end
 

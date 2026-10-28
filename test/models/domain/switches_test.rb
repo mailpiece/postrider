@@ -33,6 +33,20 @@ class Domain::SwitchesTest < ActiveSupport::TestCase
     end
   end
 
+  test "turning bulk mail on records it" do
+    assert_difference -> { @domain.events.where(action: "domain_bulk_turned_on").count }, 1 do
+      @domain.turn_bulk_on
+    end
+  end
+
+  test "turning bulk mail off records it" do
+    @domain.update!(bulk: true)
+
+    assert_difference -> { @domain.events.where(action: "domain_bulk_turned_off").count }, 1 do
+      @domain.turn_bulk_off
+    end
+  end
+
   test "turning on what is already on records nothing" do
     assert_no_difference -> { @domain.events.count } do
       @domain.turn_receiving_on

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.2].define(version: 2026_10_28_120000) do
+ActiveRecord::Schema[8.2].define(version: 2026_10_28_130100) do
   create_table "accesses", id: :uuid, force: :cascade do |t|
     t.uuid "account_id", null: false
     t.uuid "user_id", null: false
@@ -165,6 +165,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_28_120000) do
     t.text "allowed_ips", limit: 65535
     t.boolean "receiving", default: true, null: false
     t.boolean "sending", default: true, null: false
+    t.boolean "bulk", default: false, null: false
     t.index ["account_id"], name: "index_domains_on_account_id"
     t.index ["creator_id"], name: "index_domains_on_creator_id"
     t.index ["name"], name: "index_domains_on_name", unique: true
@@ -318,6 +319,14 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_28_120000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["domain"], name: "index_mta_sts_policies_on_domain", unique: true
+  end
+
+  create_table "pacing_slots", id: :uuid, force: :cascade do |t|
+    t.string "provider", limit: 255, null: false
+    t.datetime "next_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["provider"], name: "index_pacing_slots_on_provider", unique: true
   end
 
   create_table "pauses", id: :uuid, force: :cascade do |t|

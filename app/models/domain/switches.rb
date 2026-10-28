@@ -28,4 +28,18 @@ module Domain::Switches
       track_event "sending_turned_off" if saved_change_to_sending?
     end
   end
+
+  def turn_bulk_on
+    transaction do
+      update! bulk: true
+      track_event "bulk_turned_on" if saved_change_to_bulk?
+    end
+  end
+
+  def turn_bulk_off
+    transaction do
+      update! bulk: false
+      track_event "bulk_turned_off" if saved_change_to_bulk?
+    end
+  end
 end

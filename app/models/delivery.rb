@@ -1,5 +1,5 @@
 class Delivery < ApplicationRecord
-  include Eventable, Delivering, Bouncing, Pausable, Postable
+  include Eventable, Delivering, Bouncing, Pausable, Pacing, Postable
 
   belongs_to :account, default: -> { message.account }
   belongs_to :domain, default: -> { message.domain }

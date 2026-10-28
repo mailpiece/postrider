@@ -82,6 +82,11 @@ class Event::DescriptionTest < ActiveSupport::TestCase
     assert_equal "Sending turned off for example.com", describe("domain_sending_turned_off", eventable: domains(:example))
   end
 
+  test "turning bulk mail on or off names the domain" do
+    assert_equal "Bulk mail turned on for example.com", describe("domain_bulk_turned_on", eventable: domains(:example))
+    assert_equal "Bulk mail turned off for example.com", describe("domain_bulk_turned_off", eventable: domains(:example))
+  end
+
   test "a paused recipient domain is named" do
     assert_equal "Paused sending to gmail.com because its mail servers refuse this server's IP",
       describe("recipient_domain_paused", recipient_domain: "gmail.com")

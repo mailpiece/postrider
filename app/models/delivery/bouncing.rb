@@ -28,13 +28,13 @@ module Delivery::Bouncing
     when "delivery_bounced"
       delivery_payload.merge(raw: stored_dsn || dsn, category: bounce_category)
     when "delivery_deferred", "delivery_failed"
-      if reason = latest_reason_for(action)
+      if reason = latest_particular(action, "reason")
         delivery_payload.merge(reason: reason)
       else
         delivery_payload
       end
     when "recipient_domain_paused", "recipient_domain_resumed"
-      delivery_payload.merge(recipient_domain: recipient_domain)
+      delivery_payload.merge(recipient_domain: recipient_domain, provider: latest_particular(action, "provider") || recipient_domain)
     else
       delivery_payload
     end
@@ -81,8 +81,8 @@ module Delivery::Bouncing
       events.where(action: "delivery_bounced").order(:created_at).last
     end
 
-    def latest_reason_for(action)
-      events.where(action: action).order(:created_at).last&.particulars&.dig("reason")
+    def latest_particular(action, key)
+      events.where(action: action).order(:created_at).last&.particulars&.dig(key)
     end
 
     def dsn

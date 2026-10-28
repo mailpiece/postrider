@@ -83,7 +83,7 @@ module Delivery::Delivering
   end
 
   def next_retry_at
-    if deferred? && last_attempt && !held_by_pause?
+    if deferred? && last_attempt && (relaying? || !provider_paused?(last_attempt.mx_host))
       last_attempt.created_at + RETRY_SCHEDULE[[ attempts.count - 1, RETRY_SCHEDULE.size - 1 ].min]
     end
   end
@@ -110,7 +110,7 @@ module Delivery::Delivering
     end
 
     def destination_hosts
-      if relaying?
+      @destination_hosts ||= if relaying?
         []
       else
         DnsResolver.mail_exchangers(recipient_domain)
@@ -141,7 +141,7 @@ module Delivery::Delivering
         track_event("bounced", rcpt_to: rcpt_to, smtp_code: result.code, smtp_output: result.output,
           category: rejection.category.to_s)
       else
-        pause_recipient_domain(result.output) if !relaying? && blocklisted_by_recipient?(rejection)
+        pause_mail_provider(result) if !relaying? && blocklisted_by_recipient?(rejection)
         defer(result)
       end
     end

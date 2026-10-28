@@ -241,11 +241,38 @@ class DeliveryTest < ActiveSupport::TestCase
       end
     end
 
-    pause = Pause.find_by!(recipient_domain: "example.com")
+    pause = Pause.find_by!(provider: "example.com")
     assert_equal @delivery, pause.delivery
     assert_equal microsoft, pause.smtp_output
     assert @delivery.reload.deferred?
     assert_equal "example.com", @delivery.events.find_by!(action: "recipient_domain_paused").particulars["recipient_domain"]
+  end
+
+  test "a blocklisting from Outlook.com pauses every domain it hosts" do
+    @delivery.stubs(:destination_hosts).returns(%w[ example-com.olc.protection.outlook.com ])
+    SmtpDelivery.any_instance.stubs(:deliver).returns(
+      SmtpDelivery::Result.new(:hard_fail, "550", "5.7.1 [203.0.113.7] is on our block list (S3150)", "example-com.olc.protection.outlook.com", "transcript"))
+
+    with_env(SENDING_IPS: "primary=203.0.113.7=mx.example") do
+      assert_raises(RuntimeError) { @delivery.deliver }
+    end
+
+    pause = Pause.find_by!(provider: "outlook")
+    assert_equal "example.com", pause.recipient_domain
+    assert_equal "outlook", @delivery.events.find_by!(action: "recipient_domain_paused").particulars["provider"]
+  end
+
+  test "a blocklisting from a backup MX on Gmail pauses only the domain whose first MX is its own" do
+    @delivery.stubs(:destination_hosts).returns(%w[ mx1.example.com aspmx.l.google.com ])
+    SmtpDelivery.any_instance.stubs(:deliver).returns(
+      SmtpDelivery::Result.new(:hard_fail, "550", "5.7.1 [203.0.113.7] is listed on Spamhaus", "aspmx.l.google.com", "transcript"))
+
+    with_env(SENDING_IPS: "primary=203.0.113.7=mx.example") do
+      assert_raises(RuntimeError) { @delivery.deliver }
+    end
+
+    assert Pause.exists?(provider: "example.com")
+    assert_not Pause.exists?(provider: "gmail")
   end
 
   test "Gmail's unusual rate of unsolicited mail from our IP pauses" do
@@ -321,8 +348,8 @@ class DeliveryTest < ActiveSupport::TestCase
   end
 
   test "a domain paused by another delivery meanwhile keeps this attempt and its deferral" do
-    Pause.create!(recipient_domain: "example.com", delivery: deliveries(:deferred))
-    @delivery.stubs(:recipient_domain_paused?).returns(false)
+    Pause.create!(provider: "example.com", recipient_domain: "example.com", delivery: deliveries(:deferred))
+    @delivery.stubs(:provider_paused?).returns(false)
 
     with_env(SENDING_IPS: "primary=203.0.113.7=mx.example") do
       stub_smtp(:hard_fail, "550", "5.7.1 [203.0.113.7] is listed on Spamhaus")
@@ -337,7 +364,7 @@ class DeliveryTest < ActiveSupport::TestCase
   end
 
   test "a delivery to a paused domain defers without connecting and keeps retrying" do
-    Pause.create!(recipient_domain: "example.com")
+    Pause.create!(provider: "example.com", recipient_domain: "example.com")
     SmtpDelivery.any_instance.expects(:deliver).never
 
     assert_raises(RuntimeError) { @delivery.deliver }
@@ -347,9 +374,30 @@ class DeliveryTest < ActiveSupport::TestCase
     assert_equal "recipient_domain_paused", @delivery.events.find_by!(action: "delivery_deferred").particulars["reason"]
   end
 
+  test "a delivery to another domain on a paused provider defers without connecting" do
+    Pause.create!(provider: "outlook", recipient_domain: "hotmail.com")
+    @delivery.stubs(:destination_hosts).returns(%w[ example-com.olc.protection.outlook.com ])
+    SmtpDelivery.any_instance.expects(:deliver).never
+
+    assert_raises(RuntimeError) { @delivery.deliver }
+
+    assert @delivery.reload.deferred?
+    assert_empty @delivery.attempts
+  end
+
+  test "a pause on a provider does not hold a domain on another MX" do
+    Pause.create!(provider: "outlook", recipient_domain: "hotmail.com")
+    @delivery.stubs(:destination_hosts).returns(%w[ example-com.mail.protection.outlook.com ])
+    stub_smtp(:sent, "250", "OK")
+
+    @delivery.deliver
+
+    assert @delivery.reload.delivered?
+  end
+
   test "a delivery held by a pause has no next retry to show" do
     @delivery.attempts.create!(code: "451", output: "greylisted", mx_host: "mx.example.com", created_at: 3.hours.ago)
-    Pause.create!(recipient_domain: "example.com")
+    Pause.create!(provider: "example.com", recipient_domain: "example.com")
 
     assert_raises(RuntimeError) { @delivery.deliver }
 
@@ -358,7 +406,7 @@ class DeliveryTest < ActiveSupport::TestCase
   end
 
   test "a paused domain does not hold mail relayed through a smarthost" do
-    Pause.create!(recipient_domain: "example.com")
+    Pause.create!(provider: "example.com", recipient_domain: "example.com")
 
     with_env(OUTBOUND_RELAY: "smarthost.example:2525") do
       stub_smtp(:sent, "250", "OK")
@@ -369,15 +417,24 @@ class DeliveryTest < ActiveSupport::TestCase
     assert @delivery.reload.delivered?
   end
 
-  test "webhook_payload for a paused domain names the domain" do
+  test "webhook_payload for a paused domain names the domain and the provider paused" do
+    @delivery.track_recipient_domain_event "paused", provider: "outlook"
+
     assert_equal "example.com", @delivery.webhook_payload("recipient_domain_paused")[:recipient_domain]
+    assert_equal "outlook", @delivery.webhook_payload("recipient_domain_paused")[:provider]
   end
 
   test "webhook_payload for a deferral carries its reason when it has one" do
-    Pause.create!(recipient_domain: "example.com")
+    Pause.create!(provider: "example.com", recipient_domain: "example.com")
     assert_raises(RuntimeError) { @delivery.deliver }
 
     assert_equal "recipient_domain_paused", @delivery.webhook_payload("delivery_deferred")[:reason]
+  end
+
+  test "webhook_payload for a pause from before providers names the domain as the provider" do
+    @delivery.track_recipient_domain_event "paused"
+
+    assert_equal "example.com", @delivery.webhook_payload("recipient_domain_paused")[:provider]
   end
 
   test "webhook_payload for an ordinary deferral has no reason" do

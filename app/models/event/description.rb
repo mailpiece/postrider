@@ -33,8 +33,8 @@ class Event::Description
     when "domain_receiving_turned_on"     then "Receiving turned on for #{domain_name}"
     when "domain_sending_turned_off"      then "Sending turned off for #{domain_name}"
     when "domain_sending_turned_on"       then "Sending turned on for #{domain_name}"
-    when "recipient_domain_paused"        then "Paused sending to #{recipient_domain} because its mail servers refuse this server's IP"
-    when "recipient_domain_resumed"       then "Resumed sending to #{recipient_domain}"
+    when "recipient_domain_paused"        then "Paused sending to #{paused_mail} because its mail servers refuse this server's IP"
+    when "recipient_domain_resumed"       then "Resumed sending to #{paused_mail}"
     when "sending_token_created"          then "Created sending token #{token_name}"
     when "sending_token_revoked"          then "Revoked sending token #{token_name}"
     when "sending_token_refused"          then "Refused sending token #{token_name} from #{event.particulars["ip"]}, not in Allowed IPs"
@@ -101,6 +101,15 @@ class Event::Description
 
     def recipient_domain
       event.particulars["recipient_domain"]
+    end
+
+    # Events from before pauses covered a provider carry only the domain.
+    def paused_mail
+      if (provider = event.particulars["provider"]) && provider != recipient_domain
+        "#{MailProvider.label(provider)} (#{recipient_domain})"
+      else
+        recipient_domain
+      end
     end
 
     def token_name

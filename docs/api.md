@@ -198,7 +198,7 @@ Authenticate with a personal access token (`read` permission is sufficient): `Au
 
 Each entry carries `id`, `name`, `catch_all_policy`, the `mx_status`, `dkim_status`, `dmarc_status` and `return_path_status` of its last DNS check (`null` until checked), `verified`, `receiving`, `sending`, `bulk`, `created_at` and `url`.
 
-A domain with `receiving` false refuses inbound mail, and one with `sending` false refuses new messages; both are `true` until an admin turns them off. A domain with `bulk` true has its mail paced per mail provider: one message every 30 seconds to Outlook.com and Yahoo, and every 2 seconds to Gmail and to each other recipient domain. Forwards from its mailboxes are paced too, while retries go out on their own schedule. It is `false` until an admin turns it on.
+A domain with `receiving` false refuses inbound mail, and one with `sending` false refuses new messages; both are `true` until an admin turns them off. A domain with `bulk` true has its mail paced per mail provider: by default one message every 30 seconds to Outlook.com and Yahoo, and every 2 seconds to Gmail and to each other recipient domain, at rates the server's operator can change. Forwards from its mailboxes are paced too, while retries go out on their own schedule. It is `false` until an admin turns it on.
 
 An account admin's `write` token changes what a domain does with mail for an address with no mailbox: `PATCH /domains/:domain_id/catch_all` with `{ "catch_all_policy": "disabled" }` (or `discard`, `forward`) returns the domain.
 

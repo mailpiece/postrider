@@ -7,6 +7,6 @@ class Adminland::PausesController < AdminlandController
     pause = Pause.find(params[:id])
     pause.resume
 
-    redirect_to adminland_pauses_path, notice: "Resumed sending to #{pause.recipient_domain}"
+    redirect_to adminland_pauses_path, notice: "Resumed sending to #{pause.provider_label}"
   end
 end

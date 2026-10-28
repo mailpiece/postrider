@@ -14,12 +14,19 @@ module Delivery::Pausable
   end
 
   private
+    # An MX that fails to resolve is left to the delivery, which defers on the same lookup.
     def held_by_pause?
-      !relaying? && recipient_domain_paused?
+      !relaying? && provider_paused?(destination_hosts.first)
+    rescue DnsResolver::TransientError
+      false
     end
 
-    def recipient_domain_paused?
-      Pause.exists?(recipient_domain: recipient_domain)
+    def provider_paused?(mx_host)
+      Pause.exists?(provider: mail_provider(mx_host))
+    end
+
+    def mail_provider(mx_host)
+      MailProvider.for(mx_host) || recipient_domain
     end
 
     # Quoting our IP is not enough: Gmail quotes it when it judges a single message too.
@@ -27,11 +34,13 @@ module Delivery::Pausable
       rejection.about_us? && rejection.response.match?(BLOCKLIST_WORDING)
     end
 
-    def pause_recipient_domain(smtp_output)
-      pause = Pause.create_with(delivery_id: id, smtp_output: smtp_output).create_or_find_by!(recipient_domain: recipient_domain)
+    # Keyed on the first MX, as the hold is, not on whichever host answered.
+    def pause_mail_provider(result)
+      pause = Pause.create_with(delivery_id: id, recipient_domain: recipient_domain, smtp_output: result.output)
+        .create_or_find_by!(provider: mail_provider(destination_hosts.first))
 
       if pause.previously_new_record?
-        track_recipient_domain_event "paused", smtp_output: smtp_output
+        track_recipient_domain_event "paused", provider: pause.provider, smtp_output: result.output
       end
     end
 end

@@ -87,6 +87,12 @@ class Event::DescriptionTest < ActiveSupport::TestCase
       describe("recipient_domain_paused", recipient_domain: "gmail.com")
   end
 
+  test "a paused provider is named with the domain that tripped it" do
+    assert_equal "Paused sending to Outlook.com (hotmail.com) because its mail servers refuse this server's IP",
+      describe("recipient_domain_paused", recipient_domain: "hotmail.com", provider: "outlook")
+    assert_equal "Resumed sending to Outlook.com (hotmail.com)", describe("recipient_domain_resumed", recipient_domain: "hotmail.com", provider: "outlook")
+  end
+
   test "a resumed recipient domain is named" do
     assert_equal "Resumed sending to gmail.com", describe("recipient_domain_resumed", recipient_domain: "gmail.com")
   end

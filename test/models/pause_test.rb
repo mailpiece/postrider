@@ -1,14 +1,19 @@
 require "test_helper"
 
 class PauseTest < ActiveSupport::TestCase
-  test "a recipient domain is paused once, however it is spelled" do
-    Pause.create!(recipient_domain: "Gmail.com ")
+  test "a provider is paused once, however it is spelled" do
+    Pause.create!(provider: "Example.com ", recipient_domain: "example.com")
 
-    assert_raises(ActiveRecord::RecordNotUnique) { Pause.create!(recipient_domain: "gmail.com") }
+    assert_raises(ActiveRecord::RecordNotUnique) { Pause.create!(provider: "example.com", recipient_domain: "example.com") }
+  end
+
+  test "a provider is labelled by its name, any other by its domain" do
+    assert_equal "Outlook.com", Pause.new(provider: "outlook").provider_label
+    assert_equal "example.com", Pause.new(provider: "example.com").provider_label
   end
 
   test "resuming lifts the pause and tells the sender whose delivery tripped it" do
-    pause = Pause.create!(recipient_domain: "example.com", delivery: deliveries(:deferred))
+    pause = Pause.create!(provider: "example.com", recipient_domain: "example.com", delivery: deliveries(:deferred))
 
     assert_difference -> { deliveries(:deferred).events.where(action: "recipient_domain_resumed").count }, 1 do
       pause.resume
@@ -18,7 +23,7 @@ class PauseTest < ActiveSupport::TestCase
   end
 
   test "a pause outlives the delivery that tripped it" do
-    pause = Pause.create!(recipient_domain: "example.com", delivery: deliveries(:deferred))
+    pause = Pause.create!(provider: "example.com", recipient_domain: "example.com", delivery: deliveries(:deferred))
     deliveries(:deferred).delete
 
     assert_no_difference -> { Event.count } do

@@ -34,10 +34,10 @@ GIT
 
 GIT
   remote: https://github.com/mailpiece/mailbounce.git
-  revision: 04c049371885ec2491706e87ebdd48bbe1c13bdb
+  revision: 266537e88948f6f225c91cb754cc9528f5413409
   branch: main
   specs:
-    mailbounce (0.5.1)
+    mailbounce (0.6.0)
       mail (>= 2.7)
 
 GIT
@@ -677,7 +677,7 @@ CHECKSUMS
   loofah (2.25.2) sha256=2007f746959ac65552456e04b433e83deb22759ab38c838b4445c70e43425918
   mail (2.9.1) sha256=06574eca475253d6c18145dd70af80d0eb970182d55053497c5f4d797ea160e8
   mailauth (0.6.0)
-  mailbounce (0.5.1)
+  mailbounce (0.6.0)
   mailreport (0.5.0)
   mailresolver (0.6.0)
   mailsmtp (0.7.0)

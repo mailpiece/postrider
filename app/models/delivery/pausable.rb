@@ -1,10 +1,6 @@
 module Delivery::Pausable
   extend ActiveSupport::Concern
 
-  BLOCKLIST_WORDING = /spamhaus|block ?list|blacklist|dnsbl|\brbl\b|\bip(?: address)? reputation|reputation of (?:the sending |your )?ip\b|your ip/i
-
-  SLOW_DOWN_WORDING = /rate limited|unusual rate|unexpected volume/i
-
   included do
     has_one :pause
   end
@@ -33,11 +29,11 @@ module Delivery::Pausable
 
     # Quoting our IP is not enough: Gmail quotes it when it judges a single message too.
     def blocklisted_by_recipient?(rejection)
-      rejection.about_us? && rejection.response.match?(BLOCKLIST_WORDING)
+      rejection.about_us? && rejection.blocklisted?
     end
 
     def told_to_slow_down?(rejection)
-      rejection.about_us? && rejection.response.match?(SLOW_DOWN_WORDING)
+      rejection.about_us? && rejection.slow_down?
     end
 
     # Keyed on the first MX, as the hold is, not on whichever host answered.

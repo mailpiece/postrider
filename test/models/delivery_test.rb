@@ -399,6 +399,16 @@ class DeliveryTest < ActiveSupport::TestCase
     end
   end
 
+  test "Gmail rate limiting one domain's mail for its DMARC alignment never pauses, though it quotes our IP" do
+    with_env(SENDING_IPS: "primary=203.0.113.7=mx.example") do
+      stub_smtp(:soft_fail, "421", "4.7.32 [203.0.113.7] This mail has been rate limited because there is no DMARC alignment.")
+
+      assert_no_difference -> { Pause.count } do
+        assert_raises(RuntimeError) { @delivery.deliver }
+      end
+    end
+  end
+
   test "a temporary failure that does not quote our IP never pauses" do
     with_env(SENDING_IPS: "primary=203.0.113.7=mx.example") do
       stub_smtp(:soft_fail, "451", "4.7.1 Greylisted, please try again later")

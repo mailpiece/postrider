@@ -94,7 +94,7 @@ module Delivery::Delivering
 
   private
     def recipient_suppressed?
-      domain.suppressions.active.exists?(address: Suppression.normalize_address(rcpt_to))
+      domain.suppressions.exists?(address: Suppression.normalize_address(rcpt_to))
     end
 
     def outgoing_raw
@@ -168,7 +168,6 @@ module Delivery::Delivering
     def suppress(reason:)
       domain.suppressions.find_or_create_by!(address: rcpt_to) do |suppression|
         suppression.reason = reason
-        suppression.expires_at = Suppression::LIFETIME.from_now
       end
     end
 

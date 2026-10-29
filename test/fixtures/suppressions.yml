@@ -3,4 +3,3 @@ bounced:
   domain: example
   address: invalid@unreachable.example
   reason: invalid
-  expires_at: <%= Suppression::LIFETIME.from_now %>

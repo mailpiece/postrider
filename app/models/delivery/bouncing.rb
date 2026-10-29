@@ -16,7 +16,6 @@ module Delivery::Bouncing
       if recipient&.permanent_failure? && rejection.category.in?(Delivery::Delivering::SUPPRESSIBLE_CATEGORIES)
         domain.suppressions.find_or_create_by!(address: rcpt_to) do |suppression|
           suppression.reason = rejection.category.to_s
-          suppression.expires_at = Suppression::LIFETIME.from_now
         end
         suspend_forwarding_destination
       end

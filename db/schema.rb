@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.2].define(version: 2026_10_28_140000) do
+ActiveRecord::Schema[8.2].define(version: 2026_10_29_120000) do
   create_table "accesses", id: :uuid, force: :cascade do |t|
     t.uuid "account_id", null: false
     t.uuid "user_id", null: false
@@ -428,7 +428,6 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_28_140000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.uuid "domain_id", null: false
-    t.datetime "expires_at"
     t.index ["account_id"], name: "index_suppressions_on_account_id"
     t.index ["domain_id", "address"], name: "index_suppressions_on_domain_id_and_address", unique: true
   end

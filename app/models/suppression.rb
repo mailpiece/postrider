@@ -1,6 +1,4 @@
 class Suppression < ApplicationRecord
-  LIFETIME = 30.days
-
   belongs_to :account, default: -> { domain.account }
   belongs_to :domain, counter_cache: true
 
@@ -13,11 +11,4 @@ class Suppression < ApplicationRecord
   validates :address, presence: true, uniqueness: { scope: :domain_id }
 
   scope :ordered, -> { order(created_at: :desc) }
-
-  # Expired rows remain for history; active excludes them.
-  scope :active, -> { where(expires_at: nil).or(where(expires_at: Time.current..)) }
-
-  def expired?
-    expires_at&.past? || false
-  end
 end

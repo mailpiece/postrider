@@ -546,20 +546,6 @@ class DeliveryTest < ActiveSupport::TestCase
     assert_equal "full", @delivery.events.last.particulars["category"]
   end
 
-  test "a suppression stops blocking mail once it expires" do
-    stub_smtp(:hard_fail, "550", "no such user")
-    @delivery.deliver
-    suppression = Current.account.suppressions.find_by(address: "recipient@example.com")
-
-    assert Current.account.suppressions.active.exists?(id: suppression.id)
-
-    suppression.update!(expires_at: 1.day.ago)
-
-    assert_not Current.account.suppressions.active.exists?(id: suppression.id)
-    assert suppression.expired?
-    assert Current.account.suppressions.exists?(id: suppression.id), "an expired suppression is kept for the record"
-  end
-
   test "a permanent session failure exhausts the delivery without suppressing the recipient" do
     stub_smtp(:session_fail, "530", "authentication required")
 
@@ -601,6 +587,18 @@ class DeliveryTest < ActiveSupport::TestCase
 
     assert @delivery.reload.suppressed?
     assert_empty @delivery.attempts
+  end
+
+  test "a bounce keeps suppressing the recipient a year later" do
+    stub_smtp(:hard_fail, "550", "no such user")
+    @delivery.deliver
+    later = @message.deliveries.create!(rcpt_to: "recipient@example.com")
+
+    travel 1.year do
+      later.deliver
+    end
+
+    assert later.reload.suppressed?
   end
 
   test "a delivery is not suppressed by another domain's suppression" do
@@ -702,7 +700,6 @@ class DeliveryTest < ActiveSupport::TestCase
 
     suppression = Current.account.suppressions.find_by(address: "recipient@example.com")
     assert_equal "invalid", suppression.reason
-    assert_equal Suppression::LIFETIME.from_now.to_date, suppression.expires_at.to_date
     assert_equal "invalid", deliveries(:delivered).events.last.particulars["category"]
   end
 

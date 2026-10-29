@@ -42,7 +42,7 @@ GIT
 
 GIT
   remote: https://github.com/mailpiece/mailreport.git
-  revision: 76d8a21d39a552cb91709d4d7850009846f169b7
+  revision: cc6472233f2120235caae31eab4a71051526167a
   branch: main
   specs:
     mailreport (0.5.0)

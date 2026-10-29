@@ -3,7 +3,7 @@ module Delivery::Delivering
 
   PERMANENT_CATEGORIES = %i[ invalid full oversized ].freeze
 
-  SUPPRESSIBLE_CATEGORIES = %i[ invalid ].freeze
+  SUPPRESSIBLE_CATEGORIES = %i[ invalid full ].freeze
 
   RETRY_SCHEDULE = [ 15.minutes, 1.hour, 2.hours, 4.hours, 8.hours, 16.hours, 1.day ].freeze
 
@@ -67,8 +67,16 @@ module Delivery::Delivering
   end
 
   def exhaust
+    suppression_reason = exhausted_suppression_reason
+
     transaction do
       exhausted!
+
+      if suppression_reason
+        suppress(reason: suppression_reason)
+        suspend_forwarding_destination
+      end
+
       track_event("failed", rcpt_to: rcpt_to, reason: "exhausted")
     end
   end
@@ -163,6 +171,20 @@ module Delivery::Delivering
       end
 
       defer(result)
+    end
+
+    def exhausted_suppression_reason
+      if !message.system? && !relaying? && (attempt = last_attempt)
+        rejection = MailBounce.classify(response: attempt.output, sending_ip: Relay.own_addresses)
+
+        # A pause makes no attempt, so the last reply may be days old.
+        rejection.category if suppressible_when_exhausted?(rejection) && !held_by_pause?
+      end
+    end
+
+    # A mailbox is full however the server says so, but gone only when it says so permanently.
+    def suppressible_when_exhausted?(rejection)
+      rejection.category == :full || (rejection.category == :invalid && rejection.permanent?)
     end
 
     def suppress(reason:)

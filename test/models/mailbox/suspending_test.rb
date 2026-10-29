@@ -35,6 +35,14 @@ class Mailbox::SuspendingTest < ActiveSupport::TestCase
     assert @mailbox.reload.forward_confirmed_at.present?
   end
 
+  test "running out of retries on a full destination suspends forwarding" do
+    @delivery.attempts.create!(code: "452", output: "452 4.2.2 Mailbox full", mx_host: "mx.example.com")
+
+    @delivery.exhaust
+
+    assert_nil @mailbox.reload.forward_confirmed_at
+  end
+
   test "an async DSN reporting the destination invalid suspends forwarding" do
     @delivery.update!(status: :delivered)
 

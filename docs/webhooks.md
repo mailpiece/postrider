@@ -1,6 +1,6 @@
 # Webhooks
 
-Webhooks are how PostRider tells your app what's happening to your mail — the moment a message arrives, lands, or bounces. Point one or more HTTPS endpoints at your app, one domain at a time, from each domain's **Webhooks** page in the admin UI. A webhook only ever hears about its own domain's events. Each webhook has:
+Webhooks are how PostRider tells your app what's happening to your mail — the moment a message arrives, lands, or bounces. Point one or more HTTPS endpoints at your app, one domain at a time, from each domain's **Webhooks** page in the admin UI, or [through the API](api.md#managing-webhooks). A webhook only ever hears about its own domain's events. Each webhook has:
 
 - Subscribed event types (see below)
 - A per-webhook **signing secret** (HMAC-SHA256 in `X-Webhook-Signature` over the JSON body), generated when the webhook is created unless you give one, and changeable later; a secret you give is at least 16 characters

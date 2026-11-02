@@ -1,5 +1,5 @@
 class WebhooksController < ApplicationController
-  wrap_parameters :webhook, include: %i[ name url subscribed_actions ]
+  wrap_parameters :webhook, include: %i[ name url signing_secret subscribed_actions ]
 
   include DomainScoped
 
@@ -66,6 +66,6 @@ class WebhooksController < ApplicationController
     end
 
     def webhook_params
-      params.expect(webhook: [ :name, :url, subscribed_actions: [] ]).merge(domain_id: @domain.id)
+      params.expect(webhook: [ :name, :url, :signing_secret, subscribed_actions: [] ]).merge(domain_id: @domain.id)
     end
 end

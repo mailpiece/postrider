@@ -39,10 +39,17 @@ class Webhook < ApplicationRecord
 
   normalizes :subscribed_actions, with: ->(value) { Array.wrap(value).map(&:to_s).uniq & PERMITTED_ACTIONS }
   normalizes :url, with: ->(url) { url.to_s.strip }
+  normalizes :signing_secret, with: ->(secret) { secret.strip }
 
   validates :name, presence: true
+  validates :signing_secret, length: { minimum: 16 }
   validate :validate_url
   validate :validate_subscribed_actions_for_action_mailbox_relay
+
+  # Like a password, a blank secret keeps the current one, or lets one be generated.
+  def signing_secret=(secret)
+    super if secret.present?
+  end
 
   def activate
     update! active: true unless active?

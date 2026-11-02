@@ -26,6 +26,8 @@ class WebhooksControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "form[action=?] input[name=?][placeholder=?]", domain_webhooks_path(domains(:example)), "webhook[name]", "Name this webhook…"
     assert_select "label[for=webhook_url]", text: "Payload URL"
+    assert_select "label[for=webhook_signing_secret]", text: /Signing secret/
+    assert_select "input[type=password][name=?]:not([required])", "webhook[signing_secret]"
     assert_select "[data-controller=toggle-class] input.switch__input[data-toggle-class-target=checkbox]", count: Webhook::PERMITTED_ACTIONS.size
   end
 
@@ -38,6 +40,16 @@ class WebhooksControllerTest < ActionDispatch::IntegrationTest
     end
     assert_response :redirect
     assert_equal "Webhook added", flash[:notice]
+  end
+
+  test "creates a webhook with the signing secret given" do
+    confirm_sudo
+
+    post domain_webhooks_path(domains(:example)),
+      params: { webhook: { name: "Hooky", url: "https://example.com/h", signing_secret: "a-secret-of-our-own", subscribed_actions: %w[ inbound_email_received ] } }
+
+    assert_response :redirect
+    assert_equal "a-secret-of-our-own", domains(:example).webhooks.find_by!(name: "Hooky").signing_secret
   end
 
   test "creating a webhook with invalid attributes re-renders the form with its errors" do
@@ -83,6 +95,62 @@ class WebhooksControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to domain_webhook_path(domains(:example), webhook)
     assert_equal "Webhook updated", flash[:notice]
     assert_equal "Renamed", webhook.reload.name
+  end
+
+  test "edit renders a blank, optional signing secret field" do
+    confirm_sudo
+
+    get edit_domain_webhook_path(domains(:example), webhooks(:active))
+
+    assert_response :success
+    assert_select "label[for=webhook_signing_secret]", text: /keep the current secret/
+    assert_select "input[type=password][name=?]:not([required])", "webhook[signing_secret]"
+  end
+
+  test "updating a webhook changes its signing secret" do
+    confirm_sudo
+
+    webhook = webhooks(:active)
+
+    patch domain_webhook_path(domains(:example), webhook), params: { webhook: { name: "Renamed", signing_secret: "a-rotated-relay-password" } }
+
+    assert_redirected_to domain_webhook_path(domains(:example), webhook)
+    assert_equal "a-rotated-relay-password", webhook.reload.signing_secret
+  end
+
+  test "updating a webhook with a blank signing secret keeps the current one" do
+    confirm_sudo
+
+    webhook = webhooks(:active)
+
+    patch domain_webhook_path(domains(:example), webhook), params: { webhook: { name: "Renamed", signing_secret: "" } }
+
+    assert_redirected_to domain_webhook_path(domains(:example), webhook)
+    assert_equal "Renamed", webhook.reload.name
+    assert_equal "Wc4oqgMXpZGK8vYbJhT3sN2d", webhook.signing_secret
+  end
+
+  test "updating a webhook's signing secret over json" do
+    confirm_sudo
+
+    webhook = webhooks(:active)
+
+    patch domain_webhook_path(domains(:example), webhook), params: { webhook: { signing_secret: "a-rotated-relay-password" } }, as: :json
+
+    assert_response :success
+    assert_equal "a-rotated-relay-password", response.parsed_body["signing_secret"]
+  end
+
+  test "updating a webhook with a short signing secret re-renders the form with its errors" do
+    confirm_sudo
+
+    webhook = webhooks(:active)
+
+    patch domain_webhook_path(domains(:example), webhook), params: { webhook: { signing_secret: "too-short" } }
+
+    assert_response :unprocessable_entity
+    assert_select ".error-explanation__message", text: /too short/
+    assert_equal "Wc4oqgMXpZGK8vYbJhT3sN2d", webhook.reload.signing_secret
   end
 
   test "creating a webhook in the browser asks for a passkey first" do

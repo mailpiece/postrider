@@ -3,7 +3,7 @@
 Webhooks are how PostRider tells your app what's happening to your mail — the moment a message arrives, lands, or bounces. Point one or more HTTPS endpoints at your app, one domain at a time, from each domain's **Webhooks** page in the admin UI. A webhook only ever hears about its own domain's events. Each webhook has:
 
 - Subscribed event types (see below)
-- A per-webhook **signing secret** (HMAC-SHA256 in `X-Webhook-Signature` over the JSON body)
+- A per-webhook **signing secret** (HMAC-SHA256 in `X-Webhook-Signature` over the JSON body), generated when the webhook is created unless you give one, and changeable later; a secret you give is at least 16 characters
 - Safe, dependable delivery — sent in the background, never to an internal address, and paused automatically if your endpoint keeps failing
 
 ## Event types
@@ -115,7 +115,9 @@ A relay is the one path that hands you bytes without a fetch: PostRider POSTs th
 On the receiving Rails app, set:
 
 - `config.action_mailbox.ingress = :relay` in `config/environments/production.rb`
-- `RAILS_INBOUND_EMAIL_PASSWORD` (or `action_mailbox.ingress_password` in Rails credentials) to the webhook's **signing secret**, shown on the webhook's show page in the admin UI
+- `RAILS_INBOUND_EMAIL_PASSWORD` (or `action_mailbox.ingress_password` in Rails credentials) to the webhook's **signing secret**, shown on the webhook's show page in the admin UI. The relay ingress knows a single password, so an app that receives mail for several domains needs all their webhooks to carry the same secret; receiving on one domain keeps it to one webhook to change
+
+To rotate the password, give the webhook the new signing secret on its edit page, or `signing_secret` in a `PATCH`, and set the receiving app's `RAILS_INBOUND_EMAIL_PASSWORD` to it. Mail relayed between the two changes is refused with a `401`, so make them close together.
 
 For such a webhook, PostRider sends the raw RFC822 bytes of the original inbound email as the entire POST body, with `Content-Type: message/rfc822` and `Authorization: Basic base64("actionmailbox:<signing secret>")` — instead of the normal JSON payload and `X-Webhook-Signature` header. If you see a `401` or `415` from the receiving app, check the password and `Content-Type` handling first.
 

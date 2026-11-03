@@ -402,6 +402,17 @@ class SubmissionListenerTest < ActiveSupport::TestCase
     assert_match "Reply-To: help@unrelated.example", Message.order(:created_at).last.raw
   end
 
+  test "refuses a message whose header section passes 1 MB" do
+    message = "From: sender@example.com\r\nTo: recipient@example.com\r\n" +
+      ("X-Filler: #{"x" * 70}\r\n" * 16_000) + "\r\nBody.\r\n"
+
+    error = assert_raises(Net::SMTPFatalError) do
+      deliver(from: "sender@example.com", to: "recipient@example.com", message: message)
+    end
+
+    assert_match "552", error.message
+  end
+
   test "strips a client-supplied Authentication-Results header from the relayed bytes" do
     message = "From: sender@example.com\r\nTo: recipient@example.com\r\n" \
       "Authentication-Results: mx.example; dkim=pass header.d=victim.example\r\nSubject: Hi\r\n\r\nBody.\r\n"

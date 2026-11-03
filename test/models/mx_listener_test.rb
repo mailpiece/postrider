@@ -253,6 +253,17 @@ class MxListenerTest < ActiveSupport::TestCase
     assert_equal 2, inbound_email_count
   end
 
+  test "refuses a message whose header section passes 1 MB" do
+    raw = "Subject: Hi\r\n" + ("X-Filler: #{"x" * 70}\r\n" * 16_000) + "\r\nBody.\r\n"
+
+    error = assert_raises(Net::SMTPFatalError) do
+      deliver(from: "sender@example.com", to: "everyone@mx-listener-test.example", raw: raw)
+    end
+
+    assert_match "552", error.message
+    assert_equal 0, inbound_email_count
+  end
+
   test "detects a loop even when our own Received: stamp sits on a folded continuation line" do
     folded_stamps = Array.new(5) do |i|
       "Received: from relay#{i}.example (relay#{i}.example [10.0.0.#{i}])\r\n" \

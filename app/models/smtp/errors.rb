@@ -42,6 +42,10 @@ module Smtp
       status 550, "Requested action not taken: mailbox unavailable", enhanced: "5.6.0"
     end
 
+    class HeaderSectionTooLarge < MailSmtp::Error
+      status 552, "Requested mail action aborted: exceeded storage allocation", enhanced: "5.3.4"
+    end
+
     class LoopDetected < MailSmtp::Error
       status 554, "Transaction failed", enhanced: "5.4.6"
     end

@@ -23,6 +23,7 @@ class MxListener < SmtpListener
 
   def receive(session, io)
     body = io.read
+    raise Smtp::Errors::HeaderSectionTooLarge, "Header section too large" if HeaderSection.oversized?(body)
     raise Smtp::Errors::LoopDetected, "Loop detected" if looping?(body)
 
     source = Sourced::Source.new(received_header(session) + InboundAuthentication.strip(body))

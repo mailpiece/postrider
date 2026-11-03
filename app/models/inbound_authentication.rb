@@ -34,7 +34,7 @@ class InboundAuthentication
     end
 
     def genuine_fields(headers)
-      fields_in(headers).reject { |field| authentication_results?(field) }.join
+      fields_in(headers).reject { |field| receiver_verdict?(field) }.join
     end
 
     def fields_in(headers)
@@ -47,7 +47,8 @@ class InboundAuthentication
       end
     end
 
-    def authentication_results?(field)
-      field.match?(/\AAuthentication-Results[ \t]*:/i)
+    # A name may be folded before its colon, so whitespace there includes line breaks.
+    def receiver_verdict?(field)
+      field.match?(/\A(Authentication-Results|Received-SPF)\s*:/i)
     end
 end

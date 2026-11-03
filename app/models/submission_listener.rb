@@ -36,6 +36,7 @@ class SubmissionListener < SmtpListener
 
   def receive(session, io)
     body = io.read
+    raise Smtp::Errors::HeaderSectionTooLarge, "Header section too large" if HeaderSection.oversized?(body)
     submission = SmtpSubmission.new(body)
     raise Smtp::Errors::InvalidMessage, "Message must include a To header, a From header, and exactly one address in each identity header" unless submission.valid?
 

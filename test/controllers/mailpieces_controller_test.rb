@@ -180,6 +180,17 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_select "form[action=?]", mailpiece_path(mailpiece)
   end
 
+  test "the JSON show leaves out an inbound mailpiece's spam verdict" do
+    inbound_email = create_inbound_email
+    inbound_email.track_event "scored", action: "reject", score: 20.0, complete: true, symbols: []
+    sign_in_as :nonstaff
+
+    get mailpiece_path(inbound_email.mailpiece, format: :json)
+
+    assert_response :success
+    assert_not_includes response.body, "reject"
+  end
+
   test "the HTML show renders every authentication verdict an inbound mailpiece recorded" do
     inbound_email = create_inbound_email(raw: "From: Jane <jane@remote.example>\r\nSubject: Hi\r\n\r\nBody",
       spf: "fail", dkim: "pass", dmarc: "pass", dmarc_policy: "reject",

@@ -12,7 +12,8 @@ class MxListener < SmtpListener
     # Domainless <Postmaster> (RFC 5321 §4.5.1) is unroutable; reject before recipient_in calls it syntax.
     raise Smtp::Errors::RelayDenied, "Relay access denied for #{address}" if bare_postmaster?(address)
 
-    address = recipient_in(address)
+    # Mailboxes, the bounce address and VERP all match case-insensitively, so one spelling per recipient.
+    address = recipient_in(address).downcase
 
     if Rails.application.executor.wrap { Domain.accepts?(address) || Delivery::ReturnPath.address?(address) }
       address
@@ -30,7 +31,7 @@ class MxListener < SmtpListener
     digest = content_digest(session, body)
 
     Rails.application.executor.wrap do
-      session.envelope.to.each do |rcpt_to|
+      session.envelope.to.uniq.each do |rcpt_to|
         receive_for(rcpt_to, mail_from: session.envelope.from, source: source, digest: digest,
           ip: session.remote_ip, helo: session.helo)
       end

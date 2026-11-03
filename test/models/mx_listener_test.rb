@@ -125,6 +125,22 @@ class MxListenerTest < ActiveSupport::TestCase
     assert_equal "bounces@mx-listener-test.example", InboundEmail.order(:created_at).last.rcpt_to
   end
 
+  test "a recipient repeated in another case is received once, in lowercase" do
+    deliver(from: "sender@example.com",
+      to: %w[ everyone@mx-listener-test.example Everyone@MX-Listener-Test.example EVERYONE@mx-listener-test.EXAMPLE ],
+      raw: "Subject: Hi\r\n\r\nBody.\r\n")
+
+    assert_equal [ "everyone@mx-listener-test.example" ], InboundEmail.where(domain: @domain).pluck(:rcpt_to)
+  end
+
+  test "mail to the bounce_address in another case is still received as a bounce" do
+    @domain.account.setting.update!(bounce_address: "Bounces@mx-listener-test.example")
+
+    deliver(from: "sender@example.com", to: "BOUNCES@mx-listener-test.example", raw: "Subject: Hi\r\n\r\nBody.\r\n")
+
+    assert InboundEmail.order(:created_at).last.to_bounce_address?
+  end
+
   test "rejects mail to an unregistered local part when catch_all_policy is disabled" do
     @domain.update!(catch_all_policy: "disabled")
 

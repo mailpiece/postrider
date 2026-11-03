@@ -190,7 +190,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
 
     get mailpiece_path(inbound_email.mailpiece)
 
-    assert_select ".trail__sentence", text: "Spam check: no action, score −1.8. Passed SPF, DKIM, DMARC and ARC."
+    assert_select ".trail__sentence", text: "Spam check: no action, score −1.8. SPF, DKIM, DMARC and ARC passed."
   end
 
   test "the JSON show leaves out an inbound mailpiece's spam verdict" do

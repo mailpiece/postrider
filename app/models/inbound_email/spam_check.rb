@@ -44,11 +44,11 @@ class InboundEmail::SpamCheck
       phrases_sentence problems.sort_by.with_index { |symbol, index| [ -symbol[:weight].to_f, index ] }
     end
 
-    # The SPF, DKIM, DMARC and ARC passes read as one "Passed", then any other credit.
+    # The SPF, DKIM, DMARC and ARC passes read as one "… passed", then any other credit.
     def passes_sentence
       passes = @symbols.select { |symbol| pass?(symbol) }
       credits = @symbols.select { |symbol| !pass?(symbol) && symbol[:weight].to_f.negative? }
-      passed = "passed #{passes.map { |pass| pass[:name].delete_suffix("_PASS") }.to_sentence(last_word_connector: " and ")}" if passes.any?
+      passed = "#{passes.map { |pass| pass[:name].delete_suffix("_PASS") }.to_sentence(last_word_connector: " and ")} passed" if passes.any?
 
       phrases_sentence credits, leading: passed
     end

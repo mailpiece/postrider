@@ -27,7 +27,7 @@ A sending token is bound to a single verified domain.
 Each personal access token has one permission:
 
 - `read` — all `GET` endpoints (`GET /mailpieces`, `GET /mailpieces/:id`)
-- `write` — everything `read` allows, plus `DELETE /mailpieces/:id`, creating domains, checking their DNS and creating sending tokens
+- `write` — everything `read` allows, plus `DELETE /mailpieces/:id`, creating domains, checking their DNS, creating sending tokens and managing mailboxes and webhooks
 
 ## Creating a sending token
 
@@ -267,6 +267,143 @@ Returns `202` with no body. The check runs in the background: poll `GET /domains
 | `401`  | Missing or invalid personal access token, or a `read` token                       |
 | `403`  | Token's user is not an account admin, or the account/user is not active          |
 | `404`  | No such domain under this token's user                                            |
+
+## Reading a domain's DNS records
+
+Authenticate with a personal access token belonging to an account admin (`read` permission is sufficient):
+
+```bash
+curl https://postrider.example.com/123456789/domains/$DOMAIN_ID/dns_records \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/json"
+```
+
+Returns the records to publish, in publishing order, with what the last check found:
+
+```json
+{
+  "name": "lists.example.com",
+  "verified": true,
+  "checked_at": "2026-11-01T10:00:00.000Z",
+  "records": [
+    { "title": "Inbound", "type": "MX", "name": "lists.example.com", "value": "10 relay.example.", "status": "ok", "error": null },
+    { "title": "DKIM", "type": "TXT", "name": "postrider._domainkey.lists.example.com", "value": "v=DKIM1; ...", "status": "ok", "error": null },
+    { "title": "DMARC", "type": "TXT", "name": "_dmarc.lists.example.com", "value": "v=DMARC1; p=none; ...", "status": "ok", "error": null },
+    { "title": "Return-Path", "type": "CNAME", "name": "mailer.lists.example.com", "value": "relay.example.", "status": "missing", "error": "No CNAME record exists at mailer.lists.example.com" }
+  ]
+}
+```
+
+`name` and `value` are what to publish. `status` is `ok`, `missing` or `invalid`, and `null` until the domain's DNS has been checked, as `checked_at` is; `error` says what was wrong when it is not `ok`. The statuses are a snapshot: to refresh them, [check the domain's DNS](#checking-a-domains-dns) and read the records again.
+
+### Responses
+
+| Status | Cause                                                                             |
+| ------ | ---------------------------------------------------------------------------------- |
+| `200`  | Success                                                                           |
+| `401`  | Missing or invalid personal access token                                          |
+| `403`  | Token's user is not an account admin, or the account/user is not active          |
+| `404`  | No such domain under this token's user                                            |
+
+## Managing mailboxes
+
+A mailbox is an address the domain receives mail at; mail to `replies+anything@lists.example.com` is accepted for the mailbox `replies` too, but only mail to `replies@lists.example.com` itself is forwarded to its `forward_to`. Requires a `write` token belonging to an account admin (`read` suffices for the `GET`s):
+
+| Endpoint                                   | Does                                                                          |
+| ------------------------------------------ | ----------------------------------------------------------------------------- |
+| `GET /domains/:domain_id/mailboxes`        | Paged list, by local part; each entry carries `id`, `local_part` and `domain` |
+| `GET /domains/:domain_id/mailboxes/:id`    | One mailbox: `{ "id", "local_part", "domain", "forward_to", "forwarding" }`   |
+| `POST /domains/:domain_id/mailboxes`       | Adds one; returns `201` with the mailbox                                      |
+| `PATCH /domains/:domain_id/mailboxes/:id`  | Changes `forward_to` only; returns the mailbox                                |
+| `DELETE /domains/:domain_id/mailboxes/:id` | Removes it; returns `204`                                                     |
+
+```
+POST /123456789/domains/:domain_id/mailboxes
+Authorization: Bearer $ACCESS_TOKEN
+Content-Type: application/json
+
+{ "mailbox": { "local_part": "replies", "forward_to": null } }
+```
+
+Setting `forward_to` mails that address a confirmation, and `forwarding` stays `false` until it is confirmed. Each domain comes with `postmaster` and `dmarc-reports`, which can't be removed.
+
+### Example
+
+```bash
+curl https://postrider.example.com/123456789/domains/$DOMAIN_ID/mailboxes \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{ "mailbox": { "local_part": "replies" } }'
+```
+
+### Responses
+
+| Status | Cause                                                                             |
+| ------ | ---------------------------------------------------------------------------------- |
+| `200`  | Success (listing, showing or updating a mailbox)                                  |
+| `201`  | Created; returns `{ "id", "local_part", "domain", "forward_to", "forwarding" }`   |
+| `204`  | Removed, no body                                                                  |
+| `401`  | Missing or invalid personal access token, or a `read` token on a write            |
+| `403`  | Token's user is not an account admin, or the account/user is not active          |
+| `404`  | No such domain, or no such mailbox, under this token's user                      |
+| `422`  | Not a valid mailbox, or a reserved one on removal; returns `{ "field": [ ... ] }` |
+| `429`  | Too many creates and updates                                                      |
+
+A `422` means `local_part` is blank, not a valid mailbox or already taken, `forward_to` is not an address or is this mailbox, or the mailbox is `postmaster` or `dmarc-reports` (removal only). A `429` means more than 10 creates and updates in 3 minutes, or more than 5 in an hour that set `forward_to`.
+
+## Managing webhooks
+
+A webhook tells your app about a domain's mail; [webhooks.md](webhooks.md) has the event types and payloads. Requires a `write` token belonging to an account admin (`read` suffices for the `GET`s). The app asks for a passkey before a webhook is created or edited; a bearer-token request has no session to confirm with, so it goes straight through:
+
+| Endpoint                                               | Does                                                                          |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| `GET /domains/:domain_id/webhooks`                     | Paged list, by name                                                           |
+| `GET /domains/:domain_id/webhooks/:id`                 | One webhook                                                                   |
+| `POST /domains/:domain_id/webhooks`                    | Adds one; returns `201` with the webhook                                      |
+| `PATCH /domains/:domain_id/webhooks/:id`               | Changes `name`, `signing_secret`, `subscribed_actions`; returns the webhook   |
+| `DELETE /domains/:domain_id/webhooks/:id`              | Deletes it and its deliveries; returns `204`                                  |
+| `POST /domains/:domain_id/webhooks/:id/activation`     | Turns it on; returns `201` with the webhook                                   |
+| `DELETE /domains/:domain_id/webhooks/:id/activation`   | Turns it off; returns `204`                                                   |
+| `GET /domains/:domain_id/webhooks/:id/deliveries`      | Paged list of its deliveries, newest first                                    |
+
+Each delivery carries `id`, `state`, `request`, `response`, the `event` it carried (`id`, `action`, `created_at`), `created_at` and `updated_at`.
+
+```
+POST /123456789/domains/:domain_id/webhooks
+Authorization: Bearer $ACCESS_TOKEN
+Content-Type: application/json
+
+{ "webhook": { "name": "Replies", "url": "https://app.example.com/rails/action_mailbox/relay/inbound_emails", "subscribed_actions": ["inbound_email_received", "inbound_email_bounce_received"] } }
+```
+
+A webhook is `{ "id", "name", "active", "signing_secret", "subscribed_actions", "payload_url", "created_at", "url" }`: `payload_url` is where it posts, `url` is its own address in the API. `signing_secret` is generated when the webhook is added, unless you give one of at least 16 characters; a `PATCH` with a new one replaces it, as when [rotating a relay's password](webhooks.md#action-mailbox-relay-integration), and a blank one keeps the current secret. The `url` is fixed: to change it, delete the webhook and add another.
+
+`subscribed_actions` is any of `inbound_email_received`, `inbound_email_bounce_received`, `inbound_email_forwarded`, `delivery_delivered`, `delivery_deferred`, `delivery_failed`, `delivery_bounced`, `recipient_domain_paused`, `recipient_domain_resumed`, `sending_token_created`, `sending_token_revoked` and `sending_token_refused`; anything else is dropped. A webhook whose URL ends in `/rails/action_mailbox/relay/inbound_emails` is an [Action Mailbox relay](webhooks.md#action-mailbox-relay-integration) and may only subscribe to `inbound_email_received` and `inbound_email_bounce_received`.
+
+### Example
+
+```bash
+curl https://postrider.example.com/123456789/domains/$DOMAIN_ID/webhooks \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{ "webhook": { "name": "Replies", "url": "https://app.example.com/rails/action_mailbox/relay/inbound_emails", "subscribed_actions": ["inbound_email_received"] } }'
+```
+
+### Responses
+
+| Status | Cause                                                                             |
+| ------ | ---------------------------------------------------------------------------------- |
+| `200`  | Success (listing, showing or updating a webhook, or listing its deliveries)       |
+| `201`  | Created or activated; returns the webhook                                         |
+| `204`  | Deleted or deactivated, no body                                                   |
+| `401`  | Missing or invalid personal access token, or a `read` token on a write            |
+| `403`  | Token's user is not an account admin, or the account/user is not active          |
+| `404`  | No such domain, or no such webhook, under this token's user                      |
+| `422`  | Not a valid webhook; returns `{ "field": [ ... ] }`                               |
+
+A `422` means `name` is blank, `url` is not an `https://` URL, `signing_secret` is shorter than 16 characters, or a relay webhook subscribes to actions other than the two it may.
 
 ## Listing contacts
 

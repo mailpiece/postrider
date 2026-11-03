@@ -96,21 +96,23 @@ class InboundAuthentication::MailAuthTest < ActiveSupport::TestCase
     assert_equal "test; spf=pass; dkim=pass; dmarc=pass; arc=none", authenticate[:authentication_results]
   end
 
-  test "returns no verdict when the gem raises, and reports why" do
+  test "records a temporary error when the gem raises, and reports why" do
     ::MailAuth.stubs(:authenticate).raises(::MailResolver::Timeout, "timed out resolving TXT sender.example")
     Rails.error.expects(:report).with(instance_of(::MailResolver::Timeout), severity: :warning)
 
     verdicts = authenticate
 
-    assert_nil verdicts[:spf]
-    assert_nil verdicts[:dkim]
-    assert_nil verdicts[:dmarc]
+    assert_equal "temperror", verdicts[:spf]
+    assert_equal "temperror", verdicts[:dkim]
+    assert_equal "temperror", verdicts[:dmarc]
+    assert_equal "temperror", verdicts[:iprev]
     assert_nil verdicts[:dmarc_policy]
     assert_nil verdicts[:arc]
     assert_nil verdicts[:arc_sealer]
-    assert_nil verdicts[:iprev]
     assert_nil verdicts[:remote_host]
-    assert_nil verdicts[:authentication_results]
+    assert_not verdicts[:from_aligned]
+    assert_equal "#{Relay.hostname}; iprev=temperror; spf=temperror; dkim=temperror; dmarc=temperror",
+      verdicts[:authentication_results].gsub(/\r\n\s+/, " ")
   end
 
   private

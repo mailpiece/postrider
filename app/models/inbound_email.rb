@@ -102,6 +102,12 @@ class InboundEmail < ApplicationRecord
     RelayHeaders.new(self).prepended_to(raw)
   end
 
+  # Mail received before we stored the value still has to state an authserv-id.
+  def stated_authentication_results
+    authentication_results.presence ||
+      MailAuth::AuthenticationResults.new(spf: nil, dkim: nil, dmarc: nil, mta: Relay.hostname).to_s
+  end
+
   def parsed_email
     @parsed_email ||= ParsedEmail.new(raw)
   end

@@ -107,6 +107,20 @@ class SmtpDeliveryTest < ActiveSupport::TestCase
     end
   end
 
+  test "a reply in UTF-8 or in other bytes comes back as valid UTF-8" do
+    Surfguard.stubs(:resolve_public_ips).returns([ "93.184.216.34" ])
+    Net::SMTP.any_instance.stubs(:start).returns(true)
+    Net::SMTP.any_instance.stubs(:finish).returns(true)
+    Net::SMTP.any_instance.stubs(:mailfrom)
+    Net::SMTP.any_instance.stubs(:rcptto).raises(Net::SMTPFatalError.new("550 5.1.1 caf\xC3\xA9 \xFF unknown".b))
+
+    result = SmtpDelivery.new(raw: "raw", mail_from: "a@example.com", rcpt_to: "b@example.com", hosts: [ "mx.example" ]).deliver
+
+    assert_equal :hard_fail, result.status
+    assert_equal "550 5.1.1 café \uFFFD unknown", result.output
+    assert_predicate result.transcript, :valid_encoding?
+  end
+
   test "binds the socket to the default sending IP and HELOs with its name" do
     with_env(SENDING_IPS: "primary=203.0.113.10=mx1.example") do
       Surfguard.stubs(:resolve_public_ips).returns([ "93.184.216.34" ])

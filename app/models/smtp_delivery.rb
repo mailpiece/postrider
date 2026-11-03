@@ -15,7 +15,21 @@ class SmtpDelivery
   # Postfix's smtp_mx_address_limit: a domain listing hundreds of hosts can't hold a worker for hours.
   MAX_MX_HOSTS = 5
 
-  Result = Struct.new(:status, :code, :output, :mx_host, :transcript)
+  # Replies arrive as bytes; keep them as text so an attempt can always be saved.
+  Result = Struct.new(:status, :code, :output, :mx_host, :transcript) do
+    def output
+      utf8 self[:output]
+    end
+
+    def transcript
+      utf8 self[:transcript]
+    end
+
+    private
+      def utf8(text)
+        text&.dup&.force_encoding(Encoding::UTF_8)&.scrub
+      end
+  end
 
   TLS_CONTEXT = OpenSSL::SSL::SSLContext.new.tap do |context|
     context.verify_mode = OpenSSL::SSL::VERIFY_NONE

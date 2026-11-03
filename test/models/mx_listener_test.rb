@@ -348,7 +348,8 @@ class MxListenerTest < ActiveSupport::TestCase
     Socket.tcp("127.0.0.1", @port) do |socket|
       socket.gets
 
-      MxListener::MAX_JUNK_COMMANDS.times do
+      # Past the limit each junk command is still answered but counts as an error.
+      (MailSmtp::Server::MAX_JUNK_COMMANDS + MailSmtp::Server::MAX_EXCEPTIONS - 1).times do
         socket.write("NOOP\r\n")
         assert_match(/\A250/, socket.gets.to_s)
       end
@@ -827,7 +828,7 @@ class MxListenerTest < ActiveSupport::TestCase
     end
 
     def session_with(helo: nil, remote_ip: nil)
-      session = SmtpSession.new
+      session = MailSmtp::Session.new
       session.helo = helo
       session.remote_ip = remote_ip
       session

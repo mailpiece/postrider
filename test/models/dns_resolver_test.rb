@@ -40,7 +40,7 @@ class DnsResolverTest < ActiveSupport::TestCase
 
     error = assert_raises(DnsResolver::TransientError) { DnsResolver.txt("example.com") }
 
-    assert_equal "server failure resolving TXT example.com", error.message
+    assert_equal %(server failure resolving TXT "example.com"), error.message
     refute_includes error.message, "MailResolver"
   end
 

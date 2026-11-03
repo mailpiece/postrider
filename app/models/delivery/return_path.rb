@@ -26,9 +26,11 @@ class Delivery::ReturnPath
       end
     end
 
-    # Array so a future rotated secret can sit beside the current one.
+    # Signs with a key of its own. The raw secret_key_base still verifies bounces to mail sent
+    # before that key existed, and can go once such mail is past retrying.
     def verp
-      @verp ||= MailVerp.new(secret: [ Rails.application.secret_key_base ], prefix: "bounces")
+      @verp ||= MailVerp.new(secret: [ Rails.application.key_generator.generate_key("verp"), Rails.application.secret_key_base ],
+        prefix: "bounces")
     end
 
     private

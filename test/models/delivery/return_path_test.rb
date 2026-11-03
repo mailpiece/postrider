@@ -25,6 +25,19 @@ class Delivery::ReturnPathTest < ActiveSupport::TestCase
     assert_equal @delivery, Delivery::ReturnPath.find_delivery(address)
   end
 
+  test "address is signed with a key derived for return paths, not with secret_key_base itself" do
+    address = Delivery::ReturnPath.new(@delivery).address
+
+    assert_nil MailVerp.new(secret: Rails.application.secret_key_base, prefix: "bounces").identifier_for(address)
+  end
+
+  test "find_delivery still resolves an address signed with secret_key_base itself" do
+    address = MailVerp.new(secret: Rails.application.secret_key_base, prefix: "bounces")
+      .address_for(@delivery.id, domain: "mailer.example.com")
+
+    assert_equal @delivery, Delivery::ReturnPath.find_delivery(address)
+  end
+
   test "find_delivery rejects a tampered hmac" do
     tampered = tamper_hmac(Delivery::ReturnPath.new(@delivery).address)
 

@@ -180,7 +180,7 @@ class SubmissionListenerTest < ActiveSupport::TestCase
 
   test "redacts the credential from the debug wire log in every auth-value state" do
     listener = SubmissionListener.allocate
-    session = SmtpSession.new
+    session = MailSmtp::Session.new
 
     session.phase = :ready
     assert_equal "EHLO client.example", listener.send(:loggable_command, session, "EHLO client.example")

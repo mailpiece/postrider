@@ -104,6 +104,11 @@ module Relay
       Integer(ENV.fetch("SUBMISSION_MAX_PROCESSINGS", 10))
     end
 
+    # Defaults to half of MX_MAX_PROCESSINGS, as Postfix lets one client hold half its smtpd processes.
+    def mx_max_processings_per_ip
+      Integer(ENV.fetch("MX_MAX_PROCESSINGS_PER_IP") { [ mx_max_processings / 2, 1 ].max })
+    end
+
     def mx_max_connections
       Integer(ENV.fetch("MX_MAX_CONNECTIONS", 50))
     end

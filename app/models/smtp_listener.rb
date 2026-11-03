@@ -2,12 +2,7 @@ class SmtpListener < MailSmtp::Server
   include TlsReloadable
   include ErrorReporting
 
-  JUNK_COMMANDS = /\A(?:NOOP|RSET|VRFY|ETRN)\b/i
-  MAX_JUNK_COMMANDS = 100
   MAX_SESSION_DURATION = 10.minutes
-
-  # Phases where a line is base64 credential, not a command.
-  AUTH_VALUE_PHASES = %i[ auth_plain auth_login_user auth_login_pass ].freeze
 
   MAILBOX = %r{\A(?<local_part>[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*)@(?<domain>[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*)\z}
 
@@ -32,30 +27,7 @@ class SmtpListener < MailSmtp::Server
     session.greeting = hostname
   end
 
-  def build_session
-    SmtpSession.new
-  end
-
-  def process_line(session, line)
-    if junk_command?(session, line)
-      session.junk_commands += 1
-      raise MailSmtp::ServiceUnavailable, "Too many junk commands" if session.junk_commands > max_junk_commands
-    end
-
-    super
-  end
-
   private
-    # Skip AUTH continuations: base64 credentials can begin with command letters.
-    def junk_command?(session, line)
-      AUTH_VALUE_PHASES.exclude?(session.phase) && line.match?(JUNK_COMMANDS)
-    end
-
-    # Postfix's smtpd_junk_command_limit under stress.
-    def max_junk_commands
-      stressed? ? 1 : MAX_JUNK_COMMANDS
-    end
-
     # Empty address is the null reverse-path <> used by bounces (RFC 5321 §4.5.5).
     def sender_in(address)
       raise MailSmtp::InvalidParameters, "Malformed sender address" unless address.empty? || mailbox?(address)

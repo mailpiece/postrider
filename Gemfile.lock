@@ -15,7 +15,7 @@ GIT
 
 GIT
   remote: https://github.com/mailpiece/filter_path_parameters.git
-  revision: b834332305e6a2f7e89aafb25a0b4760cee57036
+  revision: 32de220f19e883ff248e5c242c37110c0c5a17fc
   branch: main
   specs:
     filter_path_parameters (0.1.0)
@@ -24,7 +24,7 @@ GIT
 
 GIT
   remote: https://github.com/mailpiece/mailauth.git
-  revision: 158653d60077f146c5a22740ee640f2b76fb214e
+  revision: 0f26999e693103ff8e29af4ab5d13ba09dea959b
   branch: main
   specs:
     mailauth (0.6.0)
@@ -34,7 +34,7 @@ GIT
 
 GIT
   remote: https://github.com/mailpiece/mailbounce.git
-  revision: 266537e88948f6f225c91cb754cc9528f5413409
+  revision: c8bcd4b8b88d969d3fb22848efa0ac60a440bb1a
   branch: main
   specs:
     mailbounce (0.6.0)
@@ -42,7 +42,7 @@ GIT
 
 GIT
   remote: https://github.com/mailpiece/mailreport.git
-  revision: cc6472233f2120235caae31eab4a71051526167a
+  revision: 767e7472cc49e3283118326ac712778369096226
   branch: main
   specs:
     mailreport (0.5.0)
@@ -51,7 +51,7 @@ GIT
 
 GIT
   remote: https://github.com/mailpiece/mailresolver.git
-  revision: af5fb4e9581bc6bfd0e5dd307f5e794ef684faaa
+  revision: 3e759a98711cd59a8320a350bc8371e0745987a3
   branch: main
   specs:
     mailresolver (0.6.0)
@@ -59,7 +59,7 @@ GIT
 
 GIT
   remote: https://github.com/mailpiece/mailsmtp.git
-  revision: d1dc2d8173b5a7d458b56ce88ef674bd3c15bce7
+  revision: 5793cf961f9e936c94d0bd3323198bb20f6bd15d
   branch: main
   specs:
     mailsmtp (0.7.0)
@@ -68,14 +68,14 @@ GIT
 
 GIT
   remote: https://github.com/mailpiece/mailverp.git
-  revision: 73836e058f0217087f1e4e9650fab83ad6992388
+  revision: 6c50558e9b5105b4d68272685044fa6a3443bfe1
   branch: main
   specs:
     mailverp (0.5.0)
 
 GIT
   remote: https://github.com/mailpiece/mta_sts.git
-  revision: 1c08d45666662fcf26948051edffa821fb892064
+  revision: 42c715c6f39da1f5040366a02b37048b9906fbdb
   branch: main
   specs:
     mta_sts (0.6.0)

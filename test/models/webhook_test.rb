@@ -40,6 +40,36 @@ class WebhookTest < ActiveSupport::TestCase
     assert webhook.delinquency_tracker.present?
   end
 
+  test "keeps a signing secret given on create" do
+    webhook = domains(:example).webhooks.create!(name: "Given", url: "https://example.com/h", signing_secret: "a-secret-of-our-own")
+    assert_equal "a-secret-of-our-own", webhook.reload.signing_secret
+  end
+
+  test "strips a given signing secret" do
+    assert_equal "x", domains(:example).webhooks.build(signing_secret: " x ").signing_secret
+  end
+
+  test "generates a signing secret when a blank one is given" do
+    webhook = domains(:example).webhooks.create!(name: "Fresh", url: "https://example.com/h", signing_secret: "")
+    assert webhook.signing_secret.present?
+  end
+
+  test "changes the signing secret given on update" do
+    webhooks(:active).update!(signing_secret: "a-rotated-relay-password")
+    assert_equal "a-rotated-relay-password", webhooks(:active).reload.signing_secret
+  end
+
+  test "keeps the current signing secret when a blank one is given on update" do
+    webhooks(:active).update!(signing_secret: " ")
+    assert_equal "Wc4oqgMXpZGK8vYbJhT3sN2d", webhooks(:active).reload.signing_secret
+  end
+
+  test "rejects a signing secret shorter than 16 characters" do
+    webhook = domains(:example).webhooks.build(name: "Short", url: "https://example.com/h", signing_secret: "too-short")
+    assert_not webhook.valid?
+    assert_includes webhook.errors[:signing_secret], "is too short (minimum is 16 characters)"
+  end
+
   test "for_action_mailbox_relay? matches the Action Mailbox relay ingress URL" do
     webhook = domains(:example).webhooks.build(name: "Relay",
       url: "https://example.com/rails/action_mailbox/relay/inbound_emails")

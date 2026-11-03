@@ -107,6 +107,15 @@ class DeliveryTest < ActiveSupport::TestCase
     assert_nil @delivery.next_retry_at
   end
 
+  test "a reply with bytes outside UTF-8 is kept as text and the delivery is not retried" do
+    stub_smtp(:sent, "250", "250 2.0.0 accept\xC3\xA9 \xFF".b)
+
+    @delivery.deliver
+
+    assert @delivery.reload.delivered?
+    assert_equal "250 2.0.0 accepté \uFFFD", @delivery.attempts.last.output
+  end
+
   test "a successful send tracks a delivery_delivered event" do
     stub_smtp(:sent, "250", "OK")
 

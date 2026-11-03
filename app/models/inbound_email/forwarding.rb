@@ -87,16 +87,10 @@ module InboundEmail::Forwarding
     # A message we can't seal still forwards: the seal is a record, not a condition.
     def sealed(forwardable)
       Relay::SealingKey.instance.seal(forwardable,
-        authentication_results: sealed_results, chain_status: sealed_chain_status)
+        authentication_results: stated_authentication_results, chain_status: sealed_chain_status)
     rescue StandardError => error
       Rails.error.report(error, severity: :warning)
       forwardable
-    end
-
-    # Mail received before we stored the value still has to state an authserv-id.
-    def sealed_results
-      authentication_results.presence ||
-        MailAuth::AuthenticationResults.new(spf: nil, dkim: nil, dmarc: nil, mta: Relay.hostname).to_s
     end
 
     # RFC 8617 §5.1.3 closes a chain already sealed cv=fail, but one overall status can't

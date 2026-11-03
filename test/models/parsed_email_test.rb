@@ -100,12 +100,25 @@ class ParsedEmailTest < ActiveSupport::TestCase
     assert_empty ParsedEmail.new("not a real email").stored_attachments
   end
 
-  test "a message nested too deep to parse is treated as unparseable" do
+  test "a message nested past 50 multiparts keeps its header but walks no parts" do
     parsed = assert_nothing_raised { ParsedEmail.new(deeply_nested_raw) }
 
-    assert_not parsed.present?
+    assert parsed.present?
+    assert_equal "Deep", parsed.subject
+    assert_equal "a@example.com", parsed.from_address
     assert_nil parsed.text_body
     assert_empty parsed.stored_attachments
+  end
+
+  test "a message nested 300 deep, which mail could still walk, is read from its header alone" do
+    parsed = ParsedEmail.new(deeply_nested_raw(depth: 300))
+
+    assert_equal "Deep", parsed.subject
+    assert_nil parsed.text_body
+  end
+
+  test "a message nested a few levels deep still has its parts walked" do
+    assert_equal "Body", ParsedEmail.new(deeply_nested_raw(depth: 5)).text_body.strip
   end
 
   test "enumerates every attachment part, inline images included, for extraction" do

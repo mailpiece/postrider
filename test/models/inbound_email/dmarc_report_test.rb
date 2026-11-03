@@ -41,6 +41,25 @@ class InboundEmail::DmarcReportTest < ActiveSupport::TestCase
     assert_equal report, email.dmarc_report
   end
 
+  test "tries at most three attachments that look like a report" do
+    pictures = Array.new(10) { picture_part }
+    unreadable = Array.new(5) { attachment_part("not xml at all") }
+    email = create_inbound_email(rcpt_to: "dmarc-reports@example.com", raw: raw_with_parts(*pictures, *unreadable))
+    email.extract_attachments
+
+    MailReport::Dmarc.expects(:parse).times(3).returns(nil)
+
+    assert_nil email.dmarc_report
+  end
+
+  test "finds a report that is the first XML, gzip or zip attachment after many others" do
+    pictures = Array.new(10) { picture_part }
+    email = create_inbound_email(rcpt_to: "dmarc-reports@example.com", raw: raw_with_parts(*pictures, attachment_part(AGGREGATE_XML)))
+    email.extract_attachments
+
+    assert_equal "google.com", email.dmarc_report.organization
+  end
+
   private
     AGGREGATE_XML = <<~XML.freeze
       <?xml version="1.0" encoding="UTF-8" ?>
@@ -70,6 +89,10 @@ class InboundEmail::DmarcReportTest < ActiveSupport::TestCase
     XML
 
     def raw_with_report(*xmls)
+      raw_with_parts(*xmls.map { |xml| attachment_part(xml) })
+    end
+
+    def raw_with_parts(*parts)
       <<~EOM
         From: noreply-dmarc-support@google.com
         To: dmarc-reports@example.com
@@ -80,7 +103,7 @@ class InboundEmail::DmarcReportTest < ActiveSupport::TestCase
         Content-Type: text/plain
 
         see attached
-        #{xmls.map { |xml| attachment_part(xml) }.join}--MIX--
+        #{parts.join}--MIX--
       EOM
     end
 
@@ -92,6 +115,17 @@ class InboundEmail::DmarcReportTest < ActiveSupport::TestCase
         Content-Transfer-Encoding: base64
 
         #{Base64.strict_encode64(xml)}
+      PART
+    end
+
+    def picture_part
+      <<~PART
+        --MIX
+        Content-Type: image/png; name="picture.png"
+        Content-Disposition: attachment; filename="picture.png"
+        Content-Transfer-Encoding: base64
+
+        #{Base64.strict_encode64("a picture, not a report")}
       PART
     end
 end

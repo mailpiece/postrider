@@ -189,12 +189,21 @@ class InboundEmail::PayloadTest < ActiveSupport::TestCase
     assert_not payload.key?(:id)
   end
 
-  test "a message nested too deep to parse still returns the envelope sender without raising" do
+  test "a message nested too deep to walk still returns its sender without raising" do
     email = InboundEmail.new(mail_from: "a@test.com", rcpt_to: "b@test.com", raw: deeply_nested_raw)
 
     payload = assert_nothing_raised { InboundEmail::Payload.new(email).to_h }
 
-    assert_equal "a@test.com", payload[:from]
+    assert_equal "a@example.com", payload[:from]
+  end
+
+  test "a message nested 300 deep is read from its header alone" do
+    email = InboundEmail.new(mail_from: "a@test.com", rcpt_to: "b@test.com", raw: deeply_nested_raw(depth: 300))
+
+    payload = InboundEmail::Payload.new(email).to_h
+
+    assert_equal "Deep", payload[:subject]
+    assert_nil payload[:text]
   end
 
   test "carries the parsed DMARC report for mail sent to the dmarc-reports address" do

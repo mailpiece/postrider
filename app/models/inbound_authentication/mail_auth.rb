@@ -16,14 +16,14 @@ class InboundAuthentication::MailAuth
   end
 
   def verdicts
-    result = authenticate
+    result = authenticate || undetermined
 
     {
-      spf: result&.spf&.status, dkim: result&.dkim&.status,
-      dmarc: result&.dmarc&.status, dmarc_policy: result&.dmarc&.policy,
-      arc: result&.arc&.status, arc_sealer: result&.arc&.newest&.seal&.domain,
-      iprev: result&.iprev&.status, remote_host: result&.iprev&.name,
-      from_aligned: from_aligned?(result), authentication_results: result&.authentication_results
+      spf: result.spf&.status, dkim: result.dkim&.status,
+      dmarc: result.dmarc&.status, dmarc_policy: result.dmarc&.policy,
+      arc: result.arc&.status, arc_sealer: result.arc&.newest&.seal&.domain,
+      iprev: result.iprev&.status, remote_host: result.iprev&.name,
+      from_aligned: from_aligned?(result), authentication_results: result.authentication_results
     }
   end
 
@@ -37,13 +37,20 @@ class InboundAuthentication::MailAuth
       nil
     end
 
+    # A check that could not finish still states its result, so ours is the first a reader finds.
+    def undetermined
+      spf = ::MailAuth::SpfResult.new(status: ::MailAuth::Status::TEMPERROR)
+      dkim = ::MailAuth::DkimResult.new(signatures: [ ::MailAuth::Signature.new(status: ::MailAuth::Status::TEMPERROR) ])
+      dmarc = ::MailAuth::DmarcResult.new(status: ::MailAuth::Status::TEMPERROR)
+      iprev = ::MailAuth::IprevResult.new(status: ::MailAuth::Status::TEMPERROR)
+
+      ::MailAuth::Result.new(spf:, dkim:, dmarc:, iprev:,
+        authentication_results: ::MailAuth::AuthenticationResults.new(spf:, dkim:, dmarc:, iprev:, mta: Relay.hostname).to_s)
+    end
+
     # From vouched by aligned DKIM/SPF even without a published DMARC policy.
     def from_aligned?(result)
-      if result.nil?
-        false
-      else
-        aligned_dkim?(result) || aligned_spf?(result)
-      end
+      aligned_dkim?(result) || aligned_spf?(result)
     end
 
     def aligned_dkim?(result)
@@ -51,9 +58,11 @@ class InboundAuthentication::MailAuth
     end
 
     def aligned_spf?(result)
-      from_domain = ::MailAuth::Message.new(@data).header_from_domain
-
-      result.spf&.status == "pass" && from_domain.present? && result.spf.domain.present? &&
-        ::MailAuth::Dmarc::Alignment.aligned?(from_domain, result.spf.domain, strict: false)
+      if result.spf&.status == "pass" && result.spf.domain.present?
+        from_domain = ::MailAuth::Message.new(@data).header_from_domain
+        from_domain.present? && ::MailAuth::Dmarc::Alignment.aligned?(from_domain, result.spf.domain, strict: false)
+      else
+        false
+      end
     end
 end

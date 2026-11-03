@@ -1,14 +1,15 @@
 class SmtpSubmission
-  DIRECTIVE_HEADERS = /\A(x-postrider-tags|x-list-unsubscribe)[ \t]*:/i
+  # A name may be folded before its colon, so each pattern allows any whitespace there.
+  DIRECTIVE_HEADERS = /\A(x-postrider-tags|x-list-unsubscribe)\s*:/i
 
   RECEIVER_HEADERS =
-    /\A(authentication-results|received-spf|received|arc-seal|arc-message-signature|arc-authentication-results)[ \t]*:/i
+    /\A(authentication-results|received-spf|received|arc-seal|arc-message-signature|arc-authentication-results)\s*:/i
 
-  MESSAGE_ID_HEADER = /\Amessage-id[ \t]*:/i
+  MESSAGE_ID_HEADER = /\Amessage-id\s*:/i
 
-  DATE_HEADER = /\Adate[ \t]*:/i
+  DATE_HEADER = /\Adate\s*:/i
 
-  LIST_UNSUBSCRIBE_HEADER = /\A(list-unsubscribe|list-unsubscribe-post)[ \t]*:/i
+  LIST_UNSUBSCRIBE_HEADER = /\A(list-unsubscribe|list-unsubscribe-post)\s*:/i
 
   IDENTITY_HEADERS = %w[ from sender ]
 
@@ -117,7 +118,7 @@ class SmtpSubmission
     end
 
     def records_for(name)
-      header_records.select { |record| record.match?(/\A#{Regexp.escape(name)}[ \t]*:/i) }
+      header_records.select { |record| record.match?(/\A#{Regexp.escape(name)}\s*:/i) }
     end
 
     def header?(name)

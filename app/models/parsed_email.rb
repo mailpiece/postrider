@@ -3,10 +3,24 @@ require "mail"
 class ParsedEmail
   CID_SOURCE = /src=(?<quote>["'])cid:(?<cid>[^"']+)\k<quote>/i
 
+  # Real mail rarely nests past 5 levels, and walking hundreds takes seconds. The count of
+  # multipart entities bounds the nesting from above without parsing anything.
+  MAX_MULTIPARTS = 50
+
+  MULTIPART = %r{^content-type:\s*multipart/}i
+
+  # Past MAX_MULTIPARTS only the header is read: the message keeps its subject and sender, without parts.
+  def self.mail(raw)
+    if raw.b.scan(MULTIPART).size > MAX_MULTIPARTS
+      Mail.new(HeaderSection.of(raw))
+    else
+      Mail.new(raw).tap(&:all_parts)
+    end
+  end
+
   def initialize(raw)
     @source = raw.to_s
-    @mail = Mail.new(@source)
-    @mail.all_parts
+    @mail = self.class.mail(@source)
   rescue StandardError, SystemStackError
     @mail = nil
   end

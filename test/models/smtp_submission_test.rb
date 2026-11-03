@@ -120,6 +120,20 @@ class SmtpSubmissionTest < ActiveSupport::TestCase
     assert_match "Subject: Hi", submission.raw
   end
 
+  test "strips a client-supplied Authentication-Results whose name is folded before its colon" do
+    submission = SmtpSubmission.new("From: a@example.com\r\nTo: b@example.com\r\n" \
+      "Authentication-Results\r\n : mx.example; dkim=pass header.d=other.example\r\nSubject: Hi\r\n\r\nBody")
+
+    assert_no_match(/other\.example/, submission.raw)
+    assert_match "Subject: Hi", submission.raw
+  end
+
+  test "is invalid when a second From header has its name folded before its colon" do
+    submission = SmtpSubmission.new("From: a@example.com\r\nFrom\r\n : c@other.example\r\nTo: b@example.com\r\n\r\nBody")
+
+    assert_not submission.valid?
+  end
+
   test "strips client-supplied ARC headers" do
     submission = SmtpSubmission.new("From: a@example.com\r\nTo: b@example.com\r\n" \
       "ARC-Seal: i=1; a=rsa-sha256; d=evil.example\r\n" \

@@ -49,6 +49,32 @@ class InboundAuthenticationTest < ActiveSupport::TestCase
     end
   end
 
+  test "strips an Authentication-Results whose name is folded before its colon" do
+    [
+      "Authentication-Results\r\n : relay.example; dkim=pass header.d=trusted.example",
+      "Authentication-Results\r\n\t: relay.example; dkim=pass header.d=trusted.example"
+    ].each do |folded|
+      stripped = InboundAuthentication.strip("#{folded}\r\n#{RAW}")
+
+      refute_includes stripped, "trusted.example", "failed to strip: #{folded.inspect}"
+      assert_includes stripped, "Subject: Hello"
+    end
+  end
+
+  test "strips an inbound Received-SPF" do
+    stripped = InboundAuthentication.strip("Received-SPF\r\n : pass (relay.example: trusted.example)\r\n client-ip=192.0.2.1\r\n#{RAW}")
+
+    refute_includes stripped, "trusted.example"
+    refute_includes stripped, "client-ip"
+    assert_includes stripped, "Subject: Hello"
+  end
+
+  test "keeps ARC-Authentication-Results, which an ARC seal signs" do
+    sealed = "ARC-Authentication-Results: i=1; upstream.example; dmarc=pass\r\n#{RAW}"
+
+    assert_includes InboundAuthentication.strip(sealed), "ARC-Authentication-Results: i=1; upstream.example; dmarc=pass"
+  end
+
   test "strips an Authentication-Results with deeply nested parens cheaply, never entering a quadratic parse" do
     nested = "#{"(" * 50_000}#{")" * 50_000}"
     pathological = "Authentication-Results: #{nested} relay.example; dkim=pass header.d=trusted.example"

@@ -3,6 +3,10 @@ require "test_helper"
 class InboundEmail::RelayHeadersTest < ActiveSupport::TestCase
   RAW = "From: a@test.com\r\nSubject: Hello\r\n\r\nA body.\r\n".freeze
 
+  setup do
+    stub_env RELAY_HOSTNAME: "mx.example"
+  end
+
   test "names the mailbox the message arrived at, and the mailpiece" do
     email = create_email(rcpt_to: "support@example.com")
 
@@ -19,10 +23,10 @@ class InboundEmail::RelayHeadersTest < ActiveSupport::TestCase
       "Authentication-Results: mx.test; spf=pass smtp.mailfrom=a@test.com; dkim=pass header.d=test.com"
   end
 
-  test "omits the authentication results when we concluded none, so an absent header never reads as a pass" do
+  test "states no results when we concluded none, so the first Authentication-Results is always ours" do
     email = create_email
 
-    assert_no_match(/Authentication-Results/i, header_section(email.relayable_raw))
+    assert_includes header_section(email.relayable_raw), "Authentication-Results: mx.example;  none"
   end
 
   test "leaves the original message untouched below its own headers" do
@@ -37,7 +41,7 @@ class InboundEmail::RelayHeadersTest < ActiveSupport::TestCase
     headers = header_section(email.relayable_raw)
 
     assert_includes headers, "Delivered-To: support@example.com Bcc: elsewhere@example.com"
-    assert_equal 2, headers.lines.count
+    assert_no_match(/^Bcc:/, headers)
   end
 
   test "an incinerated message has nothing to relay" do

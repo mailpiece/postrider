@@ -308,4 +308,10 @@ class RelayTest < ActiveSupport::TestCase
       assert_nil Relay.default_sending_ip
     end
   end
+
+  test "mailscore? is true only when MAILSCORE_URL is set" do
+    with_env(MAILSCORE_URL: "http://localhost:8080") { assert Relay.mailscore? }
+    with_env(MAILSCORE_URL: "") { assert_not Relay.mailscore? }
+    with_env(MAILSCORE_URL: nil) { assert_not Relay.mailscore? }
+  end
 end

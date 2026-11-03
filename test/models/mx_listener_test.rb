@@ -31,6 +31,15 @@ class MxListenerTest < ActiveSupport::TestCase
     assert_equal "sender@example.com", inbound_email.mail_from
   end
 
+  test "keeps the client's address and HELO on the inbound email" do
+    deliver(from: "sender@example.com", to: "everyone@mx-listener-test.example", raw: "Subject: Hi\r\n\r\nBody.\r\n",
+      helo: "client.sender.example")
+
+    inbound_email = InboundEmail.order(:created_at).last
+    assert_equal "127.0.0.1", inbound_email.remote_ip
+    assert_equal "client.sender.example", inbound_email.helo
+  end
+
   test "persists mailauth's SPF, DKIM, and DMARC verdicts on the inbound email" do
     stub_mailauth(spf: "pass", dkim: "pass", dmarc: "pass")
 

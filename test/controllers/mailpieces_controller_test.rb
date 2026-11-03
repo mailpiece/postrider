@@ -180,6 +180,19 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_select "form[action=?]", mailpiece_path(mailpiece)
   end
 
+  test "the HTML show tells a passing spam check in the history" do
+    inbound_email = create_inbound_email
+    inbound_email.track_event "scored", action: "no_action", score: -1.8, complete: true, symbols: [
+      [ "SPF_PASS", -0.2, "SPF passed", "example.com" ], [ "DKIM_PASS", -0.1, "DKIM signature valid", "example.com" ],
+      [ "DMARC_PASS", -0.5, "DMARC passed", "example.com" ], [ "ARC_PASS", -1.0, "ARC chain valid" ],
+      [ "DMARC_NONE", 0.0, "No DMARC record" ], [ "GREYLISTED", 0.0, nil, "pass" ] ]
+    sign_in_as :nonstaff
+
+    get mailpiece_path(inbound_email.mailpiece)
+
+    assert_select ".trail__sentence", text: "Spam check: no action, score −1.8. Passed SPF, DKIM, DMARC and ARC."
+  end
+
   test "the JSON show leaves out an inbound mailpiece's spam verdict" do
     inbound_email = create_inbound_email
     inbound_email.track_event "scored", action: "reject", score: 20.0, complete: true, symbols: []

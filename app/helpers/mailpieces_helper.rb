@@ -91,6 +91,7 @@ module MailpiecesHelper
       case event.action
       when "inbound_email_forwarded" then [ "Forwarded", event.particulars["forward_to"].presence ].compact.join(" to ")
       when "inbound_email_held"      then held_explanation(event.particulars["reason"])
+      when "inbound_email_scored"    then InboundEmail::SpamCheck.new(event.particulars).sentence
       else
         event.description
       end

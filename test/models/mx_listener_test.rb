@@ -375,6 +375,24 @@ class MxListenerTest < ActiveSupport::TestCase
     end
   end
 
+  test "caps the messages one address may have processed at once" do
+    assert_equal Relay.mx_max_processings_per_ip, @listener.instance_variable_get(:@max_processings_per_ip)
+
+    with_mx_listener(MX_MAX_PROCESSINGS_PER_IP: 2) do |port|
+      first, second = 2.times.map { start_data(port) }
+      assert_match(/\A354/, first.gets.to_s)
+      assert_match(/\A354/, second.gets.to_s)
+
+      third = start_data(port)
+      assert_match(/\A451 4\.7\.0/, third.gets.to_s)
+
+      other = start_data(port, from: "127.0.0.2")
+      assert_match(/\A354/, other.gets.to_s)
+    ensure
+      [ first, second, third, other ].compact.each(&:close)
+    end
+  end
+
   test "refuses a message that streams past the inbound size limit and drops the connection" do
     with_inbound_size_limit(1.kilobyte) do |port|
       Socket.tcp("127.0.0.1", port) do |socket|
@@ -814,8 +832,12 @@ class MxListenerTest < ActiveSupport::TestCase
     end
 
     # max_message_size is read at construct time, so a smaller ceiling needs its own listener.
-    def with_inbound_size_limit(bytes)
-      with_env(INBOUND_MAX_MESSAGE_SIZE: bytes) do
+    def with_inbound_size_limit(bytes, &block)
+      with_mx_listener(INBOUND_MAX_MESSAGE_SIZE: bytes, &block)
+    end
+
+    def with_mx_listener(**env)
+      with_env(**env) do
         port = free_port
         listener = start_listener(MxListener, "MX_PORT", port)
 
@@ -825,6 +847,23 @@ class MxListenerTest < ActiveSupport::TestCase
           stop_listener(listener)
         end
       end
+    end
+
+    # Leaves the socket waiting for the reply to DATA. Any 127/8 address is loopback on
+    # Linux; macOS answers only on 127.0.0.1 unless another is aliased.
+    def start_data(port, from: "127.0.0.1")
+      socket = Socket.tcp("127.0.0.1", port, from)
+      socket.gets
+
+      [ "HELO test.client.example", "MAIL FROM:<sender@example.com>", "RCPT TO:<everyone@mx-listener-test.example>" ].each do |command|
+        socket.write("#{command}\r\n")
+        socket.gets
+      end
+
+      socket.write("DATA\r\n")
+      socket
+    rescue Errno::EADDRNOTAVAIL
+      skip "#{from} is not a local address here"
     end
 
     def session_with(helo: nil, remote_ip: nil)

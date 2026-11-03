@@ -163,6 +163,20 @@ class RelayTest < ActiveSupport::TestCase
     end
   end
 
+  test "mx_max_processings_per_ip defaults to half of MX_MAX_PROCESSINGS, at least 1, and reads its variable" do
+    with_env(MX_MAX_PROCESSINGS: 10, MX_MAX_PROCESSINGS_PER_IP: nil) do
+      assert_equal 5, Relay.mx_max_processings_per_ip
+    end
+
+    with_env(MX_MAX_PROCESSINGS: 1, MX_MAX_PROCESSINGS_PER_IP: nil) do
+      assert_equal 1, Relay.mx_max_processings_per_ip
+    end
+
+    with_env(MX_MAX_PROCESSINGS: 10, MX_MAX_PROCESSINGS_PER_IP: 3) do
+      assert_equal 3, Relay.mx_max_processings_per_ip
+    end
+  end
+
   test "bulk_messages_per_day defaults to 2880 for Outlook.com and Yahoo and 43200 elsewhere, and reads their variables" do
     with_env(BULK_OUTLOOK_MESSAGES_PER_DAY: nil, BULK_YAHOO_MESSAGES_PER_DAY: nil, BULK_GMAIL_MESSAGES_PER_DAY: nil, BULK_OTHER_MESSAGES_PER_DAY: nil) do
       assert_equal 2880, Relay.bulk_messages_per_day("outlook")

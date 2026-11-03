@@ -60,6 +60,7 @@ class MxListener < SmtpListener
       {
         port: Relay.mx_port,
         max_processings: Relay.mx_max_processings,
+        max_processings_per_ip: Relay.mx_max_processings_per_ip,
         max_connections: Relay.mx_max_connections,
         max_connections_per_ip: Relay.mx_max_connections_per_ip,
         max_messages_per_ip: Relay.mx_max_messages_per_ip,

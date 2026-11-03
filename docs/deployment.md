@@ -356,6 +356,7 @@ Every variable PostRider reads, A–Z. Provide them however your deployment does
 | `MX_MAX_CONNECTIONS_PER_IP` / `SUBMISSION_MAX_CONNECTIONS_PER_IP` | `10` / `30` | Concurrent connections from a single IP |
 | `MX_MAX_MESSAGES_PER_IP` | `20` | Messages one IP may start per minute on the MX listener; the next `MAIL FROM` gets a `450` |
 | `MX_MAX_PROCESSINGS` / `SUBMISSION_MAX_PROCESSINGS` | `10` | Messages processed concurrently per listener. Also sizes the database pool |
+| `MX_MAX_PROCESSINGS_PER_IP` | half of `MX_MAX_PROCESSINGS`, at least `1` | Messages one IP may have processed at once on the MX listener; a further `DATA` gets a `451`. Defaults to half of `MX_MAX_PROCESSINGS`, as Postfix lets one client hold half its smtpd processes |
 | `MX_MAX_RECIPIENTS` | `50` | Recipients per inbound SMTP transaction; further `RCPT TO`s get a `452` |
 | `MX_MAX_TLS_SESSIONS_PER_IP` / `SUBMISSION_MAX_TLS_SESSIONS_PER_IP` | `60` | STARTTLS handshakes one IP may start per minute on each listener; the next gets a `454` |
 | `MX_PORT` | `25` (`2525` in development) | Inbound listener port |

@@ -3,8 +3,7 @@ require "mail"
 class Mailpiece::Content
   def initialize(postable)
     @postable = postable
-    @mail = Mail.new(postable.raw)
-    @mail.all_parts
+    @mail = ParsedEmail.mail(postable.raw.to_s)
   rescue StandardError, SystemStackError
     @mail = nil
   end

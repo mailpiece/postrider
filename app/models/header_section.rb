@@ -3,6 +3,10 @@
 module HeaderSection
   MAX_BYTES = 1.megabyte
 
+  def self.of(raw)
+    raw.byteslice(0, raw.b.index(/\r?\n\r?\n/) || raw.bytesize)
+  end
+
   def self.oversized?(raw)
     raw.bytesize > MAX_BYTES && !raw.byteslice(0, MAX_BYTES + 4).b.match?(/\r?\n\r?\n/)
   end

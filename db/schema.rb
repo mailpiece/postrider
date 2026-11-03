@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.2].define(version: 2026_10_29_120000) do
+ActiveRecord::Schema[8.2].define(version: 2026_11_03_120000) do
   create_table "accesses", id: :uuid, force: :cascade do |t|
     t.uuid "account_id", null: false
     t.uuid "user_id", null: false
@@ -249,6 +249,8 @@ ActiveRecord::Schema[8.2].define(version: 2026_10_29_120000) do
     t.text "authentication_results", limit: 65535
     t.string "iprev", limit: 255
     t.string "remote_host", limit: 255
+    t.string "remote_ip", limit: 255
+    t.string "helo", limit: 255
     t.index ["account_id", "created_at"], name: "index_inbound_emails_on_account_id_and_created_at"
     t.index ["account_id", "digest", "rcpt_to"], name: "index_inbound_emails_on_account_id_and_digest_and_rcpt_to", unique: true
     t.index ["account_id"], name: "index_inbound_emails_on_account_id"

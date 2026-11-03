@@ -178,6 +178,11 @@ module Relay
       ENV["MTA_STS"] == "true"
     end
 
+    # The client reads MAILSCORE_URL and the tokens itself; without a URL, mail is not scored.
+    def mailscore?
+      ENV["MAILSCORE_URL"].present?
+    end
+
     def sending_ips
       ENV.fetch("SENDING_IPS", "").split(",").map(&:strip).compact_blank.map do |entry|
         name, address, helo = entry.split("=", 3)

@@ -1,5 +1,5 @@
 class InboundEmail < ApplicationRecord
-  include Eventable, Sourced, Incineratable, Postable, Forwarding
+  include Eventable, Sourced, Incineratable, Postable, Forwarding, Scorable
 
   class Abandoned < StandardError; end
 

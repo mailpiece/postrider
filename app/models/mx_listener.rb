@@ -97,9 +97,9 @@ class MxListener < SmtpListener
 
     def receive_for(rcpt_to, mail_from:, source:, digest:, ip:, helo:)
       if domain = Delivery::ReturnPath.bounce_domain(rcpt_to)
-        accept(domain, mail_from:, rcpt_to:, source:, digest:, &:correlate_bounce_later)
+        accept(domain, mail_from:, rcpt_to:, source:, digest:, ip:, helo:, &:correlate_bounce_later)
       elsif domain = Domain.for_address(rcpt_to)
-        accept(domain, mail_from:, rcpt_to:, source:, digest:) do |inbound_email|
+        accept(domain, mail_from:, rcpt_to:, source:, digest:, ip:, helo:) do |inbound_email|
           if domain.specifically_registered?(rcpt_to) || domain.forward?
             inbound_email.forward_later(ip:, helo:)
           else
@@ -109,10 +109,11 @@ class MxListener < SmtpListener
       end
     end
 
-    def accept(domain, mail_from:, rcpt_to:, source:, digest:)
+    def accept(domain, mail_from:, rcpt_to:, source:, digest:, ip:, helo:)
       Current.with_account(domain.account) do
         InboundEmail.transaction do
-          yield InboundEmail.create!(domain:, mail_from:, rcpt_to:, source:, digest:)
+          yield InboundEmail.create!(domain:, mail_from:, rcpt_to:, source:, digest:,
+            remote_ip: ip, helo: helo&.truncate(255, omission: ""))
         end
       end
     rescue ActiveRecord::RecordNotUnique

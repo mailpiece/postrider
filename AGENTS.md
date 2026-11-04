@@ -24,9 +24,9 @@ SMTP listeners inside Puma.
 `Relay::Supervisor` boots mailgate's `MailGate::MxListener` and
 `MailGate::SubmissionListener`, which hold the SMTP policy and call
 `Relay::MxBackend` and `Relay::SubmissionBackend` for routes, storage, tokens
-and accounts. Each backend call runs inside the Rails executor and takes its
-account from the recipient or the token, never from thread state. Listener
-tests boot the servers in-process on free ports and drive them with
+and accounts. Each backend call into the app runs inside the Rails executor and
+takes its account from the recipient or the token, never from thread state.
+Listener tests boot the servers in-process on free ports and drive them with
 `Net::SMTP`. The TLS certificate is issued over ACME through `AcmeDnsListener`
 and stored in `Relay::Certificate`; the supervisor swaps it into the running
 listeners, so no certificate work restarts the app.

@@ -123,7 +123,7 @@ Rails.application.routes.draw do
   end
 
   namespace :contacts do
-    resource :denied, only: :show
+    resource :denied, only: %i[ show destroy ]
   end
 
   resources :contacts, only: %i[ index show ] do

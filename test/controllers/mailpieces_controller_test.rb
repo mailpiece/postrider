@@ -438,10 +438,21 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_select ".screener-question", text: /Newcomer is writing for the first time\. Forward their mail\?\s+1 email held/
     assert_select ".screener-question form[action=?] button", contact_approval_path(contacts(:pending)), text: "Yes"
 
-    inbound_emails(:held).update!(contact: contacts(:denied))
+    inbound_emails(:held).update!(contact: contacts(:approved))
     get mailpiece_path(mailpieces(:held))
 
     assert_select ".screener-question", count: 0
+  end
+
+  test "the HTML show offers to screen a screened-out sender back in, over the envelope" do
+    sign_in_as :leo
+
+    get mailpiece_path(mailpieces(:held))
+
+    assert_select ".screener-question + .envelope", count: 1
+    assert_select ".screener-question", text: /stranger@sender\.example is screened out\. Their mail is held and isn't forwarded unless you screen them in\./
+    assert_select ".screener-question form[action=?][data-turbo-confirm=?] button", contact_approval_path(contacts(:denied)),
+      "Forward 1 held email from stranger@sender.example to forwarding@elsewhere.example?", text: "Screen them in"
   end
 
   test "the HTML show calls mail accepted, not forwarded, when forwarding was not on" do

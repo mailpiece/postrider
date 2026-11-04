@@ -35,12 +35,13 @@ class ContactsControllerTest < ActionDispatch::IntegrationTest
     assert_select "a.site-header__link[href=?][aria-current=page]", contacts_path, text: /Contacts/
   end
 
-  test "index links to the Screener" do
+  test "index links to the Screener and to Screened out" do
     sign_in_as :leo
 
     get contacts_path
 
     assert_select ".header__actions a[href=?]", screener_path, text: "Screener"
+    assert_select ".header__actions a[href=?]", contacts_denied_path, text: "Screened out"
   end
 
   test "index as JSON lists the same contacts, leaving out one you cannot reach" do

@@ -31,7 +31,7 @@ Tracks one piece of inbound mail from receipt through forwarding.
 | `bounced`    | Discarded rather than forwarded — no registered mailbox claimed it, or a DSN couldn't be correlated to a delivery |
 | `held`       | Addressed to a forwarding mailbox but not passed on: no aligned DKIM, SPF, or DMARC pass vouches for its `From` (such mail is filed under no contact), the sender isn't an approved contact (a sender first seen waits in the Screener), or the message was going round a forwarding loop |
 
-`held` is the one inbound status that isn't final: the mail is kept as it arrived, and approving the sender releases everything held from them — each message that nothing else blocks is forwarded then and becomes `delivered`. Held mail nobody releases ages out on its own clock (`HELD_RETENTION_DAYS`, default 90 days) rather than the ordinary retention period.
+`held` is the one inbound status that isn't final: the mail is kept as it arrived, and approving the sender releases everything held from them — each message that nothing else blocks is forwarded then and becomes `delivered`. Held mail nobody releases ages out on its own clock (`HELD_RETENTION_DAYS`, default 90 days) rather than the ordinary retention period, unless an admin erases the mail from screened-out senders first.
 
 Despite the name, an `InboundEmail`'s `bounced` status is about the inbound message being discarded, not about an outbound delivery bouncing — see `Delivery`'s `bounced` above for that.
 

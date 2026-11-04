@@ -62,6 +62,7 @@ gem "acme-client"
 # Mail Server Engine
 gem "mailauth", github: "mailpiece/mailauth", branch: "main"
 gem "mailbounce", github: "mailpiece/mailbounce", branch: "main"
+gem "mailgate", github: "mailpiece/mailgate", branch: "main"
 gem "mailreport", github: "mailpiece/mailreport", branch: "main"
 gem "mailresolver", github: "mailpiece/mailresolver", branch: "main"
 gem "mailscore-ruby", github: "mailpiece/mailscore-ruby", branch: "main"

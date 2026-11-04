@@ -5,7 +5,6 @@ class Contacts::ApprovalsController < ApplicationController
     @contact.approve
 
     respond_to do |format|
-      format.turbo_stream
       format.html { redirect_back fallback_location: contacts_path, notice: "Now forwarding mail from #{@contact.email}" }
       format.json { head :no_content }
     end
@@ -15,7 +14,6 @@ class Contacts::ApprovalsController < ApplicationController
     @contact.deny
 
     respond_to do |format|
-      format.turbo_stream
       format.html { redirect_back fallback_location: contacts_path, notice: "Now holding mail from #{@contact.email}" }
       format.json { head :no_content }
     end

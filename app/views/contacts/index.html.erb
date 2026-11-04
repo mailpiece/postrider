@@ -6,7 +6,9 @@
       <strong><%= @page_title %></strong>
     </span>
   </h1>
-  <div class="header__actions header__actions--end"></div>
+  <div class="header__actions header__actions--end">
+    <%= toolbar_button "Screener", screener_path, icon: "filter" %>
+  </div>
 <% end %>
 
 <div class="page flex flex-column gap">
@@ -14,7 +16,6 @@
     <div data-controller="navigable-list" data-action="keydown->navigable-list#navigate turbo:before-visit@document->navigable-list#rememberSelection turbo:frame-load->navigable-list#forgetSelection"
           data-navigable-list-actionable-items-value="true">
       <ul class="rows rows--links">
-        <%= render "shared/count_row", title: "Screener", path: contacts_pending_path, count: Current.user.accessible_contacts.pending.count %>
         <%= render "shared/count_row", title: "Screened out", path: contacts_denied_path, count: Current.user.accessible_contacts.denied.count %>
       </ul>
 

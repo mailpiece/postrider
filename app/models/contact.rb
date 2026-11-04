@@ -30,12 +30,6 @@ class Contact < ApplicationRecord
     Hash.new(0).merge InboundEmail.where(contact: contacts).group(:contact_id).count
   end
 
-  # Keys sort by creation, so the highest held id per contact is its latest held email.
-  def self.latest_held_emails(contacts)
-    ids = InboundEmail.held.where(contact: contacts).group(:contact_id).maximum(:id)
-    InboundEmail.where(id: ids.values).index_by(&:contact_id)
-  end
-
   def self.deny_all
     update_all decision: "denied", updated_at: Time.current
   end
@@ -57,6 +51,10 @@ class Contact < ApplicationRecord
 
   def title
     name.presence || email
+  end
+
+  def held_mailpieces
+    mailpieces.merge(InboundEmail.held).ordered.preload(:postable)
   end
 
   def mail_state

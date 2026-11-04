@@ -27,15 +27,6 @@ class ContactsControllerTest < ActionDispatch::IntegrationTest
     assert_select "[data-controller=pagination][data-pagination-paginate-on-intersection-value=true]"
   end
 
-  test "index counts the pending contacts, over the denied ones" do
-    sign_in_as :leo
-
-    get contacts_path
-
-    assert_select ".rows--links .row:first-child a[href=?]", contacts_pending_path, text: "Screener"
-    assert_select ".rows--links .row:first-child .row__end", text: "1"
-  end
-
   test "index says so when no contact is approved" do
     sign_in_as :leo
     contacts(:approved).deny
@@ -64,6 +55,14 @@ class ContactsControllerTest < ActionDispatch::IntegrationTest
     get contacts_path
 
     assert_select "a.site-header__link[href=?][aria-current=page]", contacts_path, text: /Contacts/
+  end
+
+  test "index links to the Screener" do
+    sign_in_as :leo
+
+    get contacts_path
+
+    assert_select ".header__actions a[href=?]", screener_path, text: "Screener"
   end
 
   test "index as JSON lists the same contacts, leaving out one you cannot reach" do

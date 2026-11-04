@@ -1,8 +1,6 @@
 require "test_helper"
 
 class Contacts::ApprovalsControllerTest < ActionDispatch::IntegrationTest
-  include ActionView::RecordIdentifier
-
   setup do
     sign_in_as :leo
   end
@@ -33,36 +31,11 @@ class Contacts::ApprovalsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to contact_url(contacts(:denied))
   end
 
-  test "create replaces the sender on their page for turbo" do
-    post contact_approval_path(contacts(:denied)), as: :turbo_stream
+  test "a yes in the Screener returns to it" do
+    post contact_approval_path(contacts(:pending)), headers: { "HTTP_REFERER" => screener_url }
 
-    assert_response :success
-    assert_select "turbo-stream[action=replace][target=?]", dom_id(contacts(:denied), :sender)
-    assert_match "Now forwarding mail from stranger@sender.example", response.body
-  end
-
-  test "destroy replaces the sender on their page for turbo" do
-    delete contact_approval_path(contacts(:approved)), as: :turbo_stream
-
-    assert_response :success
-    assert_select "turbo-stream[action=replace][target=?]", dom_id(contacts(:approved), :sender)
-    assert_match "Now holding mail from friend@sender.example", response.body
-  end
-
-  test "a yes in the Screener takes the sender off it" do
-    post contact_approval_path(contacts(:pending)), as: :turbo_stream
-
-    assert_select "turbo-stream[action=remove][target=?]", dom_id(contacts(:pending))
-    assert_match "Now forwarding mail from newcomer@sender.example", response.body
-  end
-
-  test "a no in the Screener takes the sender off it and holds their mail" do
-    assert_changes -> { contacts(:pending).reload.decision }, from: "pending", to: "denied" do
-      delete contact_approval_path(contacts(:pending)), as: :turbo_stream
-    end
-
-    assert_select "turbo-stream[action=remove][target=?]", dom_id(contacts(:pending))
-    assert_match "Now holding mail from newcomer@sender.example", response.body
+    assert_redirected_to screener_url
+    assert contacts(:pending).reload.approved?
   end
 
   test "create as JSON" do

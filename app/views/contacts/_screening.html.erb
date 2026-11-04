@@ -1,0 +1,7 @@
+<div class="screener-question">
+  <span class="flex-item-grow">
+    <strong><%= contact.title %></strong> is writing for the first time. Forward their mail?
+    <span class="txt-subtle"><%= pluralize contact.inbound_emails.held.count, "email" %> held</span>
+  </span>
+  <%= render "contacts/yes_no", contact: contact %>
+</div>

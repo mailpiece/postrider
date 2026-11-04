@@ -428,6 +428,22 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_select ".trail__sentence", text: "Held because this sender was not approved."
   end
 
+  test "the HTML show asks about a sender writing for the first time, over the envelope" do
+    inbound_emails(:held).update!(contact: contacts(:pending))
+    sign_in_as :leo
+
+    get mailpiece_path(mailpieces(:held))
+
+    assert_select ".screener-question + .envelope", count: 1
+    assert_select ".screener-question", text: /Newcomer is writing for the first time\. Forward their mail\?\s+1 email held/
+    assert_select ".screener-question form[action=?] button", contact_approval_path(contacts(:pending)), text: "Yes"
+
+    inbound_emails(:held).update!(contact: contacts(:denied))
+    get mailpiece_path(mailpieces(:held))
+
+    assert_select ".screener-question", count: 0
+  end
+
   test "the HTML show calls mail accepted, not forwarded, when forwarding was not on" do
     inbound_email = create_inbound_email(status: :delivered, forwarded_at: Time.current)
     inbound_email.track_event "received", rcpt_to: inbound_email.rcpt_to, remote_ip: "203.0.113.7"

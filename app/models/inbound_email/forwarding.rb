@@ -7,7 +7,7 @@ module InboundEmail::Forwarding
   MAX_RECEIVED_HOPS = 25
 
   included do
-    belongs_to :contact, optional: true
+    belongs_to :contact, optional: true, touch: true
 
     # Contact mail is read through the contact; pairing keeps that scope honest.
     validate :contact_belongs_to_domain

@@ -84,11 +84,17 @@ class ContactTest < ActiveSupport::TestCase
     end
   end
 
-  test "latest_held_emails finds each contact's latest held email" do
+  test "new mail from a contact touches it" do
+    assert_changes -> { contacts(:pending).reload.updated_at } do
+      create_inbound_email(status: :held, contact: contacts(:pending))
+    end
+  end
+
+  test "held_mailpieces lists held mail newest first" do
     latest = create_inbound_email(status: :held, contact: contacts(:denied))
     create_inbound_email(status: :delivered, contact: contacts(:denied))
 
-    assert_equal({ contacts(:denied).id => latest }, Contact.latest_held_emails([ contacts(:denied), contacts(:pending) ]))
+    assert_equal [ latest.mailpiece, mailpieces(:held) ], contacts(:denied).held_mailpieces.to_a
   end
 
   test "deny records the decision and forwards nothing" do

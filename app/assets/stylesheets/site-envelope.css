@@ -545,6 +545,7 @@
   }
 
   .envelope--strip {
+    container-type: inline-size;
     display: block;
     outline: none;
     padding: 0;
@@ -565,6 +566,10 @@
 
     .envelope__cancellation {
       --cancellation-size: 3.25rem;
+
+      @media (width < 640px) {
+        --cancellation-size: 2.875rem;
+      }
 
       color: var(--envelope-ink);
       font-size: 0.5rem;
@@ -593,6 +598,10 @@
     .envelope__party {
       font-size: 0.9375rem;
       line-height: inherit;
+
+      @media (width < 640px) {
+        font-size: 0.875rem;
+      }
     }
 
     .envelope__ink--outcome {
@@ -618,6 +627,22 @@
         font-size: 0.8125rem;
         letter-spacing: 0.06em;
       }
+
+      /* On a phone the ink shares the row with the address, so it shrinks with the row before the address is cut. */
+      @media (width < 640px) {
+        border-width: 1.5px;
+        max-inline-size: 6.5rem;
+        padding: 0.125rem 0.3rem;
+
+        span {
+          font-size: clamp(0.5rem, 2.5cqi, 0.625rem);
+        }
+
+        strong {
+          font-size: clamp(0.55rem, 2.75cqi, 0.6875rem);
+          letter-spacing: 0.03em;
+        }
+      }
     }
   }
 
@@ -628,20 +653,17 @@
 
     align-items: center;
     color: inherit;
-    column-gap: 0.75rem;
+    column-gap: 0.5rem;
     display: grid;
-    grid-template-areas:
-      "postmark address"
-      "postmark ink";
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: "postmark address ink";
+    grid-template-columns: auto minmax(0, 1fr) auto;
     min-block-size: 4.75rem;
     padding: calc(var(--strip-tab-height) + 0.75rem) 1.125rem 0.625rem var(--strip-padding-inline);
     position: relative;
-    row-gap: 0.5rem;
     text-decoration: none;
 
     @media (width >= 640px) {
-      grid-template-areas: "postmark address ink";
+      column-gap: 0.75rem;
       grid-template-columns: 3.25rem minmax(0, 1fr) 8.5rem;
     }
   }

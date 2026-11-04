@@ -16,7 +16,7 @@ module Sourced
       blob_ids = attachments.pluck(:blob_id)
       attachments.delete_all
 
-      ActiveStorage::Blob.where(id: blob_ids).where.missing(:attachments).find_each(&:purge)
+      ActiveStorage::Blob.where(id: blob_ids).where.missing(:attachments).find_each(&:purge_later)
     end
   end
 

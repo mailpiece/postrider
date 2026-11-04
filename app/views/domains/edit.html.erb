@@ -20,12 +20,15 @@
     </div>
   <% end %>
 
-  <div class="txt-align-center margin-block-start-double pad-block-end">
-    <%= button_to domain_path(@domain), method: :delete,
-          class: "btn txt-negative borderless txt-small",
-          data: { turbo_confirm: "Remove #{@domain.name}? Inbound mail to this domain will be rejected, and nothing can be sent from it." } do %>
+  <%= form_with url: domain_path(@domain), method: :delete, class: "flex flex-column align-center gap-half margin-block-start-double pad-block-end txt-align-center" do |form| %>
+    <%= form.label :confirm, class: "txt-small" do %>
+      Removing <%= @domain.name %> deletes all its mail and its history, rejects inbound mail to it and stops sending from it.
+      Type <strong><%= @domain.name %></strong> to remove it.
+    <% end %>
+    <%= form.text_field :confirm, class: "input txt-small", autocomplete: "off", spellcheck: false, required: true %>
+    <%= form.button class: "btn txt-negative borderless txt-small" do %>
       <%= icon_tag "trash" %>
       <span>Remove this domain</span>
     <% end %>
-  </div>
+  <% end %>
 </div>

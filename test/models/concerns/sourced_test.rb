@@ -122,7 +122,7 @@ class SourcedTest < ActiveSupport::TestCase
     attachment_blob = email.attachments.blobs.sole
 
     assert_difference -> { ActiveStorage::Blob.count } => -2 do
-      InboundEmail.incinerate_all_due
+      perform_enqueued_jobs(only: ActiveStorage::PurgeJob) { InboundEmail.incinerate_all_due }
     end
 
     assert_not attachment_blob.service.exist?(attachment_blob.key)

@@ -127,13 +127,35 @@ class DomainTest < ActiveSupport::TestCase
     assert_nil Domain.name_for("")
   end
 
-  test "the relay's own mail does not keep a domain from being removed" do
-    domain = domains(:unverified).tap { it.update!(dkim_status: :ok) }
-    Message.create!(domain:, mail_from: "noreply@#{domain.name}", envelope_from: "", raw: "Subject: Hi\r\n\r\nBody", origin: :system)
+  test "removing a domain takes its configuration at once and its mail later" do
+    domain = domains(:example)
+    delivery = create_delivery
 
-    assert_difference -> { Domain.count }, -1 do
-      domain.destroy
+    assert_enqueued_jobs 2, only: Domain::PurgeMailJob do
+      domain.destroy!
     end
-    assert_not Message.exists?(domain_id: domain.id)
+
+    assert_empty Mailbox.where(domain_id: domain.id)
+    assert_empty SendingToken.where(domain_id: domain.id)
+    assert_empty Webhook.where(domain_id: domain.id)
+    assert_empty Contact.where(domain_id: domain.id)
+    assert_empty Access.where(domain_id: domain.id)
+    assert Delivery.exists?(delivery.id)
+    assert_enqueued_with job: Domain::PurgeMailJob, args: [ domain.id ], at: 10.minutes.from_now
+  end
+
+  test "mail of a removed domain is out of every user's sight" do
+    domain = domains(:example)
+    create_delivery
+    create_inbound_email.track_event "received"
+    user = users(:leo)
+
+    domain.destroy!
+
+    assert Mailpiece.where(domain_id: domain.id).exists?
+    assert_empty user.accessible_mailpieces.where(domain_id: domain.id)
+    assert_empty user.accessible_events.where(domain_id: domain.id)
+    assert_empty user.accessible_contacts.where(domain_id: domain.id)
+    assert_empty domain.account.mailpieces.where(domain_id: domain.id)
   end
 end

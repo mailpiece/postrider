@@ -205,7 +205,7 @@ class InboundEmailTest < ActiveSupport::TestCase
     email.update!(status: :delivered, forwarded_at: 31.days.ago)
 
     assert_difference -> { ActiveStorage::Attachment.count } => -1, -> { ActiveStorage::Blob.count } => -1 do
-      InboundEmail.incinerate_all_due
+      perform_enqueued_jobs(only: ActiveStorage::PurgeJob) { InboundEmail.incinerate_all_due }
     end
 
     assert InboundEmail.exists?(email.id)
@@ -234,7 +234,7 @@ class InboundEmailTest < ActiveSupport::TestCase
     [ one, two ].each { |email| email.update!(status: :delivered, forwarded_at: 31.days.ago) }
 
     assert_difference -> { ActiveStorage::Attachment.count } => -2, -> { ActiveStorage::Blob.count } => -1 do
-      InboundEmail.incinerate_all_due
+      perform_enqueued_jobs(only: ActiveStorage::PurgeJob) { InboundEmail.incinerate_all_due }
     end
 
     assert one.reload.incinerated?

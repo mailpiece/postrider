@@ -1,6 +1,5 @@
 class Domain < ApplicationRecord
   include Accessible
-  include Eventable
   include DnsRecords
   include DnsChecks
   include BlockedPhrases
@@ -14,18 +13,17 @@ class Domain < ApplicationRecord
   has_many :mailboxes, dependent: :delete_all
   has_many :sending_tokens, dependent: :destroy
 
-  # Mail inside the retention window blocks delete; hourly purge frees it. Deliveries follow messages.
-  has_many :messages, dependent: :restrict_with_error
-  has_many :inbound_emails, dependent: :restrict_with_error
+  # The mail and the events go after the domain, in PurgeMailJob.
+  has_many :messages
+  has_many :inbound_emails
   has_many :deliveries
   has_many :mailpieces
   has_many :webhooks, dependent: :destroy
   has_many :suppressions, dependent: :delete_all
-  # destroy so inbound_emails pointing at contacts are nullified first.
-  has_many :contacts, dependent: :destroy
+  has_many :contacts, dependent: :delete_all
 
-  # Domain + its mail's events; deliberately shadows Eventable's narrower has_many :events.
-  has_many :events, dependent: :destroy
+  # Its own events and its mail's. They go after the domain, in PurgeMailJob.
+  has_many :events
 
   enum :catch_all_policy, %w[ disabled discard forward ].index_by(&:itself), default: :disabled
 
@@ -34,7 +32,7 @@ class Domain < ApplicationRecord
   validates :name, presence: true, uniqueness: true, format: { with: /\A[a-z0-9.-]+\z/, message: "is not a valid domain" }
 
   after_create :seed_reserved_mailboxes
-  before_destroy :destroy_system_messages, prepend: true
+  after_destroy_commit :purge_mail_later
 
   RESERVED_LOCAL_PARTS = %w[ postmaster dmarc-reports ].freeze
 
@@ -43,6 +41,13 @@ class Domain < ApplicationRecord
   scope :verified, -> { where(dkim_status: :ok) }
   # Never-checked (nil) domains are unverified too.
   scope :unverified, -> { where.not(dkim_status: :ok).or(where(dkim_status: nil)) }
+
+  # The domain row is gone by now, so this takes its id.
+  def self.purge_mail_now(domain_id)
+    Message.purge Message.where(domain_id:)
+    InboundEmail.purge InboundEmail.where(domain_id:)
+    Event.purge Event.where(domain_id:)
+  end
 
   def self.accepts?(address)
     if email = EmailAddress.extract(address)
@@ -77,17 +82,20 @@ class Domain < ApplicationRecord
     { domain_id: id, domain: name }
   end
 
-  private
-    def eventable_domain
-      self
-    end
+  # A domain owns its events rather than being an eventable, so it records its own straight onto them.
+  def track_event(action, **particulars)
+    events.create!(eventable: self, action: "domain_#{action}", particulars:)
+  end
 
+  # Again later for what a delivery or an SMTP session in flight writes after the domain is gone.
+  def purge_mail_later
+    PurgeMailJob.perform_later(id)
+    PurgeMailJob.set(wait: 10.minutes).perform_later(id)
+  end
+
+  private
     def seed_reserved_mailboxes
       RESERVED_LOCAL_PARTS.each { |local_part| mailboxes.create!(local_part:) }
-    end
-
-    def destroy_system_messages
-      messages.system.destroy_all
     end
 
     def bounce_address?(email)

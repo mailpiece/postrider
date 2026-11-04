@@ -18,9 +18,18 @@ class Event < ApplicationRecord
 
   after_create_commit :dispatch_webhooks_later
 
-  def self.purge(purgeable)
-    Webhook::Delivery.where(event_id: purgeable.select(:id)).delete_all
-    purgeable.delete_all
+  def self.purge(events)
+    events.in_batches do |batch|
+      transaction do
+        Webhook::Delivery.where(event: batch).delete_all
+        batch.delete_all
+      end
+    end
+  end
+
+  # Particulars carry what other servers and messages said, and JSON takes only valid UTF-8.
+  def particulars=(particulars)
+    super(particulars.transform_values { |value| value.is_a?(String) ? value.dup.force_encoding(Encoding::UTF_8).scrub : value })
   end
 
   def action

@@ -35,20 +35,26 @@ class DomainsController < ApplicationController
   end
 
   def destroy
-    if @domain.destroy
+    if removal_confirmed?
+      @domain.destroy!
+
       respond_to do |format|
         format.html { redirect_to domains_path, notice: "Domain removed" }
         format.json { head :no_content }
       end
     else
       respond_to do |format|
-        format.html { redirect_to domain_path(@domain), alert: "#{@domain.name} still has mail. It can be removed once that ages out" }
-        format.json { render json: @domain.errors, status: :unprocessable_entity }
+        format.html { redirect_to edit_domain_path(@domain), alert: "Type #{@domain.name} to remove it" }
+        format.json { render json: { error: "confirm must be #{@domain.name} to remove the domain and all its mail" }, status: :unprocessable_entity }
       end
     end
   end
 
   private
+    def removal_confirmed?
+      Domain.normalize_value_for(:name, params[:confirm]) == @domain.name
+    end
+
     def set_domain
       @domain = Current.user.domains.find(params[:id])
     end

@@ -7,7 +7,7 @@ class IncineratableTest < ActiveSupport::TestCase
     assert email.attachments.attached?
 
     assert_difference -> { ActiveStorage::Blob.count } => -2 do
-      email.incinerate
+      perform_enqueued_jobs(only: ActiveStorage::PurgeJob) { email.incinerate }
     end
 
     assert InboundEmail.exists?(email.id)

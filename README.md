@@ -54,10 +54,6 @@ Because you can. That used to be reason enough. It still is.
 
 Ship the email. Trust that the people who want it will find it. Then go spend your engineering time on your actual product instead of babysitting a sender score.
 
-## History
-
-View the [changelog](CHANGELOG.md).
-
 ## Contributing
 
 See [CONTRIBUTING](CONTRIBUTING.md). To report a vulnerability, see [SECURITY](SECURITY.md).

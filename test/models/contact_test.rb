@@ -27,6 +27,10 @@ class ContactTest < ActiveSupport::TestCase
     assert_equal contact, Contact.for_sender(domains(:example), "jacopo@basecаmp.com")
   end
 
+  test "a blank display name is kept as none" do
+    assert_nil Contact.for_sender(domains(:example), "quiet@remote.example", name: " ").name
+  end
+
   test "for_sender takes the direction override out of a display name" do
     contact = Contact.for_sender(domains(:example), "jacopo@basecamp.com", name: "Jacopo\u202Epmac")
 
@@ -72,8 +76,6 @@ class ContactTest < ActiveSupport::TestCase
         contacts(:pending).deny
       end
     end
-
-    assert_equal "held", contacts(:pending).mail_state
   end
 
   test "deny_all denies every contact in the relation, and nobody else" do
@@ -82,6 +84,13 @@ class ContactTest < ActiveSupport::TestCase
         Contact.pending.deny_all
       end
     end
+  end
+
+  test "alphabetically sorts by name, or by address when there is none" do
+    contacts(:pending).update!(name: "aardvark")
+
+    assert_equal %w[ newcomer@sender.example friend@sender.example stranger@sender.example ],
+      domains(:example).contacts.alphabetically.pluck(:email)
   end
 
   test "new mail from a contact touches it" do

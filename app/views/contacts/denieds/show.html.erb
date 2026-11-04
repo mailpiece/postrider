@@ -17,12 +17,12 @@
             data-navigable-list-actionable-items-value="true">
         <ul class="rows">
           <%= with_automatic_pagination :contacts, @page do %>
-            <%= render partial: "contacts/contact", collection: @page.records, locals: { email_counts: @email_counts } %>
+            <%= render partial: "contacts/contact", collection: @page.records %>
           <% end %>
         </ul>
       </div>
     <% end %>
   <% else %>
-    <div class="blank-slate fit-content center">Senders you said no to land here, their mail still held. Open a sender to switch their mail on, held and future, to the mailbox's forwarding address.</div>
+    <div class="blank-slate fit-content center">Senders you said no to land here, their mail still held. Open a sender to screen them in, and their mail, held and future, goes on to the mailbox's forwarding address.</div>
   <% end %>
 </div>

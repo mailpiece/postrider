@@ -123,7 +123,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     get mailpiece_path(delivery.mailpiece)
 
     assert_response :success
-    assert_includes response.body, "Bounced mail to recipient@example.com (invalid)"
+    assert_includes response.body, "Bounced mail to recipient@example.com (invalid)."
     assert_includes response.body, "550 no such user"
   end
 
@@ -188,7 +188,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_select "form[action=?]", mailpiece_path(mailpiece)
   end
 
-  test "the HTML show tells a passing spam check in the history" do
+  test "the HTML show tells a passing spam check in the history by its score alone" do
     inbound_email = create_inbound_email
     inbound_email.track_event "scored", action: "no_action", score: -1.8, complete: true, symbols: [
       [ "SPF_PASS", -0.2, "SPF passed", "example.com" ], [ "DKIM_PASS", -0.1, "DKIM signature valid", "example.com" ],
@@ -198,7 +198,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
 
     get mailpiece_path(inbound_email.mailpiece)
 
-    assert_select ".trail__sentence", text: "Spam check: no action, score −1.8. SPF, DKIM, DMARC and ARC passed."
+    assert_select ".trail__sentence", text: "Spam check: no action, score −1.8."
   end
 
   test "the HTML show puts an inbound mailpiece on an envelope" do
@@ -274,9 +274,10 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     get mailpiece_path(inbound_email.mailpiece)
 
     assert_response :success
-    assert_select ".trail__sentence", text: "remote.example asks receivers to reject mail that fails DMARC"
-    assert_select ".trail__sentence", text: "Passed through lists.example.org"
-    assert_select ".trail__sentence", text: "The sender is genuine: SPF failed, DKIM, DMARC and ARC passed"
+    assert_select ".envelope__verdict", text: "Authentication: Genuine"
+    assert_equal [ "SPF failed", "DKIM DMARC ARC passed" ], css_select(".envelope__stamp-face > span:not([class])").map(&:text)
+    assert_select ".envelope__stamp-note", text: "via lists.example.org"
+    assert_select ".trail__sentence", count: 1, text: "Received."
   end
 
   test "the HTML show calls a sender genuine on a DMARC pass alone, as forwarding does" do
@@ -285,7 +286,8 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
 
     get mailpiece_path(inbound_email.mailpiece)
 
-    assert_select ".trail__sentence", text: "The sender is genuine: DMARC passed"
+    assert_select ".envelope__verdict", text: "Authentication: Genuine"
+    assert_select ".envelope__stamp span", text: "DMARC passed"
   end
 
   test "the HTML show does not state a seal that failed as a hop the mail took" do
@@ -294,8 +296,9 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
 
     get mailpiece_path(inbound_email.mailpiece)
 
-    assert_select ".trail__sentence", text: "Carries a seal in the name of lists.example.org that did not verify"
-    assert_select ".trail__sentence", text: "The From domain asks receivers to take no action on mail that fails DMARC"
+    assert_select ".envelope__verdict", text: "Authentication: Not verified"
+    assert_select ".envelope__stamp-note", text: "lists.example.org seal failed"
+    assert_select ".trail__sentence", count: 1, text: "Received."
   end
 
   # It reads as protocol output, and the badges above already answer what a human is asking.
@@ -317,7 +320,8 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     get mailpiece_path(inbound_email.mailpiece)
 
     assert_response :success
-    assert_select ".trail__sentence", text: "The sender is not verified: SPF passed"
+    assert_select ".envelope__verdict", text: "Authentication: Not verified"
+    assert_select ".envelope__stamp span", text: "SPF passed"
   end
 
   # "Held" beside a wall of passing checks reads as a contradiction until it says which gate failed.
@@ -330,7 +334,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     get mailpiece_path(inbound_email.mailpiece)
 
     assert_response :success
-    assert_select ".trail__sentence", text: "Held because this sender was not approved"
+    assert_select ".trail__sentence", text: "Held because this sender was not approved."
   end
 
   test "the HTML show calls mail accepted, not forwarded, when forwarding was not on" do
@@ -343,7 +347,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_select ".envelope__ink", text: /Accepted/
     assert_select ".envelope__status", text: "Accepted · not forwarded"
     assert_select ".trail__sentence", text: "Accepted. Forwarding was not on for this address."
-    assert_select ".trail__sentence", text: "Received from 203.0.113.7"
+    assert_select ".trail__sentence", text: "Received from 203.0.113.7."
 
     get mailpieces_path
     assert_select "##{dom_id inbound_email.mailpiece} .envelope__ink", text: /Accepted/
@@ -368,7 +372,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
       get mailpiece_path(inbound_email.mailpiece)
     end
 
-    assert_select ".trail__sentence", text: "Matched to the delivery it bounced"
+    assert_select ".trail__sentence", text: "Matched to the delivery it bounced."
     assert_select ".trail__sentence a[href=?]", mailpiece_path(delivery.mailpiece)
   end
 
@@ -380,7 +384,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     get mailpiece_path(inbound_email.mailpiece)
 
     assert_response :success
-    assert_select ".trail__sentence", count: 1, text: "Received"
+    assert_select ".trail__sentence", count: 1, text: "Received."
   end
 
   test "the HTML show names the sending host and the forwarding address in its history" do
@@ -392,8 +396,8 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     get mailpiece_path(inbound_email.mailpiece)
 
     assert_select ".trail__sentence", count: 2
-    assert_select ".trail__entry:first-child .trail__sentence", text: "Forwarded to elsewhere@example.net"
-    assert_select ".trail__entry:last-child .trail__sentence", text: "Received from mail.sender.example (203.0.113.7)"
+    assert_select ".trail__entry:first-child .trail__sentence", text: "Forwarded to elsewhere@example.net."
+    assert_select ".trail__entry:last-child .trail__sentence", text: "Received from mail.sender.example (203.0.113.7)."
     assert_select ".envelope__ink", text: /Forwarded/
     assert_select ".envelope__status", text: "Forwarded · to elsewhere@example.net"
   end
@@ -406,9 +410,9 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
 
     get mailpiece_path(delivery.mailpiece)
 
-    assert_select ".trail__sentence", text: "Delivery attempt at mx.recipient.example"
+    assert_select ".trail__sentence", text: "Delivery attempt at mx.recipient.example."
     assert_select ".smtp-reply", text: /451 try again later/
-    assert_select ".trail__entry:last-child .trail__sentence", text: "Submitted"
+    assert_select ".trail__entry:last-child .trail__sentence", text: "Submitted."
     assert_select ".envelope__status", text: /\AOutbound · 1 attempt · next retry/
     assert_select ".envelope__return span", text: "Tags: welcome"
     assert_select ".envelope__address", text: /MX mx.recipient.example/
@@ -422,7 +426,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
 
     get mailpiece_path(delivery.mailpiece)
 
-    assert_select ".trail__entry:last-child .trail__sentence", text: "Queued by a forward"
+    assert_select ".trail__entry:last-child .trail__sentence", text: "Queued by a forward."
   end
 
   test "an html-only body is never rendered, only pointed at in the original source" do

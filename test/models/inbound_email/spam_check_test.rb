@@ -1,21 +1,21 @@
 require "test_helper"
 
 class InboundEmail::SpamCheckTest < ActiveSupport::TestCase
-  test "a passing check says what passed" do
+  test "a passing check gives only its score, since the stamp says what passed" do
     check = spam_check "no_action", -1.8, [ "SPF_PASS", -0.2, "SPF passed", "example.com" ],
       [ "DKIM_PASS", -0.1, "DKIM signature valid", "example.com" ], [ "DMARC_PASS", -0.5, "DMARC passed", "example.com" ],
       [ "ARC_PASS", -1.0, "ARC chain valid" ]
 
-    assert_equal "Spam check: no action, score −1.8. SPF, DKIM, DMARC and ARC passed.", check.sentence
+    assert_equal "Spam check: no action, score −1.8.", check.sentence
   end
 
-  test "a passing check gives other credits after what passed" do
+  test "a passing check leaves out other credits" do
     check = spam_check "no_action", -3.2, [ "SPF_PASS", -0.2, "SPF passed" ], [ "BAYES_HAM", -3.0, "Learned filter says not spam" ]
 
-    assert_equal "Spam check: no action, score −3.2. SPF passed; learned filter says not spam.", check.sentence
+    assert_equal "Spam check: no action, score −3.2.", check.sentence
   end
 
-  test "a flagged check lists only its problems, worst first" do
+  test "a flagged check lists its problems, worst first" do
     check = spam_check "reject", 16.7, [ "SPF_PASS", -0.2, "SPF passed", "mailer.example" ],
       [ "BAYES_HAM", -3.0, "Learned filter says not spam" ], [ "DATE_MISSING", 1.0, "No Date header" ],
       [ "MESSAGE_ID_MISSING", 2.5, "No Message-ID header" ], [ "LINK_TO_IP_ADDRESS", 1.0, "Link to an IP address", "198.51.100.4" ],
@@ -48,6 +48,15 @@ class InboundEmail::SpamCheckTest < ActiveSupport::TestCase
 
   test "an action with no phrase is given in words" do
     assert_equal "Spam check: would quarantine it, score 9.0.", spam_check("quarantine_it", 9.0).sentence
+  end
+
+  test "the outcome and score read on their own" do
+    check = spam_check "reject", 9.44
+
+    assert_equal "would reject", check.outcome
+    assert_equal "9.4", check.formatted_score
+    assert_equal "no action", spam_check("no_action", -1.8).outcome
+    assert_equal "−1.8", spam_check("no_action", -1.8).formatted_score
   end
 
   test "flagged unless the check would take no action" do

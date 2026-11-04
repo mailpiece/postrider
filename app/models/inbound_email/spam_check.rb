@@ -16,9 +16,8 @@ class InboundEmail::SpamCheck
     @symbols = particulars["symbols"].to_a.map { |name, weight, description, detail| { name:, weight:, description:, detail: } }
   end
 
-  # A flagged verdict lists only its problems.
   def sentence
-    [ "Spam check: #{outcome}, score #{formatted_score}.", problems_sentence, (passes_sentence unless flagged?) ].compact.join(" ")
+    [ "Spam check: #{outcome}, score #{formatted_score}.", problems_sentence ].compact.join(" ")
   end
 
   def flagged?
@@ -44,21 +43,12 @@ class InboundEmail::SpamCheck
       phrases_sentence problems.sort_by.with_index { |symbol, index| [ -symbol[:weight].to_f, index ] }
     end
 
-    # The SPF, DKIM, DMARC and ARC passes read as one "… passed", then any other credit.
-    def passes_sentence
-      passes = @symbols.select { |symbol| pass?(symbol) }
-      credits = @symbols.select { |symbol| !pass?(symbol) && symbol[:weight].to_f.negative? }
-      passed = "#{passes.map { |pass| pass[:name].delete_suffix("_PASS") }.to_sentence(last_word_connector: " and ")} passed" if passes.any?
-
-      phrases_sentence credits, leading: passed
-    end
-
     def pass?(symbol)
       symbol[:name].end_with?("_PASS")
     end
 
-    def phrases_sentence(symbols, leading: nil)
-      phrases = [ leading, *symbols.map { |symbol| phrase(symbol) } ].compact
+    def phrases_sentence(symbols)
+      phrases = symbols.map { |symbol| phrase(symbol) }
 
       "#{phrases.join("; ").upcase_first}." if phrases.any?
     end

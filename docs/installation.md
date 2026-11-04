@@ -42,7 +42,7 @@ That first account arrives complete: an owner (you), a system user, an invite co
 
 In the SPF record, use the `a:<RELAY_MAIL_DOMAIN>` mechanism, not `mx` — that name is authorized by its own A record. The MX row does a different job entirely: it tells receivers where to *deliver* mail for that hostname (the bounce Return-Path), not how SPF authorizes sending.
 
-By the way: the home page is **Mailpieces**, the mail log — counts of held, failed, withheld, deferred, queued and discarded mail, then the delivered mail itself. It's not the DNS checker.
+By the way: the home page is **Mailpieces**, the mail log — counts of held, failed, withheld, deferred, queued and discarded mail, then all the mail itself, newest first. It's not the DNS checker.
 
 ## 3. Add a domain
 
@@ -93,7 +93,7 @@ curl https://<your-app>/1/messages \
 
 The same token doubles as the password for SMTP submission (port 587, STARTTLS, username `postrider`). See [the API docs](api.md) for the full surface.
 
-Now watch it land: the message shows up under **Mailpieces** (`/1/mailpieces/queued`, and `/1/mailpieces` once delivered), and delivery reports back as a `delivery_delivered` / `delivery_failed` / `delivery_bounced` webhook.
+Now watch it land: the message shows up under **Mailpieces** (`/1/mailpieces`, and `/1/mailpieces/queued` until it goes out), and delivery reports back as a `delivery_delivered` / `delivery_failed` / `delivery_bounced` webhook.
 
 ## 6. Receiving mail (optional)
 

@@ -9,18 +9,22 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to "/session/menu"
   end
 
-  test "the app opens on the delivered mail, in either direction, and nothing else" do
+  test "the app opens on all the mail, in either direction and whatever became of it" do
     sign_in_as :nonstaff
-    others = [ mailpieces(:held), mailpieces(:queued), mailpieces(:bounced), mailpieces(:deferred),
-      create_inbound_email(status: :failed).mailpiece, create_inbound_email(status: :bounced).mailpiece, create_inbound_email.mailpiece ]
+    failed = create_inbound_email(status: :failed).mailpiece
+    discarded = create_inbound_email(status: :bounced).mailpiece
+    pieces = [ mailpieces(:delivered), mailpieces(:received), mailpieces(:held), mailpieces(:queued), mailpieces(:bounced),
+      mailpieces(:deferred), failed, discarded ]
 
     get root_path
 
     assert_response :success
     assert_select ".breadcrumbs strong", text: "Mailpieces"
-    [ mailpieces(:delivered), mailpieces(:received) ].each { |mailpiece| assert_select "li##{dom_id(mailpiece)}" }
-    others.each { |mailpiece| assert_select "li##{dom_id(mailpiece)}", count: 0 }
-    assert_select ".blank-slate", text: "No delivered mail.", count: 0
+    assert_select ".rows__heading", text: "All mail"
+    assert_select "input[placeholder=?]", "Filter mail…"
+    pieces.each { |mailpiece| assert_select "li##{dom_id(mailpiece)}" }
+    assert_select "##{dom_id mailpieces(:held)} .row__meta", text: /\AHeld · Received/
+    assert_select "##{dom_id discarded} .row__meta", text: /\ADiscarded · Received/
   end
 
   test "index counts the mail in each other state, over the list" do
@@ -38,7 +42,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
       css_select(".rows--links a").pluck("href")
     assert_equal [ "Held", "Failed", "Withheld", "Deferred", "Queued", "Discarded" ], css_select(".rows--links a").map { |link| link.text.strip }
     assert_equal [ "1", "2", "1", "1", "2", "1" ], css_select(".rows--links .row__end").map { |count| count.text.strip }
-    assert_select ".rows--links + .rows__section .rows__heading", text: "Delivered"
+    assert_select ".rows--links + .rows__section .rows__heading", text: "All mail"
   end
 
   test "a row leads with its state, marked only when something went wrong" do
@@ -74,26 +78,29 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_select ".rows--links a", count: 0
   end
 
-  test "index says so when none of the mail was delivered" do
+  test "index lists mail that was never delivered" do
     sign_in_as :nonstaff
     Mailpiece.where.not(id: mailpieces(:queued).id).delete_all
 
     get mailpieces_path
 
     assert_response :success
-    assert_select ".blank-slate", text: "No delivered mail."
+    assert_select ".blank-slate", text: "No mail recorded yet.", count: 0
+    assert_select "li##{dom_id mailpieces(:queued)}"
     assert_select ".rows--links a[href=?]", mailpieces_queued_path
     assert_select ".rows--links a", count: 1
   end
 
-  test "index as JSON lists the same mailpieces, leaving out a domain you cannot reach" do
+  test "index as JSON lists all the mail, leaving out a domain you cannot reach" do
     sign_in_as :nonstaff
-    deliver_from(domains(:private), status: "delivered")
+    hidden = deliver_from(domains(:private), status: "delivered").mailpiece
 
     get mailpieces_path, as: :json
 
     assert_response :success
-    assert_equal [ mailpieces(:delivered), mailpieces(:received) ].map(&:id).sort, response.parsed_body.pluck("id").sort
+    ids = response.parsed_body.pluck("id")
+    [ mailpieces(:delivered), mailpieces(:received), mailpieces(:held), mailpieces(:queued) ].each { |mailpiece| assert_includes ids, mailpiece.id }
+    assert_not_includes ids, hidden.id
   end
 
   test "the HTML show renders a delivery-backed mailpiece" do

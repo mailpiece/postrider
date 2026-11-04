@@ -25,20 +25,20 @@ class InboundEmail::SpamCheck
     action != "no_action"
   end
 
+  # Shadow mode: nothing acts on the verdict, so it says what would have happened.
+  def outcome
+    if flagged?
+      "would #{ACTION_PHRASES.fetch(action) { action.to_s.tr("_", " ") }}"
+    else
+      "no action"
+    end
+  end
+
+  def formatted_score
+    ActiveSupport::NumberHelper.number_to_rounded(score, precision: 1).sub("-", "−")
+  end
+
   private
-    # Shadow mode: nothing acts on the verdict, so it says what would have happened.
-    def outcome
-      if flagged?
-        "would #{ACTION_PHRASES.fetch(action) { action.to_s.tr("_", " ") }}"
-      else
-        "no action"
-      end
-    end
-
-    def formatted_score
-      ActiveSupport::NumberHelper.number_to_rounded(score, precision: 1).sub("-", "−")
-    end
-
     def problems_sentence
       problems = @symbols.select { |symbol| symbol[:weight].to_f.positive? && !pass?(symbol) }
       phrases_sentence problems.sort_by.with_index { |symbol, index| [ -symbol[:weight].to_f, index ] }

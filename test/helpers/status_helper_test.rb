@@ -26,6 +26,10 @@ class StatusHelperTest < ActionView::TestCase
     assert_pill "queued", semantic: "waiting", label: "Queued"
   end
 
+  test "held renders a warning pill" do
+    assert_pill "held", semantic: "warning", label: "Held"
+  end
+
   test "suppressed renders a muted pill" do
     assert_pill "suppressed", semantic: "muted", label: "Suppressed"
     assert_pill "withheld", semantic: "muted", label: "Withheld"
@@ -39,7 +43,7 @@ class StatusHelperTest < ActionView::TestCase
   test "a row's state is coloured only when it is an error or a warning" do
     assert_dom_equal %(<span class="status status--error">Bounced</span>), row_status("bounced")
     assert_equal "Deferred", row_status("deferred")
-    assert_equal "Held", row_status("held")
+    assert_dom_equal %(<span class="status status--warning">Held</span>), row_status("held")
   end
 
   private

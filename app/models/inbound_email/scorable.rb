@@ -27,6 +27,12 @@ module InboundEmail::Scorable
     events.exists?(action: "inbound_email_scored")
   end
 
+  def spam_check
+    if event = events.find_by(action: "inbound_email_scored")
+      InboundEmail::SpamCheck.new(event.particulars)
+    end
+  end
+
   private
     def scored_symbol(symbol)
       if symbol.detail.present? && symbol.detail.length <= SYMBOL_DETAIL_LIMIT

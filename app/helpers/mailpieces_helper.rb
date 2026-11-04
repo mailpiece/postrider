@@ -27,6 +27,10 @@ module MailpiecesHelper
 
   RECEIVED_ACTIONS = %w[ inbound_email_received inbound_email_bounce_received ].freeze
 
+  GENUINE_STAMP = { verdict: "Genuine", icon: "check", semantic: "success" }.freeze
+  UNVERIFIED_STAMP = { verdict: "Not verified", icon: "close", semantic: "warning" }.freeze
+  SIGNED_STAMP = { verdict: "Signed", icon: "lock", semantic: "info" }.freeze
+
   def smtp_code_tag(code)
     tag.span code, class: "status status--#{SMTP_CODE_SEMANTICS.fetch(code.first, "neutral")}"
   end
@@ -35,8 +39,33 @@ module MailpiecesHelper
     tag.span [ label, verdict.humanize ].compact.join(" "), class: "status status--#{verdict_semantic(verdict)}"
   end
 
-  def inbound_status_tag(inbound_email, **options)
-    status_tag inbound_status_word(inbound_email), **options
+  def mailpiece_status(mailpiece)
+    mailpiece.inbound_email? ? inbound_status_word(mailpiece.postable) : mailpiece.postable.status
+  end
+
+  def inbound_envelope_status(inbound_email)
+    [ inbound_status_word(inbound_email).humanize, inbound_status_detail(inbound_email) ].compact.join(" · ")
+  end
+
+  def delivery_envelope_status(delivery)
+    safe_join [ "Outbound", (pluralize(delivery.attempts.size, "attempt") if delivery.attempts.any?),
+      (safe_join [ "next retry ", local_datetime_tag(delivery.next_retry_at, style: :datetime) ] if delivery.next_retry_at) ].compact, " · "
+  end
+
+  def authentication_stamp(inbound_email)
+    verdicts = authentication_verdicts(inbound_email)
+
+    if verdicts.any?
+      (inbound_email.authenticated_sender? ? GENUINE_STAMP : UNVERIFIED_STAMP).merge(checks: stamp_checks(verdicts), note: sealer_note(inbound_email))
+    end
+  end
+
+  def signature_stamp(delivery)
+    if delivery.message.signable?
+      SIGNED_STAMP.merge(checks: [ "DKIM" ], note: delivery.domain.name)
+    else
+      SIGNED_STAMP.merge(checks: [ "ARC" ], note: Relay.hostname)
+    end
   end
 
   def mailpiece_meta(mailpiece)
@@ -85,6 +114,22 @@ module MailpiecesHelper
       else
         inbound_email.status
       end
+    end
+
+    def inbound_status_detail(inbound_email)
+      if inbound_email.held?
+        Event::Description::HELD_REASONS[event_particular(inbound_email, "inbound_email_held", "reason")]
+      elsif inbound_email.forwarded?
+        if forward_to = event_particular(inbound_email, "inbound_email_forwarded", "forward_to")
+          "to #{forward_to}"
+        end
+      elsif inbound_email.delivered?
+        "not forwarded"
+      end
+    end
+
+    def event_particular(inbound_email, action, key)
+      inbound_email.events.find_by(action: action)&.particulars&.dig(key)
     end
 
     def inbound_event_sentence(event)
@@ -155,6 +200,25 @@ module MailpiecesHelper
         else
           "#{names} returned #{verdict}"
         end
+      end
+    end
+
+    def stamp_checks(verdicts)
+      verdicts.group_by { |_, verdict| verdict }.map do |verdict, checks|
+        names = checks.map(&:first).join(" ")
+
+        case verdict
+        when "pass" then "#{names} passed"
+        when "fail" then "#{names} failed"
+        else
+          "#{names} #{verdict}"
+        end
+      end
+    end
+
+    def sealer_note(inbound_email)
+      if inbound_email.arc_sealer.present?
+        inbound_email.arc == "pass" ? "via #{inbound_email.arc_sealer}" : "#{inbound_email.arc_sealer} seal failed"
       end
     end
 

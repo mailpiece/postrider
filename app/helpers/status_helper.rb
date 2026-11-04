@@ -7,6 +7,7 @@ module StatusHelper
     "processing" => "progress",
     "in_progress" => "progress",
     "deferred" => "progress",
+    "held" => "warning",
     "failed" => "error",
     "bounced" => "error",
     "exhausted" => "error",
@@ -28,6 +29,11 @@ module StatusHelper
   def status_tag(status, form: :word, **options)
     tag.span status.humanize,
       class: class_names("status", "status--#{status_semantic(status)}", STATUS_FORMS.fetch(form), options.delete(:class)), **options
+  end
+
+  # The colour a status lends to whatever else carries it.
+  def status_class(status)
+    "status--#{status_semantic(status)}"
   end
 
   # What a row says of its state in its meta line: coloured only when something is wrong.

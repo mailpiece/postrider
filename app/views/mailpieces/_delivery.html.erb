@@ -37,7 +37,7 @@
           <% else %>
             <span class="trail__sentence">Delivery attempt at <%= entry.mx_host.presence || "an unknown host" %></span>
             <% if entry.code.present? || entry.output.present? %>
-              <span class="smtp-reply"><%= smtp_code_tag entry.code if entry.code.present? %> <%= entry.output %></span>
+              <span class="smtp-reply"><%= smtp_code_tag entry.code if entry.code.present? %> <%= smtp_reply_after_code(entry) %></span>
             <% end %>
           <% end %>
         </article>

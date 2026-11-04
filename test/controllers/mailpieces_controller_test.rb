@@ -345,7 +345,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     get mailpiece_path(delivery.mailpiece)
 
     assert_select ".trail__sentence", text: "Delivery attempt at mx.recipient.example"
-    assert_select ".smtp-reply", text: /451 try again later/
+    assert_select ".smtp-reply", text: /\A451\s+try again later\z/
     assert_select ".trail__entry:last-child .trail__sentence", text: "Submitted"
     assert_select ".record__byline", text: /Next retry/
     assert_select ".record__byline", text: "Tags: welcome"

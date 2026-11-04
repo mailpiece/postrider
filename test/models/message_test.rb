@@ -442,7 +442,7 @@ class MessageTest < ActiveSupport::TestCase
     message.update_column(:created_at, 31.days.ago)
 
     assert_difference -> { ActiveStorage::Attachment.count } => -1, -> { ActiveStorage::Blob.count } => -1 do
-      Message.incinerate_all_due
+      perform_enqueued_jobs(only: ActiveStorage::PurgeJob) { Message.incinerate_all_due }
     end
 
     assert Message.exists?(message.id)
@@ -468,7 +468,7 @@ class MessageTest < ActiveSupport::TestCase
     message.update_column(:created_at, 31.days.ago)
 
     assert_difference -> { ActiveStorage::Blob.count } => -1 do
-      Message.incinerate_all_due
+      perform_enqueued_jobs(only: ActiveStorage::PurgeJob) { Message.incinerate_all_due }
     end
 
     assert message.reload.incinerated?

@@ -4,7 +4,11 @@ class StatusHelperTest < ActionView::TestCase
   test "success statuses render a success pill" do
     assert_pill "delivered", semantic: "success", label: "Delivered"
     assert_pill "forwarded", semantic: "success", label: "Forwarded"
-    assert_pill "accepted", semantic: "success", label: "Accepted"
+  end
+
+  test "accepted mail, kept here and not passed on, renders a neutral pill" do
+    assert_pill "accepted", semantic: "neutral", label: "Accepted"
+    assert_equal "status--neutral", status_class("accepted")
   end
 
   test "error statuses render an error pill" do

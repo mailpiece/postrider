@@ -2,7 +2,7 @@ module StatusHelper
   STATUS_SEMANTICS = {
     "delivered" => "success",
     "forwarded" => "success",
-    "accepted" => "success",
+    "accepted" => "neutral",
     "completed" => "success",
     "processing" => "progress",
     "in_progress" => "progress",

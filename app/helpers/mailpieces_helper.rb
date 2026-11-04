@@ -163,7 +163,7 @@ module MailpiecesHelper
 
     # The reply code with its enhanced status, "250 2.0.0", when the reply gives one.
     def smtp_reply_code(attempt)
-      attempt.output.to_s[/\A\d{3}[ -]\d\.\d{1,3}\.\d{1,3}/]&.tr("-", " ") || attempt.code
+      [ attempt.code, smtp_reply_after_code(attempt).to_s[/\A\d\.\d{1,3}\.\d{1,3}\b/] ].compact_blank.join(" ").presence
     end
 
     def inbound_event_sentence(event)

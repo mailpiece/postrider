@@ -276,39 +276,20 @@ class DomainsControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to new_my_sudo_path
   end
 
-  test "destroy leads back to the domains" do
-    sign_in_as :leo
-
-    delete domain_path(domains(:unverified)), params: { confirm: "unverified.example" }
-
-    assert_redirected_to domains_path
-  end
-
-  test "destroy removes a domain once its name is typed, in any case and spacing, and its mail after" do
+  test "destroy asks the browser to confirm, then removes the domain, and its mail after" do
     domain = domains(:example)
     create_delivery
     sign_in_as :leo
 
     get edit_domain_path(domain)
-    assert_select "form[action=?] input[name=confirm][required]", domain_path(domain)
+    assert_select "form[action=?] [data-turbo-confirm*=?]", domain_path(domain), "All its mail and its history go with it"
 
     assert_difference -> { Domain.count }, -1 do
       assert_enqueued_jobs 2, only: Domain::PurgeMailJob do
-        delete domain_path(domain), params: { confirm: " Example.COM " }
+        delete domain_path(domain)
       end
     end
     assert_redirected_to domains_path
-  end
-
-  test "destroy keeps the domain when the typed name is wrong" do
-    domain = domains(:example)
-    sign_in_as :leo
-
-    assert_no_difference -> { Domain.count } do
-      delete domain_path(domain), params: { confirm: "not-the-name.example" }
-    end
-    assert_redirected_to edit_domain_path(domain)
-    assert_equal "Type #{domain.name} to remove it", flash[:alert]
   end
 
   test "destroy over json without confirm keeps the domain and says what to send" do
@@ -322,13 +303,13 @@ class DomainsControllerTest < ActionDispatch::IntegrationTest
     assert_match "confirm", response.parsed_body["error"]
   end
 
-  test "destroy over json with confirm answers with no content and purges the mail later" do
+  test "destroy over json with confirm, in any case and spacing, answers with no content and purges the mail later" do
     create_delivery
     sign_in_as :leo
 
     assert_difference -> { Current.account.domains.count }, -1 do
       assert_enqueued_jobs 2, only: Domain::PurgeMailJob do
-        delete domain_path(domains(:example)), params: { confirm: "example.com" }, as: :json
+        delete domain_path(domains(:example)), params: { confirm: " Example.COM " }, as: :json
       end
     end
 

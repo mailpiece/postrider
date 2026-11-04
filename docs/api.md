@@ -425,7 +425,7 @@ Authenticate with a personal access token (`read` permission is sufficient): `Au
 
 | Endpoint              | Returns                                                                                |
 | --------------------- | -------------------------------------------------------------------------------------- |
-| `GET /mailpieces`     | Paged metadata for delivered mail: deliveries that were delivered and inbound mail that was accepted |
+| `GET /mailpieces`     | Paged metadata for all mail, newest first, in either direction and whatever its status |
 | `GET /mailpieces/held` | Inbound mail held for a decision on its sender, in the index's format                 |
 | `GET /mailpieces/deferred` | Deliveries waiting on a retry, in the index's format                              |
 | `GET /mailpieces/queued` | Deliveries not yet attempted and inbound mail not yet processed, in the index's format |

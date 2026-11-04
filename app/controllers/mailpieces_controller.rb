@@ -3,7 +3,7 @@ class MailpiecesController < ApplicationController
   before_action :set_mailpiece, only: %i[ show destroy ]
 
   def index
-    set_page_and_extract_portion_from Current.user.accessible_mailpieces.delivered.preloaded.ordered
+    set_page_and_extract_portion_from Current.user.accessible_mailpieces.preloaded.ordered
     fresh_when etag: [ @page.records, Current.user.accessible_mailpieces ]
   end
 

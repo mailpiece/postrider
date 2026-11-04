@@ -30,8 +30,11 @@
         <%= icon_tag stamp[:icon] %>
         <strong class="envelope__verdict"><span class="for-screen-reader">Authentication:</span> <%= stamp[:verdict] %></strong>
         <span class="envelope__checks">
-          <% [ *stamp[:checks], stamp[:policy] ].compact.each do |check| %>
+          <% stamp[:checks].each do |check| %>
             <span><%= check %></span>
+          <% end %>
+          <% if stamp[:policy] %>
+            <span class="envelope__policy"><%= stamp[:policy] %></span>
           <% end %>
         </span>
         <% if stamp[:note] %>

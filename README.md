@@ -1,8 +1,8 @@
 # PostRider
 
-PostRider is a self-hosted mail relay. It takes outbound mail over an HTTP API and SMTP submission and delivers it direct to MX with DKIM; it takes inbound mail on MX for the domains an account registers; and it reports what happened to each message through webhooks.
+📮 A boring mail relay you run yourself.
 
-For anyone who wants deliverability without renting it: transactional mail a recipient is already expecting, apps that would rather run their own relay than integrate a SaaS sending provider, teams done paying rent on a problem they mostly don't have.
+Send and receive mail for your own domains from one self-hosted app. **PostRider** takes outbound mail over an HTTP API and SMTP submission and delivers it direct to MX with DKIM, takes inbound mail on MX for the domains an account registers, and reports what happened to each message through webhooks.
 
 **PostRider** handles:
 
@@ -11,6 +11,11 @@ For anyone who wants deliverability without renting it: transactional mail a rec
 - forwarding from a mailbox to another address, ARC-sealed with the relay's own key, for approved and authenticated senders
 - webhooks for inbound mail and delivery events, signed per webhook
 - its own TLS certificate, issued and renewed over ACME
+
+Plus:
+
+- a mail log of every message in both directions, with its history, in the app and over the [API](docs/api.md)
+- sign-in by passkey only, so PostRider sends no sign-in mail
 - no reputation score, no warm-up schedule, no pricing tier
 
 > Ship the email. Trust that the people who want it will find it.
@@ -19,44 +24,93 @@ For anyone who wants deliverability without renting it: transactional mail a rec
 
 ## Contents
 
-- [Deliverability Is Overrated](#deliverability-is-overrated)
-- [Why Run Your Own?](#why-run-your-own)
-- [Ship the Email](#ship-the-email)
-- [Installation](docs/installation.md)
-- [API (HTTP & SMTP sending)](docs/api.md)
-- [Webhooks](docs/webhooks.md)
-- [Statuses & Lifecycle](docs/lifecycle.md)
-- [Development](docs/development.md)
-- [Deployment & Operations](docs/deployment.md)
-- [History](#history)
+- [Installation](#installation)
+- [Getting Started](#getting-started)
+- [Design](#design)
+- [Interfaces](#interfaces)
+- [Testing](#testing)
 - [Contributing](#contributing)
 - [License](#license)
 
 
 
-## Deliverability Is Overrated
+## Installation
 
-Not the concept. The panic.
+PostRider is a Rails app built into one image. It needs a persistent volume for its SQLite database and stored mail, ports 80 and 443 for the web UI, 25 and 587 for mail and 53 for the certificate challenge, outbound port 25, and at minimum `SECRET_KEY_BASE` and either `RELAY_HOSTNAME` or `BASE_URL`. Deploy your fork with Kamal:
 
-Somewhere along the way, "send an email" became a SaaS category. Dashboards. Reputation scores. Warm-up schedules. Pricing tiers built around inbox placement. All of it makes sense if you're blasting newsletters at people who never asked. Most email isn't that. Most email is something a person is actually waiting for.
+```bash
+bin/kamal setup     # the first time
+bin/kamal deploy    # from then on
+```
 
-Take the clearest case: a password reset, sent to someone who signed up ninety seconds ago and is staring at their inbox right now. That person isn't a cold prospect. They're mid-task. They triggered the email. They want the email. If it's not in the inbox, they'll check spam without a second thought. The context does the deliverability work for you — you just have to stop getting in its way. And the same holds, to varying degrees, for most of the mail you send: notifications, receipts, updates, the message that lands because someone was expecting it.
+[Deployment & operations](docs/deployment.md) covers Kamal, Docker and ONCE; [Installation](docs/installation.md) takes it from first sign-in to a verified domain.
 
-So PostRider is a bet: run your own relay, keep it clean, do the fundamentals, and stop paying rent on a problem you mostly don't have. In real use, the bet holds. Mail lands.
+## Getting Started
 
-Outlook is still Outlook and occasionally has opinions. So do the people you're paying to avoid it.
+Create a sending token on a verified domain's **Sending tokens** page, then send:
 
-## Why Run Your Own?
+```bash
+curl https://postrider.example.com/123456789/messages \
+  -H "Authorization: Bearer $SENDING_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "from": "hello@<domain>", "to": ["you@example.com"], "subject": "Hello", "text": "It works." }'
+```
 
-Because you can. That used to be reason enough. It still is.
+The path starts with your account's number, the one in the app's URLs. The same token is the password for SMTP submission on port 587, with STARTTLS.
 
-## Ship the Email
 
-Ship the email. Trust that the people who want it will find it. Then go spend your engineering time on your actual product instead of babysitting a sender score.
+
+## Design
+
+
+
+### Mail: one log, both directions
+
+A mailpiece is the mail log's row, over either an inbound email or a delivery. A message has no status of its own: each delivery, one per recipient, carries it, and [Statuses & lifecycle](docs/lifecycle.md) says what each one means. Raw mail is purged after `RETENTION_DAYS`; the row and its events stay.
+
+### Tenancy: by URL, by domain
+
+Each account lives under its number in the URL, and everything hangs off a domain, which a user sees only through an access. One install is one account; teammates join by invitation.
+
+### Tokens: one domain each
+
+A sending token sends only for its own verified domain, and only its digest is stored. Webhook secrets, DKIM keys and the certificate are encrypted columns. A forward is sealed with the relay's key, never signed with the tenant's.
+
+### Roles: web, jobs and SMTP
+
+Production runs the web app, the jobs and the SMTP listeners as separate roles. The certificate is issued over ACME by a small DNS responder in the app and swapped into the running listeners, so renewing it restarts nothing.
+
+### Deliverability: the fundamentals
+
+Most mail is something a person is waiting for: a password reset, a receipt, a notification they triggered. Keep the relay clean, sign with DKIM, publish SPF, DMARC and reverse DNS, and that mail lands without anyone renting deliverability.
+
+## Interfaces
+
+- [API](docs/api.md): sending over HTTP and SMTP, and reading the mail log, with sending tokens and personal access tokens.
+- [Webhooks](docs/webhooks.md): signed events for inbound mail and deliveries, including Action Mailbox's relay format.
+- [Statuses & lifecycle](docs/lifecycle.md): what each inbound and delivery status means.
+- [Deployment & operations](docs/deployment.md): ports, configuration, DNS, the TLS certificate and backups.
+- [Development](docs/development.md): running it locally and in a dev container.
+
+## Testing
+
+```sh
+bin/setup
+bin/rails test
+bin/ci
+```
+
+
 
 ## Contributing
 
-See [CONTRIBUTING](CONTRIBUTING.md). To report a vulnerability, see [SECURITY](SECURITY.md).
+Everyone is encouraged to help improve this project:
+
+- Ask questions and suggest features in [discussions](https://github.com/mailpiece/postrider/discussions)
+- Read [CONTRIBUTING](CONTRIBUTING.md) before opening an issue or pull request
+- Report a vulnerability as [SECURITY](SECURITY.md) describes
+
+
 
 ## License
 

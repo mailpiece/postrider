@@ -21,6 +21,10 @@ module SmtpTestHelper
     start_listener("MX_PORT", port) { Relay::MxBackend.listener(resolver: MailResolver::Testing::FakeResolver.new, **options) }
   end
 
+  def start_submission_listener(port, **options)
+    start_listener("SUBMISSION_PORT", port) { Relay::SubmissionBackend.listener(**options) }
+  end
+
   def stop_listener(listener)
     listener&.stop
   end

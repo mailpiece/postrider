@@ -1,5 +1,5 @@
 class Relay::Supervisor
-  LISTENERS = [ Relay::MxBackend, SubmissionListener, AcmeDnsListener ].freeze
+  LISTENERS = [ Relay::MxBackend, Relay::SubmissionBackend, AcmeDnsListener ].freeze
 
   def initialize(logger:, poll_interval: 60)
     @logger = logger

@@ -27,19 +27,19 @@ class Relay::SupervisorTest < ActiveSupport::TestCase
 
   test "starts every listener on start" do
     mx = fake_listener(MailGate::MxListener)
-    submission = fake_listener(SubmissionListener)
+    submission = fake_listener(MailGate::SubmissionListener)
     acme_dns = fake_listener(AcmeDnsListener)
     mx.expects(:start).once
     submission.expects(:start).once
     acme_dns.expects(:start).once
     MailGate::MxListener.stubs(:new).returns(mx)
-    SubmissionListener.stubs(:new).returns(submission)
+    MailGate::SubmissionListener.stubs(:new).returns(submission)
     AcmeDnsListener.stubs(:new).returns(acme_dns)
 
     @supervisor.start
 
     assert_includes @logger.messages, "[postrider] MailGate::MxListener listening on 0.0.0.0:2525"
-    assert_includes @logger.messages, "[postrider] SubmissionListener listening on 0.0.0.0:2525"
+    assert_includes @logger.messages, "[postrider] MailGate::SubmissionListener listening on 0.0.0.0:2525"
     assert_includes @logger.messages, "[postrider] AcmeDnsListener listening on 0.0.0.0:2525"
   end
 
@@ -54,7 +54,7 @@ class Relay::SupervisorTest < ActiveSupport::TestCase
     mx = fake_listener
     submission = fake_listener
     MailGate::MxListener.stubs(:new).returns(mx)
-    SubmissionListener.stubs(:new).raises(Relay::Certificate::Missing).then.returns(submission)
+    MailGate::SubmissionListener.stubs(:new).raises(Relay::Certificate::Missing).then.returns(submission)
     stub_tls_pem nil
 
     @supervisor.start
@@ -95,7 +95,7 @@ class Relay::SupervisorTest < ActiveSupport::TestCase
     stopped.stubs(:stopped?).returns(true)
     restarted = fake_listener
     MailGate::MxListener.stubs(:new).returns(stopped).then.returns(restarted)
-    SubmissionListener.stubs(:new).returns(fake_listener)
+    MailGate::SubmissionListener.stubs(:new).returns(fake_listener)
 
     @supervisor.start
     restarted.expects(:start).once
@@ -109,7 +109,7 @@ class Relay::SupervisorTest < ActiveSupport::TestCase
     stopped = fake_listener
     stopped.stubs(:stopped?).returns(true)
     MailGate::MxListener.stubs(:new).returns(stopped).then.raises(RuntimeError, "address already in use")
-    SubmissionListener.stubs(:new).returns(fake_listener)
+    MailGate::SubmissionListener.stubs(:new).returns(fake_listener)
 
     @supervisor.start
     2.times { @supervisor.send(:tick) }
@@ -159,7 +159,7 @@ class Relay::SupervisorTest < ActiveSupport::TestCase
   test "contains an exception while starting one listener and keeps the others" do
     submission = fake_listener
     MailGate::MxListener.stubs(:new).raises(RuntimeError, "boom")
-    SubmissionListener.stubs(:new).returns(submission)
+    MailGate::SubmissionListener.stubs(:new).returns(submission)
     submission.expects(:start).once
 
     @supervisor.start
@@ -169,7 +169,7 @@ class Relay::SupervisorTest < ActiveSupport::TestCase
 
   test "reports a boot failure when a listener fails with a certificate already present" do
     MailGate::MxListener.stubs(:new).raises(RuntimeError, "address already in use")
-    SubmissionListener.stubs(:new).returns(fake_listener)
+    MailGate::SubmissionListener.stubs(:new).returns(fake_listener)
 
     @supervisor.start
 
@@ -178,7 +178,7 @@ class Relay::SupervisorTest < ActiveSupport::TestCase
 
   test "does not report a boot failure while a listener is only waiting for a certificate" do
     MailGate::MxListener.stubs(:new).raises(Relay::Certificate::Missing)
-    SubmissionListener.stubs(:new).raises(Relay::Certificate::Missing)
+    MailGate::SubmissionListener.stubs(:new).raises(Relay::Certificate::Missing)
 
     @supervisor.start
 
@@ -212,7 +212,7 @@ class Relay::SupervisorTest < ActiveSupport::TestCase
 
     def stub_listeners(mx, submission)
       MailGate::MxListener.stubs(:new).returns(mx)
-      SubmissionListener.stubs(:new).returns(submission)
+      MailGate::SubmissionListener.stubs(:new).returns(submission)
       [ mx, submission ]
     end
 

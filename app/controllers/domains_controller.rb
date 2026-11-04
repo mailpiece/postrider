@@ -43,16 +43,14 @@ class DomainsController < ApplicationController
         format.json { head :no_content }
       end
     else
-      respond_to do |format|
-        format.html { redirect_to edit_domain_path(@domain), alert: "Type #{@domain.name} to remove it" }
-        format.json { render json: { error: "confirm must be #{@domain.name} to remove the domain and all its mail" }, status: :unprocessable_entity }
-      end
+      render json: { error: "confirm must be #{@domain.name} to remove the domain and all its mail" }, status: :unprocessable_entity
     end
   end
 
   private
+    # On screen the browser's prompt confirms it; over the API, the domain's name in confirm does.
     def removal_confirmed?
-      Domain.normalize_value_for(:name, params[:confirm]) == @domain.name
+      request.format.html? || Domain.normalize_value_for(:name, params[:confirm]) == @domain.name
     end
 
     def set_domain

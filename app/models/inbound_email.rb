@@ -19,6 +19,17 @@ class InboundEmail < ApplicationRecord
       .incineratable
   }
 
+  def self.purge(inbound_emails)
+    inbound_emails.in_batches do |batch|
+      transaction do
+        purge_attachments batch
+        Incineration.where(incinerable: batch).delete_all
+        purge_mailpieces batch
+        batch.delete_all
+      end
+    end
+  end
+
   def self.fail_abandoned
     pending.or(processing).where("created_at < ?", 1.day.ago).find_each do |inbound_email|
       stuck_status = inbound_email.status

@@ -65,8 +65,9 @@ Rails console.
 A `Message` has no status; each `Delivery`, one per recipient, carries it. A
 `Mailpiece` is the mail log's row, a delegated type over `InboundEmail` and
 `Delivery`, and `docs/lifecycle.md` says what each status means. Raw mail is an
-attachment purged after `RETENTION_DAYS`; the row and its events stay. The
-phrase a message was withheld for is for admins only.
+attachment purged after `RETENTION_DAYS`; the row and its events stay until
+their domain is removed. The phrase a message was withheld for is for admins
+only.
 
 ## Interface
 

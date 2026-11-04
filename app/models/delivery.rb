@@ -15,6 +15,17 @@ class Delivery < ApplicationRecord
 
   delegate :parsed_email, :raw_email, :raw, :attachments, to: :message
 
+  def self.purge(deliveries)
+    deliveries.in_batches do |batch|
+      transaction do
+        Pause.where(delivery: batch).update_all(delivery_id: nil)
+        Delivery::Attempt.where(delivery: batch).delete_all
+        purge_mailpieces batch
+        batch.delete_all
+      end
+    end
+  end
+
   def last_attempt
     attempts.order(:created_at).last
   end

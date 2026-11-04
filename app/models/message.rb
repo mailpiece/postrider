@@ -41,6 +41,18 @@ class Message < ApplicationRecord
       .where.not(id: Delivery.in_flight.select(:message_id))
   }
 
+  def self.purge(messages)
+    messages.in_batches do |batch|
+      Delivery.purge Delivery.where(message: batch)
+
+      transaction do
+        purge_attachments batch
+        Incineration.where(incinerable: batch).delete_all
+        batch.delete_all
+      end
+    end
+  end
+
   def smtp_envelope_from
     envelope_from.nil? ? mail_from : envelope_from
   end

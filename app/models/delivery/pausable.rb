@@ -7,7 +7,7 @@ module Delivery::Pausable
 
   def track_recipient_domain_event(action, **particulars)
     if should_track_event?
-      Event.create!(eventable: self, domain: eventable_domain, action: "recipient_domain_#{action}", particulars: scrub(recipient_domain: recipient_domain, **particulars))
+      Event.create!(eventable: self, domain: eventable_domain, action: "recipient_domain_#{action}", particulars: { recipient_domain: recipient_domain, **particulars })
     end
   end
 

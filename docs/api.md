@@ -27,7 +27,7 @@ A sending token is bound to a single verified domain.
 Each personal access token has one permission:
 
 - `read` — all `GET` endpoints (`GET /mailpieces`, `GET /mailpieces/:id`)
-- `write` — everything `read` allows, plus `DELETE /mailpieces/:id`, creating domains, checking their DNS, creating sending tokens and managing mailboxes and webhooks
+- `write` — everything `read` allows, plus `DELETE /mailpieces/:id`, creating and removing domains, checking their DNS, creating sending tokens and managing mailboxes and webhooks
 
 ## Creating a sending token
 
@@ -247,6 +247,20 @@ curl https://postrider.example.com/123456789/domains \
 | `401`  | Missing or invalid personal access token, or a `read` token                       |
 | `403`  | Token's user is not an account admin, or the account/user is not active          |
 | `422`  | `name` is blank, not a valid domain, or already taken; returns `{ "name": [ ... ] }` |
+
+## Removing a domain
+
+Requires a `write` token belonging to an account admin. Removing a domain deletes all its mail and its history, so the request names the domain in `confirm`:
+
+```bash
+curl -X DELETE https://postrider.example.com/123456789/domains/$DOMAIN_ID \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{ "confirm": "lists.example.com" }'
+```
+
+Returns `204` with no body. Inbound mail to the domain is refused and nothing more is sent from it at once; its mail is deleted in the background. Without `confirm`, or with another name, it returns `422` with `{ "error" }` and removes nothing.
 
 ## Checking a domain's DNS
 

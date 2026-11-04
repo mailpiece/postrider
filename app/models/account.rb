@@ -5,7 +5,7 @@ class Account < ApplicationRecord
   has_one :setting, dependent: :destroy
   has_many :users, dependent: :destroy
   has_many :domains, dependent: :destroy
-  # Through domains only — Account never destroys the mail log; Domain restricts while mail remains.
+  # Through domains only: the mail goes after its domain, in Domain::PurgeMailJob.
   has_many :mailboxes, through: :domains
   has_many :sending_tokens, through: :domains
   has_many :mailpieces, through: :domains

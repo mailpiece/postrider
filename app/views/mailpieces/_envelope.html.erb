@@ -2,7 +2,7 @@
 <% size = number_to_human_size(raw_email.byte_size, precision: 0, significant: false).sub("Bytes", "bytes") if raw_email.attached? %>
 <article class="envelope <%= status_class(status) %>" aria-label="Envelope">
   <p class="envelope__return">
-    <strong><%= local_assigns[:mark] %><%= from.presence || "No sender" %></strong>
+    <strong><%= local_assigns[:mark] %> <%= from.presence || "No sender" %></strong>
     <% return_lines.compact_blank.each do |line| %>
       <span><%= line %></span>
     <% end %>

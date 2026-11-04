@@ -45,7 +45,7 @@ module MailpiecesHelper
 
   def phishing_mark(inbound_email)
     if inbound_email.lookalike_sender?
-      tag.span("Phishing?", class: "envelope__phishing", title: "Sent as #{inbound_email.mail_from}: its letters imitate another address, a common phishing trick") + " "
+      tag.span("Phishing?", class: "envelope__phishing", title: "Sent as #{inbound_email.mail_from}: its letters imitate another address, a common phishing trick")
     end
   end
 

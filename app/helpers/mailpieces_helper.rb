@@ -30,6 +30,15 @@ module MailpiecesHelper
     tag.span code, class: "status status--#{SMTP_CODE_SEMANTICS.fetch(code.first, "neutral")}"
   end
 
+  # The reply as the server gave it, less the code shown beside it.
+  def smtp_reply_after_code(attempt)
+    if attempt.code.present?
+      attempt.output.to_s.sub(/\A#{Regexp.escape(attempt.code)}(?:[ -]|\z)/, "")
+    else
+      attempt.output
+    end
+  end
+
   def verdict_tag(verdict, label: nil)
     tag.span [ label, verdict.humanize ].compact.join(" "), class: "status status--#{verdict_semantic(verdict)}"
   end

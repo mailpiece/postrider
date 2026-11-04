@@ -8,7 +8,7 @@ class EventsControllerTest < ActionDispatch::IntegrationTest
     get events_path
 
     assert_response :success
-    assert_select ".trail.trail--events.trail--whole[data-controller=navigable-list] [data-controller=pagination][data-pagination-paginate-on-intersection-value=true]"
+    assert_select ".trail.trail--events:not(.trail--whole)[data-controller=navigable-list] [data-controller=pagination][data-pagination-paginate-on-intersection-value=true]"
     assert_select ".trail__entry[data-navigable-list-target=item] .trail__sentence", text: /Bounced/
   end
 
@@ -32,6 +32,16 @@ class EventsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "a.trail__sentence--link[href=?]", domain_webhook_path(webhook.domain, webhook), text: "Deactivated webhook after 10 failed deliveries"
+  end
+
+  test "the index keeps each event to one line, the whole sentence in its title" do
+    webhook = webhooks(:active)
+    webhook.track_event("deactivated", consecutive_failures_count: 10)
+    sign_in_as :nonstaff
+
+    get events_path
+
+    assert_select "a.trail__sentence--link[title=?]", "Deactivated webhook after 10 failed deliveries"
   end
 
   test "the index tells an admin a sending token was refused" do

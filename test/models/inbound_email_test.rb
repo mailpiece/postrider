@@ -373,6 +373,16 @@ class InboundEmailTest < ActiveSupport::TestCase
     assert_not inbound_emails(:received).to_bounce_address?
   end
 
+  test "a look-alike sender reads as punycode, and a plain one as it was sent" do
+    lookalike = create_inbound_email(mail_from: "receipts@str\u0456pe.com")
+    plain = create_inbound_email(mail_from: "Receipts@Stripe.com")
+
+    assert lookalike.lookalike_sender?
+    assert_equal "receipts@xn--strpe-p2e.com", lookalike.sender_address
+    assert_not plain.lookalike_sender?
+    assert_equal "Receipts@Stripe.com", plain.sender_address
+  end
+
   private
     def raw_with_attachment
       <<~EOM

@@ -311,6 +311,23 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "a look-alike sender shows as punycode, flagged as phishing, on the envelope and in the list" do
+    lookalike = create_inbound_email(mail_from: "receipts@str\u0456pe.com", status: :held)
+    normal = create_inbound_email(mail_from: "receipts@stripe.com", status: :held)
+    sign_in_as :nonstaff
+
+    get mailpiece_path(lookalike.mailpiece)
+    assert_select ".envelope__return strong", text: "Phishing? receipts@xn--strpe-p2e.com"
+    assert_select ".envelope__phishing[title=?]", "Sent as receipts@str\u0456pe.com: its letters imitate another address, a common phishing trick"
+
+    get mailpieces_path
+    assert_select "##{dom_id lookalike.mailpiece} .envelope__party", text: "Phishing? receipts@xn--strpe-p2e.com"
+    assert_select "##{dom_id normal.mailpiece} .envelope__party", text: "receipts@stripe.com"
+
+    get mailpiece_path(normal.mailpiece)
+    assert_select ".envelope__phishing", count: 0
+  end
+
   test "the HTML show stamps outbound mail as signed by its domain, or by the relay for a forward" do
     delivery = deliveries(:queued)
     sign_in_as :nonstaff

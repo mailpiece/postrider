@@ -861,4 +861,14 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+
+  /* A look-alike sender, shown as punycode, is flagged as phishing before the address. */
+  .envelope__phishing {
+    color: var(--color-warning-text);
+    font-size: 0.75em;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    margin-inline-end: 0.4em;
+    text-transform: uppercase;
+  }
 }

@@ -1,4 +1,10 @@
 class SubmissionListener < SmtpListener
+  class << self
+    def listener
+      new
+    end
+  end
+
   def authenticate(session, password:, **)
     if sending_token = SendingToken.authenticate(password)
       require_allowed_ip(session, sending_token)

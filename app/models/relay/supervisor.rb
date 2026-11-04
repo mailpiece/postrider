@@ -1,51 +1,51 @@
 class Relay::Supervisor
-  LISTENER_CLASSES = [ MxListener, SubmissionListener, AcmeDnsListener ].freeze
+  LISTENERS = [ Relay::MxBackend, SubmissionListener, AcmeDnsListener ].freeze
 
   def initialize(logger:, poll_interval: 60)
     @logger = logger
     @poll_interval = poll_interval
     @listeners = {}
-    @pending_listener_classes = []
-    @failed_listener_classes = []
+    @pending_builders = []
+    @failed_builders = []
   end
 
   def start
-    @pending_listener_classes = LISTENER_CLASSES.dup
-    @failed_listener_classes = []
+    @pending_builders = LISTENERS.dup
+    @failed_builders = []
     start_pending_listeners
     watch_tls_certificate
     renew_tls_certificate_if_due
   end
 
   def boot_failed?
-    @failed_listener_classes.any?
+    @failed_builders.any?
   end
 
   def stop
     stop_watching_tls_certificate
     @listeners.each_value { |listener| stop_listener(listener) }
     @listeners.clear
-    @pending_listener_classes.clear
-    @failed_listener_classes.clear
+    @pending_builders.clear
+    @failed_builders.clear
   end
 
   private
     def start_pending_listeners
-      @pending_listener_classes.dup.each { |listener_class| start_listener(listener_class) }
+      @pending_builders.dup.each { |builder| start_listener(builder) }
     end
 
-    def start_listener(listener_class)
-      listener = listener_class.new
+    def start_listener(builder)
+      listener = builder.listener
       listener.start
-      @listeners[listener_class] = listener
-      @pending_listener_classes.delete(listener_class)
-      @failed_listener_classes.delete(listener_class)
-      log "#{listener_class.name} listening on #{listener.addresses.join(", ")}"
+      @listeners[builder] = listener
+      @pending_builders.delete(builder)
+      @failed_builders.delete(builder)
+      log "#{listener.class.name} listening on #{listener.addresses.join(", ")}"
     rescue Relay::Certificate::Missing
-      log "#{listener_class.name} waiting for a TLS certificate before starting"
+      log "#{builder.name} waiting for a TLS certificate before starting"
     rescue StandardError => error
-      @failed_listener_classes |= [ listener_class ]
-      log_error "#{listener_class.name} failed to start", error
+      @failed_builders |= [ builder ]
+      log_error "#{builder.name} failed to start", error
     end
 
     # Queue rather than sleep: a wakeup during tick is otherwise lost and SIGTERM
@@ -73,11 +73,11 @@ class Relay::Supervisor
     # Requeue onto pending so startup's boot path retries; drain first — in-flight
     # connections may outlive a dead acceptor.
     def requeue_stopped_listeners
-      @listeners.select { |_listener_class, listener| listener.stopped? }.each do |listener_class, listener|
-        log "#{listener_class.name} stopped unexpectedly; restarting it"
+      @listeners.select { |_builder, listener| listener.stopped? }.each do |builder, listener|
+        log "#{listener.class.name} stopped unexpectedly; restarting it"
         stop_listener(listener)
-        @listeners.delete(listener_class)
-        @pending_listener_classes |= [ listener_class ]
+        @listeners.delete(builder)
+        @pending_builders |= [ builder ]
       end
     end
 

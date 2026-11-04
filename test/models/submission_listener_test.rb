@@ -12,7 +12,7 @@ class SubmissionListenerTest < ActiveSupport::TestCase
     stub_env RELAY_HOSTNAME: "smtp-test.local"
     @test_started_at = Time.current
     @port = free_port
-    @listener = start_listener(SubmissionListener, "SUBMISSION_PORT", @port)
+    @listener = start_listener("SUBMISSION_PORT", @port) { SubmissionListener.new }
   end
 
   teardown do

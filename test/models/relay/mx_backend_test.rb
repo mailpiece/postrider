@@ -1,7 +1,7 @@
 require "test_helper"
 require "net/smtp"
 
-class MxListenerTest < ActiveSupport::TestCase
+class Relay::MxBackendTest < ActiveSupport::TestCase
   include SmtpTestHelper
 
   self.use_transactional_tests = false
@@ -11,15 +11,18 @@ class MxListenerTest < ActiveSupport::TestCase
     @domain = Current.account.domains.create!(name: "mx-listener-test.example", creator: users(:leo), dkim_status: :ok)
     @domain.mailboxes.create!(local_part: "everyone")
     @port = free_port
-    @listener = start_listener(MxListener, "MX_PORT", @port)
+    @listener = start_mx_listener(@port)
   end
 
   teardown do
     stop_listener(@listener)
-    Mailpiece.where(domain: @domain).delete_all
-    InboundEmail.where(domain: @domain).delete_all
     Account::Cancellation.where(account: @domain.account).delete_all
-    @domain.destroy
+
+    [ @domain, @other_domain ].compact.each do |domain|
+      Mailpiece.where(domain:).delete_all
+      InboundEmail.where(domain:).delete_all
+      domain.destroy
+    end
   end
 
   test "accepts mail for a registered domain and tenants the inbound email to the domain's account" do
@@ -195,9 +198,9 @@ class MxListenerTest < ActiveSupport::TestCase
   end
 
   test "rejects recipients past the MX_MAX_RECIPIENTS cap with a 452 without accepting the message" do
-    with_env(MX_MAX_RECIPIENTS: 2) do
+    with_mx_listener(MX_MAX_RECIPIENTS: 2) do |port|
       error = assert_raises(Net::SMTPServerBusy) do
-        deliver(from: "sender@example.com",
+        mx_deliver(port:, from: "sender@example.com",
           to: %w[ everyone@mx-listener-test.example postmaster@mx-listener-test.example dmarc-reports@mx-listener-test.example ],
           raw: "Subject: Hi\r\n\r\nBody.\r\n")
       end
@@ -208,8 +211,8 @@ class MxListenerTest < ActiveSupport::TestCase
   end
 
   test "accepts a multi-recipient message up to the MX_MAX_RECIPIENTS cap" do
-    with_env(MX_MAX_RECIPIENTS: 2) do
-      deliver(from: "sender@example.com",
+    with_mx_listener(MX_MAX_RECIPIENTS: 2) do |port|
+      mx_deliver(port:, from: "sender@example.com",
         to: %w[ everyone@mx-listener-test.example postmaster@mx-listener-test.example ],
         raw: "Subject: Hi\r\n\r\nBody.\r\n")
 
@@ -278,8 +281,8 @@ class MxListenerTest < ActiveSupport::TestCase
     assert_equal 2, inbound_email_count
   end
 
-  test "refuses a message whose header section passes 1 MB" do
-    raw = "Subject: Hi\r\n" + ("X-Filler: #{"x" * 70}\r\n" * 16_000) + "\r\nBody.\r\n"
+  test "refuses a message whose header section passes 256 KB" do
+    raw = "Subject: Hi\r\n" + ("X-Filler: #{"x" * 70}\r\n" * 4_000) + "\r\nBody.\r\n"
 
     error = assert_raises(Net::SMTPFatalError) do
       deliver(from: "sender@example.com", to: "everyone@mx-listener-test.example", raw: raw)
@@ -331,7 +334,7 @@ class MxListenerTest < ActiveSupport::TestCase
   test "fails to boot outside a local environment when no certificate is installed" do
     Rails.stubs(:env).returns(ActiveSupport::EnvironmentInquirer.new("production"))
 
-    assert_raises(Relay::Certificate::Missing) { MxListener.new }
+    assert_raises(Relay::Certificate::Missing) { Relay::MxBackend.new.tls }
   end
 
   test "stamps a client-supplied HELO into the Received header of the stored mail" do
@@ -343,32 +346,12 @@ class MxListenerTest < ActiveSupport::TestCase
     assert_equal 1, raw[/\AReceived:.*?\r\n/m].to_s.count("\n")
   end
 
-  test "neutralizes injection characters in the values stamped into the Received header" do
-    mx = MxListener.allocate
-
-    [
-      "plain\r\nAuthentication-Results: smtp-test.local; dkim=pass",
-      "a) (b [10.0.0.1]",
-      "evil.example fake-token",
-      "\t\x00control",
-      "x" * 5000
-    ].each do |hostile|
-      session = session_with(helo: hostile, remote_ip: hostile)
-      line = mx.send(:received_header, session)
-
-      assert_equal 1, line.count("\n"), "extra line from #{hostile.inspect}"
-      assert line.end_with?("\r\n")
-      refute_includes line, "dkim=pass", "leaked injected token from #{hostile.inspect}"
-      refute_includes line, "\x00"
-    end
-  end
-
   test "tolerates a few protocol errors but drops a connection that floods them" do
     Socket.tcp("127.0.0.1", @port) do |socket|
       socket.gets
 
-      # Engine default: counts every protocol error, not just unrecognized commands.
-      (MailSmtp::Server::MAX_EXCEPTIONS - 1).times do
+      # Counts every protocol error, not just unrecognized commands; past the soft limit each reply waits.
+      (MailGate::MxListener::DEFAULTS[:hard_error_limit] - 1).times do
         socket.write("GARBAGE\r\n")
         assert_match(/\A5\d\d /, socket.gets.to_s)
       end
@@ -385,7 +368,7 @@ class MxListenerTest < ActiveSupport::TestCase
       socket.gets
 
       # Past the limit each junk command is still answered but counts as an error.
-      (MailSmtp::Server::MAX_JUNK_COMMANDS + MailSmtp::Server::MAX_EXCEPTIONS - 1).times do
+      (MailGate::MxListener::DEFAULTS[:max_junk_commands] + MailGate::MxListener::DEFAULTS[:hard_error_limit] - 1).times do
         socket.write("NOOP\r\n")
         assert_match(/\A250/, socket.gets.to_s)
       end
@@ -659,33 +642,6 @@ class MxListenerTest < ActiveSupport::TestCase
     assert_equal 0, inbound_email_count
   end
 
-  test "holds extracted addresses to the RFC 5321 mailbox grammar" do
-    mx = MxListener.allocate
-
-    assert mx.send(:mailbox?, "sender@example.com")
-    assert mx.send(:mailbox?, "bounces+123.abc@mailer.example.com")
-    assert mx.send(:mailbox?, "o'brien=news@single-label")
-
-    assert_not mx.send(:mailbox?, "a b\"c@@x")
-    assert_not mx.send(:mailbox?, ".leading@example.com")
-    assert_not mx.send(:mailbox?, "double..dot@example.com")
-    assert_not mx.send(:mailbox?, "user@-example.com")
-    assert_not mx.send(:mailbox?, "user@example-.com")
-    assert_not mx.send(:mailbox?, "user@example..com")
-    assert_not mx.send(:mailbox?, "\"quoted string\"@example.com")
-    assert_not mx.send(:mailbox?, "user@[127.0.0.1]")
-    assert_not mx.send(:mailbox?, "user@")
-    assert_not mx.send(:mailbox?, "@example.com")
-  end
-
-  test "enforces the RFC 5321 octet ceiling on the domain" do
-    mx = MxListener.allocate
-    longest_domain = Array.new(4) { "a" * 63 }.join(".")
-
-    assert mx.send(:mailbox?, "user@#{longest_domain}")
-    assert_not mx.send(:mailbox?, "user@#{longest_domain}.a")
-  end
-
   # Gmail forwarding locals exceed RFC 5321's 64-octet ceiling; a 501 would permanently bounce their forwards.
   test "accepts a Gmail forwarding sender whose local part exceeds 64 octets" do
     gmail_forwarder = "jane.doe.forwarding.mailbox+caf_=everyone=mx-listener-test.example@gmail.com"
@@ -807,19 +763,7 @@ class MxListenerTest < ActiveSupport::TestCase
     end
   end
 
-  test "preserves a legitimate IPv6 address literal HELO and rejects a malformed one" do
-    mx = MxListener.allocate
-
-    good = mx.send(:received_header, session_with(helo: "[IPv6:2001:db8::1]", remote_ip: "203.0.113.1"))
-    assert_includes good, "from [IPv6:2001:db8::1] (unknown [203.0.113.1])"
-
-    bad = mx.send(:received_header, session_with(helo: "", remote_ip: "203.0.113.1 x"))
-    assert_includes bad, "from unknown (unknown [unknown])"
-  end
-
-  test "stamps unknown in the reverse-DNS slot without ever resolving one, so no stranger's DNS holds the connection" do
-    DnsResolver.expects(:name).never
-
+  test "stamps unknown in the reverse-DNS slot when the client's address has no name" do
     deliver(from: "sender@example.com", to: "everyone@mx-listener-test.example", raw: "Subject: Hi\r\n\r\nBody.\r\n")
 
     raw = InboundEmail.order(:created_at).last.raw
@@ -836,6 +780,70 @@ class MxListenerTest < ActiveSupport::TestCase
     deliver(from: "sender@example.com", to: "everyone@mx-listener-test.example", raw: "Subject: Plain\r\n\r\nBody.\r\n")
 
     assert_match(/by smtp-test\.local with ESMTP; /, last_inbound_email_raw)
+  end
+
+  test "stamps the client's confirmed reverse DNS name into the Received header" do
+    resolver = MailResolver::Testing::FakeResolver.new("127.0.0.1" => { ptr: [ "client.sender.example" ] },
+      "client.sender.example" => { a: [ "127.0.0.1" ] })
+
+    port = free_port
+    listener = start_mx_listener(port, resolver:)
+    mx_deliver(port:, from: "sender@example.com", to: "everyone@mx-listener-test.example", raw: "Subject: Hi\r\n\r\nBody.\r\n")
+
+    assert_match(/\AReceived: from test\.client\.example \(client\.sender\.example \[127\.0\.0\.1\]\) /, last_inbound_email_raw)
+  ensure
+    stop_listener(listener)
+  end
+
+  test "strips a client-supplied Authentication-Results from the stored mail" do
+    deliver(from: "sender@example.com", to: "everyone@mx-listener-test.example",
+      raw: "Authentication-Results: smtp-test.local; dkim=pass header.d=trusted.example\r\nSubject: Hi\r\n\r\nBody.\r\n")
+
+    assert_not_includes last_inbound_email_raw, "trusted.example"
+  end
+
+  test "a message to recipients on two accounts is stored for each under its own account, with one reply" do
+    create_other_domain
+
+    response = deliver(from: "sender@example.com",
+      to: %w[ everyone@mx-listener-test.example everyone@mx-other-account-test.example ], raw: "Subject: Hi\r\n\r\nBody.\r\n")
+
+    assert_equal "250", response.status
+    assert_equal [ @domain.account ], InboundEmail.where(domain: @domain).map(&:account)
+    assert_equal [ @other_domain.account ], InboundEmail.where(domain: @other_domain).map(&:account)
+  end
+
+  test "a retry after storing the second account's copy failed leaves one copy for each account" do
+    create_other_domain
+    fail_the_next_store_for "everyone@mx-other-account-test.example"
+    recipients = %w[ everyone@mx-listener-test.example everyone@mx-other-account-test.example ]
+    unattached_blobs = ActiveStorage::Blob.uncached { ActiveStorage::Blob.where.missing(:attachments).count }
+
+    error = assert_raises(Net::SMTPServerBusy) { deliver(from: "sender@example.com", to: recipients, raw: "Subject: Hi\r\n\r\nBody.\r\n") }
+    assert_match "451", error.message
+    first_copy = InboundEmail.uncached { InboundEmail.find_by!(domain: @domain) }.raw_email.blob
+
+    deliver(from: "sender@example.com", to: recipients, raw: "Subject: Hi\r\n\r\nBody.\r\n")
+
+    InboundEmail.uncached do
+      assert_equal 1, InboundEmail.where(domain: @domain).count
+      assert_equal 1, InboundEmail.where(domain: @other_domain).count
+      assert_equal first_copy, InboundEmail.find_by!(domain: @domain).raw_email.blob
+    end
+    assert_equal unattached_blobs, ActiveStorage::Blob.uncached { ActiveStorage::Blob.where.missing(:attachments).count }
+  end
+
+  test "stores mail under each recipient's account, whatever an earlier message on the thread was for" do
+    create_other_domain
+    backend = Relay::MxBackend.new
+    Current.account = nil
+
+    backend.store("everyone@mx-listener-test.example", raw: "Subject: One\r\n\r\nBody.\r\n", digest: "one", envelope: envelope)
+    backend.store("everyone@mx-other-account-test.example", raw: "Subject: Two\r\n\r\nBody.\r\n", digest: "two", envelope: envelope)
+
+    assert_nil Current.account
+    assert_equal @domain.account, InboundEmail.find_by!(digest: "one").account
+    assert_equal @other_domain.account, InboundEmail.find_by!(digest: "two").account
   end
 
   test "keeps serving after an accept fails" do
@@ -863,6 +871,26 @@ class MxListenerTest < ActiveSupport::TestCase
       end
     end
 
+    def fail_the_next_store_for(recipient)
+      backend = @listener.backend
+      backend.instance_variable_set(:@failing_recipient, recipient)
+
+      def backend.store(route, **)
+        if route == @failing_recipient
+          @failing_recipient = nil
+          raise "boom"
+        else
+          super
+        end
+      end
+    end
+
+    def create_other_domain
+      @other_domain = accounts(:other_account).domains.create!(name: "mx-other-account-test.example", creator: users(:other),
+        dkim_status: :ok)
+      @other_domain.mailboxes.create!(local_part: "everyone")
+    end
+
     def deliver(from:, to:, raw:, helo: "test.client.example")
       mx_deliver(port: @port, from: from, to: to, raw: raw, helo: helo)
     end
@@ -875,7 +903,7 @@ class MxListenerTest < ActiveSupport::TestCase
     def with_mx_listener(**env)
       with_env(**env) do
         port = free_port
-        listener = start_listener(MxListener, "MX_PORT", port)
+        listener = start_mx_listener(port)
 
         begin
           yield port
@@ -900,13 +928,6 @@ class MxListenerTest < ActiveSupport::TestCase
       socket
     rescue Errno::EADDRNOTAVAIL
       skip "#{from} is not a local address here"
-    end
-
-    def session_with(helo: nil, remote_ip: nil)
-      session = MailSmtp::Session.new
-      session.helo = helo
-      session.remote_ip = remote_ip
-      session
     end
 
     def inbound_email_count

@@ -1,5 +1,6 @@
 require "socket"
 require "net/smtp"
+require "mailresolver/testing"
 
 module SmtpTestHelper
   def free_port
@@ -9,16 +10,24 @@ module SmtpTestHelper
     server&.close
   end
 
-  def start_listener(listener_class, port_env, port)
-    with_env(port_env => port, BIND_ADDRESS: "127.0.0.1") do
-      listener_class.new.tap(&:start)
-    end
+  def start_listener(port_env, port)
+    with_env(port_env => port, BIND_ADDRESS: "127.0.0.1") { yield.tap(&:start) }
   ensure
     wait_until_listening(port)
   end
 
+  # No real DNS: a client's address has no reverse DNS name unless a test's resolver gives it one.
+  def start_mx_listener(port, **options)
+    start_listener("MX_PORT", port) { Relay::MxBackend.listener(resolver: MailResolver::Testing::FakeResolver.new, **options) }
+  end
+
   def stop_listener(listener)
     listener&.stop
+  end
+
+  def envelope(**overrides)
+    MailGate::Envelope.new(ip: "203.0.113.1", hostname: "unknown", helo: "client.example", mail_from: "sender@example.com",
+      rcpt_to: [], tls_version: nil, tls_cipher: nil, queue_id: SecureRandom.alphanumeric(12).upcase, **overrides)
   end
 
   def mx_deliver(port:, from:, to:, raw:, helo: "test.client.example")

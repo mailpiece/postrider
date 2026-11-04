@@ -60,20 +60,16 @@ module MailpiecesHelper
     end
   end
 
+  def mailpiece_stamp(mailpiece)
+    mailpiece.inbound_email? ? authentication_stamp(mailpiece.postable) : SIGNED_STAMP
+  end
+
   def signature_stamp(delivery)
     if delivery.message.signable?
       SIGNED_STAMP.merge(checks: [ "DKIM" ], note: delivery.domain.name)
     else
       SIGNED_STAMP.merge(checks: [ "ARC" ], note: Relay.hostname)
     end
-  end
-
-  def mailpiece_meta(mailpiece)
-    postable = mailpiece.postable
-    status = mailpiece.inbound_email? ? inbound_status_word(postable) : postable.status
-
-    safe_join [ row_status(status), mailpiece.inbound_email? ? "Received" : "Sent", "#{postable.mail_from} → #{postable.rcpt_to}",
-      local_datetime_tag(mailpiece.created_at, style: :timeordate) ], " · "
   end
 
   # Newest first as [ time, sentence ]. Lines that share a time keep the order they are added in.

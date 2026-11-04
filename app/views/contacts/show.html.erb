@@ -16,7 +16,7 @@
   </ul>
 
   <% if @page.used? %>
-    <ul class="rows" style="--rows-margin: 0">
+    <ul class="envelopes">
       <%= with_automatic_pagination :mailpieces, @page do %>
         <%= render partial: "mailpieces/mailpiece", collection: @page.records %>
       <% end %>

@@ -275,4 +275,197 @@
     letter-spacing: 0.12em;
     overflow-wrap: anywhere;
   }
+
+  /* The index's filters: a flat mailbox per status, its window showing up to four slips. */
+  .post-boxes {
+    display: grid;
+    gap: calc(var(--inline-space) * 1.5);
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    list-style: none;
+    margin: 0 0 var(--block-space-double);
+    padding: 0;
+
+    [data-filtering] & {
+      display: none;
+    }
+  }
+
+  .post-box {
+    border-radius: var(--radius-lg);
+    outline: none;
+
+    &[aria-selected="true"] {
+      outline: var(--focus-ring);
+      outline-offset: var(--focus-ring-offset);
+    }
+  }
+
+  .post-box__link {
+    align-items: end;
+    background-color: var(--color-canvas);
+    border: var(--border);
+    border-radius: inherit;
+    box-shadow: var(--shadow-card);
+    color: var(--color-ink);
+    display: grid;
+    gap: calc(var(--inline-space) * 1.25);
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: calc(var(--inline-space) * 1.5);
+    text-decoration: none;
+
+    @media (any-hover: hover) {
+      &:hover {
+        background-color: var(--color-ink-lightest);
+      }
+    }
+  }
+
+  .post-box__window {
+    background-color: var(--color-ink-lighter);
+    block-size: 2.5rem;
+    border-radius: var(--radius-xs);
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 3px;
+    grid-column: 1 / -1;
+    overflow: hidden;
+    padding: 0.4rem 0.5rem;
+  }
+
+  .post-box__slip {
+    background-color: var(--status-color);
+    block-size: 5px;
+    border-radius: 1px;
+    flex: none;
+
+    &:nth-child(even) {
+      margin-inline-end: 0.5rem;
+    }
+  }
+
+  .post-box__name {
+    font-weight: 600;
+  }
+
+  .post-box__count {
+    color: var(--status-text, var(--color-ink-dark));
+    font-size: var(--text-large);
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  /* A list of mailpieces: a stack of slim envelopes. */
+  .envelopes {
+    display: flex;
+    flex-direction: column;
+    gap: var(--block-space-half);
+    list-style: none;
+    margin: var(--block-space-half) 0 0;
+    padding: 0;
+  }
+
+  .envelopes__section:not(:has(.envelope:not([hidden]))) {
+    display: none;
+  }
+
+  .envelope--strip {
+    display: block;
+    outline: none;
+    padding: 0;
+
+    &[hidden] {
+      display: none;
+    }
+
+    &[aria-selected="true"] {
+      background-color: var(--color-ink-lightest);
+    }
+
+    @media (any-hover: hover) {
+      &:has(.envelope__link:hover) {
+        background-color: var(--color-ink-lightest);
+      }
+    }
+
+    .envelope__cancellation {
+      font-size: 0.55rem;
+      grid-area: postmark;
+      inline-size: 3.25rem;
+      padding: 0.2rem;
+
+      strong {
+        font-size: 0.75rem;
+      }
+    }
+
+    .envelope__address {
+      gap: 0.2rem;
+      padding-inline-start: 0;
+    }
+
+    .envelope__recipient {
+      font-size: var(--text-normal);
+    }
+
+    .envelope__stamp {
+      --perforation: 2px;
+
+      inline-size: 2.5rem;
+      min-block-size: 3rem;
+    }
+
+    .envelope__stamp-face {
+      --icon-size: 1rem;
+
+      justify-content: center;
+      padding: 0;
+    }
+
+    .envelope__ink--outcome {
+      border-width: 3px;
+      grid-area: ink;
+      justify-self: end;
+      padding: 0.15rem 0.6rem;
+      rotate: -5deg;
+
+      strong {
+        font-size: var(--text-small);
+        letter-spacing: 0.08em;
+      }
+    }
+  }
+
+  .envelope__link {
+    align-items: center;
+    color: inherit;
+    column-gap: calc(var(--inline-space) * 1.5);
+    display: grid;
+    grid-template-areas:
+      "postmark address stamp"
+      "postmark return ink";
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    padding: calc(var(--block-space-half) * 1.25) calc(var(--inline-space) * 2);
+    row-gap: var(--block-space-half);
+    text-decoration: none;
+
+    @media (width >= 640px) {
+      grid-template-areas: "postmark return address stamp ink";
+      grid-template-columns: auto minmax(0, 1.1fr) minmax(0, 2fr) auto 8rem;
+    }
+  }
+
+  .envelope__direction {
+    color: var(--color-ink-darker);
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .envelope__line {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }

@@ -18,9 +18,9 @@
   <%= render "shared/rows_section", title: "Contacts", records: @contacts, partial: "contacts/contact", email_counts: @email_counts %>
   <%= render "shared/rows_section", title: "Domains", records: @domains, partial: "domains/domain" %>
   <% if @page.used? %>
-    <section class="rows__section">
+    <section class="envelopes__section">
       <h2 class="rows__heading txt-small txt-subtle">Mailpieces</h2>
-      <ul class="rows">
+      <ul class="envelopes">
         <%= with_automatic_pagination :mailpieces, @page do %>
           <%= render partial: "mailpieces/mailpiece", collection: @page.records %>
         <% end %>

@@ -35,24 +35,31 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_equal [ mailpieces_held_path, mailpieces_failed_path, mailpieces_withheld_path, mailpieces_deferred_path, mailpieces_queued_path, mailpieces_discarded_path ],
-      css_select(".rows--links a").pluck("href")
-    assert_equal [ "Held", "Failed", "Withheld", "Deferred", "Queued", "Discarded" ], css_select(".rows--links a").map { |link| link.text.strip }
-    assert_equal [ "1", "2", "1", "1", "2", "1" ], css_select(".rows--links .row__end").map { |count| count.text.strip }
-    assert_select ".rows--links + .rows__section .rows__heading", text: "Delivered"
+      css_select(".post-box a").pluck("href")
+    assert_equal [ "Held", "Failed", "Withheld", "Deferred", "Queued", "Discarded" ], css_select(".post-box__name").map(&:text)
+    assert_equal [ "1", "2", "1", "1", "2", "1" ], css_select(".post-box__count").map(&:text)
+    assert_equal [ 1, 2, 1, 1, 2, 1 ], css_select(".post-box__window").map { |window| window.css(".post-box__slip").size }
+    assert_select ".post-box.status--warning a[href=?]", mailpieces_held_path
+    assert_select ".post-box.status--progress a[href=?]", mailpieces_deferred_path
+    assert_select ".post-boxes + .envelopes__section .rows__heading", text: "Delivered"
   end
 
-  test "a row leads with its state, marked only when something went wrong" do
+  test "a mailpiece is listed as a slim envelope inked with its state" do
     sign_in_as :nonstaff
     delivered = mailpieces(:delivered)
     bounced = mailpieces(:bounced)
 
     get mailpieces_path
-    assert_select "##{dom_id delivered} .row__meta", text: /\ADelivered · Sent · sender@example.com → recipient@example.com/
-    assert_select "##{dom_id delivered} .row__meta .status", count: 0
+    assert_select "li##{dom_id delivered}" do
+      assert_select ".envelope__return", text: /Outbound\s+sender@example.com/
+      assert_select ".envelope__subject", text: "Hello"
+      assert_select ".envelope__recipient", text: "recipient@example.com"
+      assert_select ".envelope__stamp .for-screen-reader", text: "Signed"
+      assert_select ".envelope__ink", text: /Delivered/
+    end
 
     get mailpieces_failed_path
-    assert_select "##{dom_id bounced} .row__meta", text: /\ABounced · Sent · sender@example.com → recipient@example.com/
-    assert_select "##{dom_id bounced} .row__meta .status", text: "Bounced"
+    assert_select "li##{dom_id bounced} .envelope__ink", text: /Bounced/
   end
 
   test "index loads the rest of a long list on scroll" do
@@ -71,7 +78,8 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".blank-slate", text: "No mail recorded yet."
-    assert_select ".rows--links a", count: 0
+    assert_equal [ "0" ] * 6, css_select(".post-box__count").map(&:text)
+    assert_select ".post-box__slip", count: 0
   end
 
   test "index says so when none of the mail was delivered" do
@@ -82,8 +90,8 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".blank-slate", text: "No delivered mail."
-    assert_select ".rows--links a[href=?]", mailpieces_queued_path
-    assert_select ".rows--links a", count: 1
+    assert_select ".post-box.status--waiting a[href=?]", mailpieces_queued_path
+    assert_select ".post-box__slip", count: 1
   end
 
   test "index as JSON lists the same mailpieces, leaving out a domain you cannot reach" do
@@ -338,7 +346,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_select ".trail__sentence", text: "Received from 203.0.113.7"
 
     get mailpieces_path
-    assert_select "##{dom_id inbound_email.mailpiece} .row__meta", text: /Accepted/
+    assert_select "##{dom_id inbound_email.mailpiece} .envelope__ink", text: /Accepted/
   end
 
   test "the HTML show calls discarded mail discarded, since nothing is bounced to its sender" do

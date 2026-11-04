@@ -23,6 +23,16 @@
     padding: 1.375rem 1.5rem 1.125rem;
     row-gap: 0.75rem;
 
+    /* On a phone it keeps this arrangement, scaled down with its width: text stops at a readable floor
+       and is cut short past it, and the stamp keeps only its verdict and the DMARC policy. */
+    @media (width < 640px) {
+      --stamp-size: clamp(3.625rem, 15cqi, 5.75rem);
+
+      column-gap: 0.5rem;
+      padding: 0.75rem 0.875rem 0.625rem;
+      row-gap: 0.375rem;
+    }
+
     p {
       margin: 0;
     }
@@ -48,6 +58,22 @@
     strong {
       font-size: 0.875rem;
     }
+
+    @media (width < 640px) {
+      font-size: 0.7rem;
+      gap: 0.1em;
+      line-height: 1.25;
+
+      > * {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      strong {
+        font-size: 0.75rem;
+      }
+    }
   }
 
   .envelope__status {
@@ -59,6 +85,11 @@
     letter-spacing: 0.06em;
     overflow-wrap: anywhere;
     text-transform: uppercase;
+
+    @media (width < 640px) {
+      font-size: 0.7rem;
+      letter-spacing: 0.04em;
+    }
 
     .envelope:is(.status--warning, .status--error) & {
       color: var(--status-text);
@@ -72,6 +103,10 @@
     display: flex;
     grid-area: postmark;
     margin-block-start: -0.25rem;
+
+    @media (width < 640px) {
+      margin-block-start: 0;
+    }
   }
 
   /* A fixed ring, whatever the font: the date sits clear of the name on its arc. */
@@ -100,6 +135,16 @@
     strong {
       font-size: 0.75rem;
       text-transform: uppercase;
+    }
+
+    @media (width < 640px) {
+      --cancellation-size: clamp(3.75rem, 15cqi, 5.75rem);
+
+      font-size: 0.5rem;
+
+      strong {
+        font-size: 0.625rem;
+      }
     }
   }
 
@@ -136,6 +181,11 @@
     rotate: -8deg;
     z-index: 1;
 
+    @media (width < 640px) {
+      block-size: 2.25rem;
+      inline-size: clamp(2rem, 10cqi, 6rem);
+    }
+
     /* Wider by as much as its margin gives back, so it runs onto the stamp's paper without moving it. */
     @media (width >= 640px) {
       --waves-reach: calc(0.7rem + 10px);
@@ -161,6 +211,12 @@
     inline-size: var(--stamp-size);
     min-block-size: 7rem;
     rotate: 2deg;
+
+    @media (width < 640px) {
+      --perforation: calc(var(--stamp-size) / 38);
+
+      min-block-size: calc(var(--stamp-size) * 1.2);
+    }
   }
 
   /* Perforated paper: half circles bitten out along every edge, the middle kept whole. */
@@ -190,6 +246,19 @@
     overflow-wrap: anywhere;
     padding: 0.5rem 0.125rem;
     text-align: center;
+
+    @media (width < 640px) {
+      --icon-size: calc(var(--stamp-size) * 0.26);
+
+      font-size: max(0.55rem, calc(var(--stamp-size) * 0.1));
+      gap: 0.1rem;
+      justify-content: center;
+      padding: 0.2rem 0;
+
+      .envelope__stamp-note {
+        display: none;
+      }
+    }
   }
 
   .envelope__verdict {
@@ -199,12 +268,23 @@
     letter-spacing: 0.02em;
     line-height: 1.1;
     text-transform: uppercase;
+
+    @media (width < 640px) {
+      font-size: max(0.55rem, calc(var(--stamp-size) * 0.11));
+      letter-spacing: 0;
+    }
   }
 
   .envelope__checks {
     display: flex;
     flex-direction: column;
     font-weight: 700;
+
+    @media (width < 640px) {
+      > :not(.envelope__policy) {
+        display: none;
+      }
+    }
   }
 
   /* Each line of the address stays on one, cut short with its whole text in a title. */
@@ -227,6 +307,15 @@
       color: var(--envelope-ink);
       font-size: 0.75rem;
     }
+
+    @media (width < 640px) {
+      gap: 0.2rem;
+      padding-inline-start: 18%;
+
+      > span {
+        font-size: 0.7rem;
+      }
+    }
   }
 
   .envelope__subject {
@@ -235,11 +324,19 @@
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
+
+    @media (width < 640px) {
+      letter-spacing: 0.04em;
+    }
   }
 
   .envelope__recipient {
     font-size: 1.375rem;
     line-height: 1.15;
+
+    @media (width < 640px) {
+      font-size: clamp(0.875rem, 4.2cqi, 1.375rem);
+    }
   }
 
   /* Inks without room beside the barcode wrap above it; under wrap-reverse, flex-start is the bottom. */
@@ -250,6 +347,12 @@
     gap: 0.75rem 1rem;
     grid-area: foot;
     min-inline-size: 0;
+
+    @media (width < 640px) {
+      align-items: flex-end;
+      flex-wrap: nowrap;
+      gap: 0.5rem;
+    }
   }
 
   .envelope__inks {
@@ -259,6 +362,11 @@
     gap: 1rem;
     justify-content: flex-end;
     min-inline-size: 0;
+
+    @media (width < 640px) {
+      flex: none;
+      gap: 0.375rem;
+    }
   }
 
   /* A rubber stamp, inked in its status colour. */
@@ -289,6 +397,19 @@
       --status-color: var(--envelope-ink);
       --status-text: var(--envelope-ink);
     }
+
+    @media (width < 640px) {
+      border-width: 1.5px;
+      padding: 0.15rem 0.3rem;
+
+      span {
+        font-size: 0.55rem;
+      }
+
+      strong {
+        font-size: 0.75rem;
+      }
+    }
   }
 
   .envelope__ink--outcome {
@@ -299,18 +420,33 @@
     padding: 0.3rem 0.75rem;
     rotate: -6deg;
 
+    @media (width < 640px) {
+      border-width: 1.5px;
+      padding: 0.15rem 0.4rem;
+    }
+
     /* Beside the spam check it is struck nearer the middle, and in a double frame. */
     &:not(:last-child) {
       border: 4px double color-mix(in oklab, var(--status-color) 80%, transparent);
       margin-inline: auto;
       padding: 0.375rem 1rem;
       rotate: -9deg;
+
+      @media (width < 640px) {
+        border-width: 3px;
+        margin-inline: 0;
+        padding: 0.2rem 0.45rem;
+      }
     }
 
     span {
       font-size: 0.6875rem;
       font-weight: 700;
       letter-spacing: 0.04em;
+
+      @media (width < 640px) {
+        font-size: 0.55rem;
+      }
     }
 
     strong {
@@ -319,6 +455,10 @@
       letter-spacing: 0.07em;
       line-height: 1.05;
       text-transform: uppercase;
+
+      @media (width < 640px) {
+        font-size: clamp(0.6875rem, 3.4cqi, 1.15rem);
+      }
     }
   }
 
@@ -374,6 +514,11 @@
     flex-direction: column;
     gap: 0.3rem;
     min-inline-size: 0;
+
+    @media (width < 640px) {
+      flex: 1 1 0;
+      gap: 0.2rem;
+    }
   }
 
   .envelope__bars {
@@ -382,6 +527,11 @@
     display: flex;
     gap: 2px;
     overflow: hidden;
+
+    @media (width < 640px) {
+      block-size: 10px;
+      gap: 1px;
+    }
   }
 
   /* The four bar shapes of a postal barcode: full, ascender, descender, tracker. */
@@ -390,20 +540,39 @@
     block-size: 16px;
     flex: none;
     inline-size: 2px;
+
+    @media (width < 640px) {
+      block-size: 10px;
+      inline-size: 1px;
+    }
   }
 
   .envelope__bar--1 {
     block-size: 11px;
+
+    @media (width < 640px) {
+      block-size: 7px;
+    }
   }
 
   .envelope__bar--2 {
     block-size: 11px;
     margin-block-start: 5px;
+
+    @media (width < 640px) {
+      block-size: 7px;
+      margin-block-start: 3px;
+    }
   }
 
   .envelope__bar--3 {
     block-size: 6px;
     margin-block-start: 5px;
+
+    @media (width < 640px) {
+      block-size: 4px;
+      margin-block-start: 3px;
+    }
   }
 
   /* Numbers and ids take tabular figures, addresses not: Adwaita Sans widens a hyphen under them. */
@@ -413,6 +582,14 @@
     font-variant-numeric: tabular-nums;
     letter-spacing: 0.12em;
     overflow-wrap: anywhere;
+
+    @media (width < 640px) {
+      font-size: 0.55rem;
+      letter-spacing: 0.06em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   }
 
   .envelope__queue-id {
@@ -511,178 +688,6 @@
     letter-spacing: 0.06em;
     text-transform: uppercase;
     white-space: nowrap;
-  }
-
-  /* On a phone the envelope keeps its desktop arrangement, scaled down with its width. Text stops at a
-     readable floor and is cut short past it, and the stamp keeps only its verdict and the DMARC policy. */
-  @media (width < 640px) {
-    .envelope:not(.envelope--strip) {
-      --stamp-size: clamp(3.625rem, 15cqi, 5.75rem);
-
-      column-gap: 0.5rem;
-      padding: 0.75rem 0.875rem 0.625rem;
-      row-gap: 0.375rem;
-
-      .envelope__return {
-        font-size: 0.7rem;
-        gap: 0.1em;
-        line-height: 1.25;
-
-        > * {
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-
-        strong {
-          font-size: 0.75rem;
-        }
-      }
-
-      .envelope__status {
-        font-size: 0.7rem;
-        letter-spacing: 0.04em;
-      }
-
-      .envelope__postmark {
-        margin-block-start: 0;
-      }
-
-      .envelope__cancellation {
-        --cancellation-size: clamp(3.75rem, 15cqi, 5.75rem);
-
-        font-size: 0.5rem;
-
-        strong {
-          font-size: 0.625rem;
-        }
-      }
-
-      .envelope__waves {
-        block-size: 2.25rem;
-        inline-size: clamp(2rem, 10cqi, 6rem);
-      }
-
-      .envelope__stamp {
-        --perforation: calc(var(--stamp-size) / 38);
-
-        min-block-size: calc(var(--stamp-size) * 1.2);
-      }
-
-      .envelope__stamp-face {
-        --icon-size: calc(var(--stamp-size) * 0.26);
-
-        font-size: max(0.55rem, calc(var(--stamp-size) * 0.1));
-        gap: 0.1rem;
-        justify-content: center;
-        padding: 0.2rem 0;
-      }
-
-      .envelope__verdict {
-        font-size: max(0.55rem, calc(var(--stamp-size) * 0.11));
-        letter-spacing: 0;
-      }
-
-      .envelope__checks > :not(.envelope__policy),
-      .envelope__stamp-note {
-        display: none;
-      }
-
-      .envelope__address {
-        gap: 0.2rem;
-        padding-inline-start: 18%;
-
-        > span {
-          font-size: 0.7rem;
-        }
-      }
-
-      .envelope__subject {
-        letter-spacing: 0.04em;
-      }
-
-      .envelope__recipient {
-        font-size: clamp(0.875rem, 4.2cqi, 1.375rem);
-      }
-
-      .envelope__foot {
-        align-items: flex-end;
-        flex-wrap: nowrap;
-        gap: 0.5rem;
-      }
-
-      .envelope__barcode {
-        flex: 1 1 0;
-        gap: 0.2rem;
-      }
-
-      .envelope__bars,
-      .envelope__bar {
-        block-size: 10px;
-      }
-
-      .envelope__bars {
-        gap: 1px;
-      }
-
-      .envelope__bar {
-        inline-size: 1px;
-      }
-
-      .envelope__bar--1,
-      .envelope__bar--2 {
-        block-size: 7px;
-      }
-
-      .envelope__bar--2,
-      .envelope__bar--3 {
-        margin-block-start: 3px;
-      }
-
-      .envelope__bar--3 {
-        block-size: 4px;
-      }
-
-      .envelope__ids {
-        font-size: 0.55rem;
-        letter-spacing: 0.06em;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      .envelope__inks {
-        flex: none;
-        gap: 0.375rem;
-      }
-
-      .envelope__ink {
-        border-width: 1.5px;
-        padding: 0.15rem 0.3rem;
-
-        span {
-          font-size: 0.55rem;
-        }
-
-        strong {
-          font-size: 0.75rem;
-        }
-      }
-
-      .envelope__ink--outcome {
-        padding: 0.15rem 0.4rem;
-
-        &:not(:last-child) {
-          border-width: 3px;
-          margin-inline: 0;
-          padding: 0.2rem 0.45rem;
-        }
-
-        strong {
-          font-size: clamp(0.6875rem, 3.4cqi, 1.15rem);
-        }
-      }
-    }
   }
 
   /* A list of mailpieces: a stack of slim envelopes. */

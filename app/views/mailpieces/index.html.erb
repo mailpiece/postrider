@@ -13,14 +13,16 @@
   <%= render layout: "shared/filter", locals: { what: "delivered mail", search: search_path } do %>
     <div data-controller="navigable-list" data-action="keydown->navigable-list#navigate turbo:before-visit@document->navigable-list#rememberSelection turbo:frame-load->navigable-list#forgetSelection"
           data-navigable-list-actionable-items-value="true">
-      <ul class="post-boxes" aria-label="By status">
-        <%= render "mailpieces/box", status: "held", path: mailpieces_held_path, count: Current.user.accessible_mailpieces.held.count %>
-        <%= render "mailpieces/box", status: "failed", path: mailpieces_failed_path, count: Current.user.accessible_mailpieces.failed.count %>
-        <%= render "mailpieces/box", status: "withheld", path: mailpieces_withheld_path, count: Current.user.accessible_mailpieces.withheld.count %>
-        <%= render "mailpieces/box", status: "deferred", path: mailpieces_deferred_path, count: Current.user.accessible_mailpieces.deferred.count %>
-        <%= render "mailpieces/box", status: "queued", path: mailpieces_queued_path, count: Current.user.accessible_mailpieces.queued.count %>
-        <%= render "mailpieces/box", status: "discarded", path: mailpieces_discarded_path, count: Current.user.accessible_mailpieces.discarded.count %>
-      </ul>
+      <div class="status-stamps">
+        <ul class="status-stamps__list" aria-label="By status">
+          <%= render "mailpieces/status_stamp", status: "held", path: mailpieces_held_path, count: Current.user.accessible_mailpieces.held.count %>
+          <%= render "mailpieces/status_stamp", status: "failed", path: mailpieces_failed_path, count: Current.user.accessible_mailpieces.failed.count %>
+          <%= render "mailpieces/status_stamp", status: "withheld", path: mailpieces_withheld_path, count: Current.user.accessible_mailpieces.withheld.count %>
+          <%= render "mailpieces/status_stamp", status: "deferred", path: mailpieces_deferred_path, count: Current.user.accessible_mailpieces.deferred.count %>
+          <%= render "mailpieces/status_stamp", status: "queued", path: mailpieces_queued_path, count: Current.user.accessible_mailpieces.queued.count %>
+          <%= render "mailpieces/status_stamp", status: "discarded", path: mailpieces_discarded_path, count: Current.user.accessible_mailpieces.discarded.count %>
+        </ul>
+      </div>
 
       <% if @page.used? %>
         <section class="envelopes__section">

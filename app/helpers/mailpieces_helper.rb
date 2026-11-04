@@ -24,6 +24,7 @@ module MailpiecesHelper
   GENUINE_STAMP = { verdict: "Genuine", icon: "check", semantic: "success" }.freeze
   UNVERIFIED_STAMP = { verdict: "Not verified", icon: "close", semantic: "warning" }.freeze
   SIGNED_STAMP = { verdict: "Signed", icon: "lock", semantic: "info" }.freeze
+  UNCHECKED_STAMP = { verdict: "Not checked", icon: "minus", semantic: "muted", checks: [], note: "no checks recorded" }.freeze
 
   def smtp_code_tag(code)
     tag.span code, class: "status status--#{SMTP_CODE_SEMANTICS.fetch(code.first, "neutral")}"
@@ -37,20 +38,49 @@ module MailpiecesHelper
     mailpiece.inbound_email? ? inbound_status_word(mailpiece.postable) : mailpiece.postable.status
   end
 
+  def envelope_subject(mailpiece)
+    mailpiece.subject.presence || "(no subject)"
+  end
+
   def inbound_envelope_status(inbound_email)
     [ inbound_status_word(inbound_email).humanize, inbound_status_detail(inbound_email) ].compact.join(" · ")
   end
 
   def delivery_envelope_status(delivery)
-    safe_join [ "Outbound", (pluralize(delivery.attempts.size, "attempt") if delivery.attempts.any?),
+    safe_join [ "Outbound", ("#{delivery.attempts.size.ordinalize} attempt" if delivery.attempts.any?),
       (safe_join [ "next retry ", local_datetime_tag(delivery.next_retry_at, style: :datetime) ] if delivery.next_retry_at) ].compact, " · "
+  end
+
+  def mailpiece_outcome_note(mailpiece)
+    if mailpiece.inbound_email?
+      inbound_outcome_note(mailpiece.postable)
+    elsif attempt = mailpiece.postable.attempts.last
+      smtp_reply_code(attempt)
+    end
+  end
+
+  def inbound_outcome_note(inbound_email)
+    if inbound_email.forwarded?
+      forward_note(inbound_email)
+    elsif inbound_email.delivered? || inbound_email.held?
+      "not forwarded"
+    end
+  end
+
+  def delivery_outcome_note(delivery)
+    if attempt = delivery.attempts.last
+      [ smtp_reply_code(attempt), l(attempt.created_at, format: "%H:%M") ].compact_blank.join(" · ")
+    end
   end
 
   def authentication_stamp(inbound_email)
     verdicts = authentication_verdicts(inbound_email)
 
     if verdicts.any?
-      (inbound_email.authenticated_sender? ? GENUINE_STAMP : UNVERIFIED_STAMP).merge(checks: stamp_checks(verdicts), note: sealer_note(inbound_email))
+      stamp = inbound_email.authenticated_sender? ? GENUINE_STAMP : UNVERIFIED_STAMP
+      stamp.merge(checks: stamp_checks(verdicts), policy: policy_note(inbound_email), note: sealer_note(inbound_email))
+    else
+      UNCHECKED_STAMP
     end
   end
 
@@ -109,16 +139,26 @@ module MailpiecesHelper
       if inbound_email.held?
         Event::Description::HELD_REASONS[event_particular(inbound_email, "inbound_email_held", "reason")]
       elsif inbound_email.forwarded?
-        if forward_to = event_particular(inbound_email, "inbound_email_forwarded", "forward_to")
-          "to #{forward_to}"
-        end
+        forward_note(inbound_email)
       elsif inbound_email.delivered?
         "not forwarded"
       end
     end
 
+    def forward_note(inbound_email)
+      if forward_to = event_particular(inbound_email, "inbound_email_forwarded", "forward_to")
+        "to #{forward_to}"
+      end
+    end
+
+    # Reads the loaded events, so a list that preloads them asks nothing more.
     def event_particular(inbound_email, action, key)
-      inbound_email.events.find_by(action: action)&.particulars&.dig(key)
+      inbound_email.events.find { |event| event.action == action }&.particulars&.dig(key)
+    end
+
+    # The reply code with its enhanced status, "250 2.0.0", when the reply gives one.
+    def smtp_reply_code(attempt)
+      attempt.output.to_s[/\A\d{3}[ -]\d\.\d{1,3}\.\d{1,3}/]&.tr("-", " ") || attempt.code
     end
 
     def inbound_event_sentence(event)
@@ -170,17 +210,22 @@ module MailpiecesHelper
       }.compact_blank
     end
 
+    # The verdict already says what passed, so passes go bare, two to a line.
     def stamp_checks(verdicts)
-      verdicts.group_by { |_, verdict| verdict }.map do |verdict, checks|
-        names = checks.map(&:first).join(" ")
+      verdicts.group_by { |_, verdict| verdict }.flat_map do |verdict, checks|
+        names = checks.map(&:first)
 
         case verdict
-        when "pass" then "#{names} passed"
-        when "fail" then "#{names} failed"
+        when "pass" then names.each_slice(2).map { |pair| pair.join(" ") }
+        when "fail" then "#{names.join(" ")} failed"
         else
-          "#{names} #{verdict}"
+          "#{names.join(" ")} #{verdict}"
         end
       end
+    end
+
+    def policy_note(inbound_email)
+      "p=#{inbound_email.dmarc_policy}" if inbound_email.dmarc_policy.present?
     end
 
     def sealer_note(inbound_email)

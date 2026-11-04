@@ -1,7 +1,7 @@
 <div class="page flex flex-column gap">
   <%= render "mailpieces/envelope", mailpiece: mailpiece, status: delivery.status, status_line: delivery_envelope_status(delivery),
         from: delivery.message.mail_from, return_lines: [ ("Tags: #{delivery.message.tags.join(", ")}" if delivery.message.tags.any?) ],
-        stamp: signature_stamp(delivery), to: delivery.rcpt_to, mx: delivery.last_attempt&.mx_host, note: delivery.last_attempt&.code,
+        stamp: signature_stamp(delivery), to: delivery.rcpt_to, mx: delivery.last_attempt&.mx_host, note: delivery_outcome_note(delivery),
         message_id: delivery.message.mail_message_id, raw_email: delivery.raw_email %>
 
   <article class="record">

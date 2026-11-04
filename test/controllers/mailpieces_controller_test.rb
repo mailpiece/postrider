@@ -35,13 +35,10 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_equal [ mailpieces_held_path, mailpieces_failed_path, mailpieces_withheld_path, mailpieces_deferred_path, mailpieces_queued_path, mailpieces_discarded_path ],
-      css_select(".post-box a").pluck("href")
-    assert_equal [ "Held", "Failed", "Withheld", "Deferred", "Queued", "Discarded" ], css_select(".post-box__name").map(&:text)
-    assert_equal [ "1", "2", "1", "1", "2", "1" ], css_select(".post-box__count").map(&:text)
-    assert_equal [ 1, 2, 1, 1, 2, 1 ], css_select(".post-box__window").map { |window| window.css(".post-box__slip").size }
-    assert_select ".post-box.status--warning a[href=?]", mailpieces_held_path
-    assert_select ".post-box.status--progress a[href=?]", mailpieces_deferred_path
-    assert_select ".post-boxes + .envelopes__section .rows__heading", text: "Delivered"
+      css_select(".status-stamp a").pluck("href")
+    assert_equal [ "Held", "Failed", "Withheld", "Deferred", "Queued", "Discarded" ], css_select(".status-stamp__name").map(&:text)
+    assert_equal [ "1", "2", "1", "1", "2", "1" ], css_select(".status-stamp__count").map(&:text)
+    assert_select ".rows__heading", text: "Delivered"
   end
 
   test "a mailpiece is listed as a slim envelope inked with its state" do
@@ -62,6 +59,20 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_select "li##{dom_id bounced} .envelope__ink", text: /Bounced/
   end
 
+  test "a listed envelope's ink says how it went: the reply, or where it was forwarded" do
+    deliveries(:delivered).attempts.create!(code: "250", output: "250 2.0.0 OK queued", mx_host: "mx.recipient.example")
+    forwarded = inbound_emails(:received)
+    forwarded.track_event "forwarded", rcpt_to: forwarded.rcpt_to, forward_to: "team@example.net"
+    accepted = create_inbound_email(status: :delivered, forwarded_at: Time.current)
+    sign_in_as :nonstaff
+
+    get mailpieces_path
+
+    assert_select "##{dom_id mailpieces(:delivered)} .envelope__ink span", text: "250 2.0.0"
+    assert_select "##{dom_id forwarded.mailpiece} .envelope__ink span", text: "to team@example.net"
+    assert_select "##{dom_id accepted.mailpiece} .envelope__ink span", text: "not forwarded"
+  end
+
   test "index loads the rest of a long list on scroll" do
     sign_in_as :nonstaff
 
@@ -78,8 +89,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".blank-slate", text: "No mail recorded yet."
-    assert_equal [ "0" ] * 6, css_select(".post-box__count").map(&:text)
-    assert_select ".post-box__slip", count: 0
+    assert_equal [ "0" ] * 6, css_select(".status-stamp__count").map(&:text)
   end
 
   test "index says so when none of the mail was delivered" do
@@ -90,8 +100,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".blank-slate", text: "No delivered mail."
-    assert_select ".post-box.status--waiting a[href=?]", mailpieces_queued_path
-    assert_select ".post-box__slip", count: 1
+    assert_select ".status-stamp a[href=?]", mailpieces_queued_path
   end
 
   test "index as JSON lists the same mailpieces, leaving out a domain you cannot reach" do
@@ -215,10 +224,10 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
       assert_select ".envelope__subject", text: "Invoice"
       assert_select ".envelope__recipient", text: inbound_email.rcpt_to
       assert_select ".envelope__verdict", text: "Authentication: Genuine"
-      assert_select ".envelope__stamp span", text: "SPF DKIM DMARC ARC passed"
+      assert_equal [ "SPF DKIM", "DMARC ARC" ], css_select(".envelope__checks span").map(&:text)
       assert_select ".envelope__stamp-note", text: "via google.com"
       assert_select ".envelope__ink", text: /Spam check\s+−1.8\s+no action/
-      assert_select ".envelope__ids", text: /\A#{inbound_email.id} · <abc@remote.example> · \d+ Bytes\z/
+      assert_select ".envelope__ids", text: /· <abc@remote.example> · \d+ bytes/
     end
   end
 
@@ -236,6 +245,31 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_select ".envelope__stamp span", text: "SPF softfail"
     assert_select ".envelope__stamp span", text: "DMARC failed"
     assert_select ".envelope__ink", text: /Spam check\s+9.4\s+would reject/
+    assert_select ".envelope__ink", text: /Held\s+not forwarded/
+  end
+
+  test "the envelope shows a subject as it is" do
+    inbound_email = create_inbound_email(raw: "Subject: RE: Invoice\r\n\r\nBody")
+    sign_in_as :nonstaff
+
+    get mailpiece_path(inbound_email.mailpiece)
+    assert_select ".envelope__subject", text: "RE: Invoice"
+
+    get mailpieces_queued_path
+    assert_select "##{dom_id inbound_email.mailpiece} .envelope__subject", text: "RE: Invoice"
+  end
+
+  test "the HTML show stamps inbound mail no check was recorded for as not checked" do
+    inbound_email = create_inbound_email
+    inbound_email.discard
+    sign_in_as :nonstaff
+
+    get mailpiece_path(inbound_email.mailpiece)
+
+    assert_select ".envelope__stamp" do
+      assert_select ".envelope__verdict", text: "Authentication: Not checked"
+      assert_select ".envelope__stamp-note", text: "no checks recorded"
+    end
   end
 
   test "the HTML show stamps outbound mail as signed by its domain, or by the relay for a forward" do
@@ -275,7 +309,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".envelope__verdict", text: "Authentication: Genuine"
-    assert_equal [ "SPF failed", "DKIM DMARC ARC passed" ], css_select(".envelope__stamp-face > span:not([class])").map(&:text)
+    assert_equal [ "SPF failed", "DKIM DMARC", "ARC", "p=reject" ], css_select(".envelope__checks span").map(&:text)
     assert_select ".envelope__stamp-note", text: "via lists.example.org"
     assert_select ".trail__sentence", count: 1, text: "Received."
   end
@@ -287,7 +321,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     get mailpiece_path(inbound_email.mailpiece)
 
     assert_select ".envelope__verdict", text: "Authentication: Genuine"
-    assert_select ".envelope__stamp span", text: "DMARC passed"
+    assert_select ".envelope__checks span", text: "DMARC"
   end
 
   test "the HTML show does not state a seal that failed as a hop the mail took" do
@@ -298,6 +332,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
 
     assert_select ".envelope__verdict", text: "Authentication: Not verified"
     assert_select ".envelope__stamp-note", text: "lists.example.org seal failed"
+    assert_select ".envelope__checks span", text: "p=none"
     assert_select ".trail__sentence", count: 1, text: "Received."
   end
 
@@ -321,7 +356,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".envelope__verdict", text: "Authentication: Not verified"
-    assert_select ".envelope__stamp span", text: "SPF passed"
+    assert_select ".envelope__checks span", text: "SPF"
   end
 
   # "Held" beside a wall of passing checks reads as a contradiction until it says which gate failed.
@@ -344,7 +379,6 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
 
     get mailpiece_path(inbound_email.mailpiece)
 
-    assert_select ".envelope__ink", text: /Accepted/
     assert_select ".envelope__status", text: "Accepted · not forwarded"
     assert_select ".trail__sentence", text: "Accepted. Forwarding was not on for this address."
     assert_select ".trail__sentence", text: "Received from 203.0.113.7."
@@ -398,7 +432,6 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_select ".trail__sentence", count: 2
     assert_select ".trail__entry:first-child .trail__sentence", text: "Forwarded to elsewhere@example.net."
     assert_select ".trail__entry:last-child .trail__sentence", text: "Received from mail.sender.example (203.0.113.7)."
-    assert_select ".envelope__ink", text: /Forwarded/
     assert_select ".envelope__status", text: "Forwarded · to elsewhere@example.net"
   end
 
@@ -413,10 +446,10 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_select ".trail__sentence", text: "Delivery attempt at mx.recipient.example."
     assert_select ".smtp-reply", text: /451 try again later/
     assert_select ".trail__entry:last-child .trail__sentence", text: "Submitted."
-    assert_select ".envelope__status", text: /\AOutbound · 1 attempt · next retry/
+    assert_select ".envelope__status", text: /\AOutbound · 1st attempt · next retry/
     assert_select ".envelope__return span", text: "Tags: welcome"
     assert_select ".envelope__address", text: /MX mx.recipient.example/
-    assert_select ".envelope__ink", text: /Deferred\s+451/
+    assert_select ".envelope__ink", text: /Deferred\s+451 · \d\d:\d\d/
   end
 
   test "the HTML show says a forward queued a delivery nobody submitted" do

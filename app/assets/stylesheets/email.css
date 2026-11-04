@@ -1,9 +1,6 @@
 @layer components {
   .email__frame {
-    border: var(--border);
-    border-radius: var(--radius-lg);
     overflow-wrap: anywhere;
-    padding: var(--block-space) var(--inline-space-double);
   }
 
   .email__frame--text {

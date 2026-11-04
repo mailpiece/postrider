@@ -3,16 +3,10 @@ module MailpiecesHelper
   # words below mean nothing to someone deciding whether to release a message.
   # Past tense: a reason is what we concluded at the hold, and a contact may be approved since.
   HOLD_EXPLANATIONS = {
-    "denied_sender" => "Held because this sender was not approved",
-    "unidentified_sender" => "Held because we couldn't read a From address on it",
-    "unauthenticated_sender" => "Held because we couldn't confirm the sender is genuine",
-    "forwarding_loop" => "Held because it looked like a forwarding loop"
-  }.freeze
-
-  DMARC_POLICY_REQUESTS = {
-    "none" => "take no action on mail that fails DMARC",
-    "quarantine" => "treat mail that fails DMARC as suspicious",
-    "reject" => "reject mail that fails DMARC"
+    "denied_sender" => "Held because this sender was not approved.",
+    "unidentified_sender" => "Held because we couldn't read a From address on it.",
+    "unauthenticated_sender" => "Held because we couldn't confirm the sender is genuine.",
+    "forwarding_loop" => "Held because it looked like a forwarding loop."
   }.freeze
 
   VERDICT_SEMANTICS = {
@@ -26,6 +20,11 @@ module MailpiecesHelper
   SMTP_CODE_SEMANTICS = { "2" => "success", "4" => "warning", "5" => "error" }.freeze
 
   RECEIVED_ACTIONS = %w[ inbound_email_received inbound_email_bounce_received ].freeze
+
+  GENUINE_STAMP = { verdict: "Genuine", icon: "check", semantic: "success" }.freeze
+  UNVERIFIED_STAMP = { verdict: "Not verified", icon: "close", semantic: "warning" }.freeze
+  SIGNED_STAMP = { verdict: "Signed", icon: "lock", semantic: "info" }.freeze
+  UNCHECKED_STAMP = { verdict: "Not checked", icon: "minus", semantic: "muted", checks: [], note: "no checks recorded" }.freeze
 
   def smtp_code_tag(code)
     tag.span code, class: "status status--#{SMTP_CODE_SEMANTICS.fetch(code.first, "neutral")}"
@@ -44,16 +43,62 @@ module MailpiecesHelper
     tag.span [ label, verdict.humanize ].compact.join(" "), class: "status status--#{verdict_semantic(verdict)}"
   end
 
-  def inbound_status_tag(inbound_email, **options)
-    status_tag inbound_status_word(inbound_email), **options
+  def mailpiece_status(mailpiece)
+    mailpiece.inbound_email? ? inbound_status_word(mailpiece.postable) : mailpiece.postable.status
   end
 
-  def mailpiece_meta(mailpiece)
-    postable = mailpiece.postable
-    status = mailpiece.inbound_email? ? inbound_status_word(postable) : postable.status
+  def envelope_subject(mailpiece)
+    mailpiece.subject.presence || "(no subject)"
+  end
 
-    safe_join [ row_status(status), mailpiece.inbound_email? ? "Received" : "Sent", "#{postable.mail_from} → #{postable.rcpt_to}",
-      local_datetime_tag(mailpiece.created_at, style: :timeordate) ], " · "
+  def inbound_envelope_status(inbound_email)
+    [ inbound_status_word(inbound_email).humanize, inbound_status_detail(inbound_email) ].compact.join(" · ")
+  end
+
+  def delivery_envelope_status(delivery)
+    safe_join [ "Outbound", ("#{delivery.attempts.size.ordinalize} attempt" if delivery.attempts.any?),
+      (safe_join [ "next retry ", local_datetime_tag(delivery.next_retry_at, style: :datetime) ] if delivery.next_retry_at) ].compact, " · "
+  end
+
+  def mailpiece_outcome_note(mailpiece)
+    if mailpiece.inbound_email?
+      inbound_outcome_note(mailpiece.postable)
+    elsif attempt = mailpiece.postable.attempts.last
+      smtp_reply_code(attempt)
+    end
+  end
+
+  def inbound_outcome_note(inbound_email)
+    if inbound_email.forwarded?
+      forward_note(inbound_email)
+    elsif inbound_email.delivered? || inbound_email.held?
+      "not forwarded"
+    end
+  end
+
+  def delivery_outcome_note(delivery)
+    if attempt = delivery.attempts.last
+      [ smtp_reply_code(attempt), l(attempt.created_at, format: "%H:%M") ].compact_blank.join(" · ")
+    end
+  end
+
+  def authentication_stamp(inbound_email)
+    verdicts = authentication_verdicts(inbound_email)
+
+    if verdicts.any?
+      stamp = inbound_email.authenticated_sender? ? GENUINE_STAMP : UNVERIFIED_STAMP
+      stamp.merge(checks: stamp_checks(verdicts), policy: policy_note(inbound_email), note: sealer_note(inbound_email))
+    else
+      UNCHECKED_STAMP
+    end
+  end
+
+  def signature_stamp(delivery)
+    if delivery.message.signable?
+      SIGNED_STAMP.merge(checks: [ "DKIM" ], note: delivery.domain.name)
+    else
+      SIGNED_STAMP.merge(checks: [ "ARC" ], note: Relay.hostname)
+    end
   end
 
   # Newest first as [ time, sentence ]. Lines that share a time keep the order they are added in.
@@ -73,7 +118,6 @@ module MailpiecesHelper
       lines << [ inbound_email.updated_at, held_explanation(nil) ]
     end
 
-    lines.concat authentication_sentences(inbound_email).map { |sentence| [ inbound_email.created_at, sentence ] }
     lines << [ inbound_email.created_at, received_sentence(received) ]
 
     lines.sort_by.with_index { |(at, _), index| [ -at.to_f, index ] }
@@ -96,21 +140,51 @@ module MailpiecesHelper
       end
     end
 
+    def inbound_status_detail(inbound_email)
+      if inbound_email.held?
+        Event::Description::HELD_REASONS[event_particular(inbound_email, "inbound_email_held", "reason")]
+      elsif inbound_email.forwarded?
+        forward_note(inbound_email)
+      elsif inbound_email.delivered?
+        "not forwarded"
+      end
+    end
+
+    def forward_note(inbound_email)
+      if forward_to = event_particular(inbound_email, "inbound_email_forwarded", "forward_to")
+        "to #{forward_to}"
+      end
+    end
+
+    # Reads the loaded events, so a list that preloads them asks nothing more.
+    def event_particular(inbound_email, action, key)
+      inbound_email.events.find { |event| event.action == action }&.particulars&.dig(key)
+    end
+
+    # The reply code with its enhanced status, "250 2.0.0", when the reply gives one.
+    def smtp_reply_code(attempt)
+      [ attempt.code, smtp_reply_after_code(attempt).to_s[/\A\d\.\d{1,3}\.\d{1,3}\b/] ].compact_blank.join(" ").presence
+    end
+
     def inbound_event_sentence(event)
       case event.action
-      when "inbound_email_forwarded" then [ "Forwarded", event.particulars["forward_to"].presence ].compact.join(" to ")
+      when "inbound_email_forwarded" then forwarded_sentence(event.particulars["forward_to"])
       when "inbound_email_held"      then held_explanation(event.particulars["reason"])
       when "inbound_email_scored"    then InboundEmail::SpamCheck.new(event.particulars).sentence
       else
-        event.description
+        "#{event.description}."
       end
+    end
+
+    def forwarded_sentence(forward_to)
+      forward_to.present? ? "Forwarded to #{forward_to}." : "Forwarded."
     end
 
     # Delivered with no forwarded event. Mail to the bounce address says so in its receipt,
     # and only a bounce matched to its delivery is processed without a receipt.
     def delivered_sentence(inbound_email, received)
       if inbound_email.forwarded?
-        "Forwarded"
+        forwarded_sentence(nil)
       elsif received.nil?
         matched_bounce_sentence(inbound_email)
       elsif received.action == "inbound_email_received"
@@ -122,27 +196,14 @@ module MailpiecesHelper
       delivery = Delivery::ReturnPath.find_delivery(inbound_email.rcpt_to)
 
       if delivery && mailpiece = Current.user.accessible_mailpieces.find_by(postable: delivery)
-        safe_join [ "Matched to ", link_to("the delivery it bounced", mailpiece_path(mailpiece)) ]
+        safe_join [ "Matched to ", link_to("the delivery it bounced", mailpiece_path(mailpiece)), "." ]
       else
-        "Matched to the delivery it bounced"
+        "Matched to the delivery it bounced."
       end
     end
 
     def held_explanation(reason)
-      HOLD_EXPLANATIONS.fetch(reason, "Held")
-    end
-
-    def authentication_sentences(inbound_email)
-      [ sender_sentence(inbound_email), dmarc_policy_sentence(inbound_email), arc_sealer_sentence(inbound_email) ].compact
-    end
-
-    def sender_sentence(inbound_email)
-      verdicts = authentication_verdicts(inbound_email)
-
-      if verdicts.any?
-        lead = inbound_email.authenticated_sender? ? "The sender is genuine" : "The sender is not verified"
-        "#{lead}: #{verdict_clauses(verdicts).join(", ")}"
-      end
+      HOLD_EXPLANATIONS.fetch(reason, "Held.")
     end
 
     def authentication_verdicts(inbound_email)
@@ -154,32 +215,27 @@ module MailpiecesHelper
       }.compact_blank
     end
 
-    def verdict_clauses(verdicts)
-      verdicts.group_by { |_, verdict| verdict }.map do |verdict, checks|
-        names = checks.map(&:first).to_sentence(last_word_connector: " and ")
+    # The verdict already says what passed, so passes go bare, two to a line.
+    def stamp_checks(verdicts)
+      verdicts.group_by { |_, verdict| verdict }.flat_map do |verdict, checks|
+        names = checks.map(&:first)
 
         case verdict
-        when "pass" then "#{names} passed"
-        when "fail" then "#{names} failed"
+        when "pass" then names.each_slice(2).map { |pair| pair.join(" ") }
+        when "fail" then "#{names.join(" ")} failed"
         else
-          "#{names} returned #{verdict}"
+          "#{names.join(" ")} #{verdict}"
         end
       end
     end
 
-    def dmarc_policy_sentence(inbound_email)
-      if request = DMARC_POLICY_REQUESTS[inbound_email.dmarc_policy]
-        "#{Domain.name_for(inbound_email.from_address) || "The From domain"} asks receivers to #{request}"
-      end
+    def policy_note(inbound_email)
+      "p=#{inbound_email.dmarc_policy}" if inbound_email.dmarc_policy.present?
     end
 
-    def arc_sealer_sentence(inbound_email)
+    def sealer_note(inbound_email)
       if inbound_email.arc_sealer.present?
-        if inbound_email.arc == "pass"
-          "Passed through #{inbound_email.arc_sealer}"
-        else
-          "Carries a seal in the name of #{inbound_email.arc_sealer} that did not verify"
-        end
+        inbound_email.arc == "pass" ? "via #{inbound_email.arc_sealer}" : "#{inbound_email.arc_sealer} seal failed"
       end
     end
 
@@ -188,11 +244,11 @@ module MailpiecesHelper
       host, ip = event&.particulars&.values_at("remote_host", "remote_ip")
 
       if host.present? && ip.present?
-        "#{lead} from #{host} (#{ip})"
+        "#{lead} from #{host} (#{ip})."
       elsif origin = host.presence || ip.presence
-        "#{lead} from #{origin}"
+        "#{lead} from #{origin}."
       else
-        lead
+        "#{lead}."
       end
     end
 end

@@ -16,49 +16,39 @@ class InboundEmail::SpamCheck
     @symbols = particulars["symbols"].to_a.map { |name, weight, description, detail| { name:, weight:, description:, detail: } }
   end
 
-  # A flagged verdict lists only its problems.
   def sentence
-    [ "Spam check: #{outcome}, score #{formatted_score}.", problems_sentence, (passes_sentence unless flagged?) ].compact.join(" ")
+    [ "Spam check: #{outcome}, score #{formatted_score}.", problems_sentence ].compact.join(" ")
   end
 
   def flagged?
     action != "no_action"
   end
 
+  # Shadow mode: nothing acts on the verdict, so it says what would have happened.
+  def outcome
+    if flagged?
+      "would #{ACTION_PHRASES.fetch(action) { action.to_s.tr("_", " ") }}"
+    else
+      "no action"
+    end
+  end
+
+  def formatted_score
+    ActiveSupport::NumberHelper.number_to_rounded(score, precision: 1).sub("-", "−")
+  end
+
   private
-    # Shadow mode: nothing acts on the verdict, so it says what would have happened.
-    def outcome
-      if flagged?
-        "would #{ACTION_PHRASES.fetch(action) { action.to_s.tr("_", " ") }}"
-      else
-        "no action"
-      end
-    end
-
-    def formatted_score
-      ActiveSupport::NumberHelper.number_to_rounded(score, precision: 1).sub("-", "−")
-    end
-
     def problems_sentence
       problems = @symbols.select { |symbol| symbol[:weight].to_f.positive? && !pass?(symbol) }
       phrases_sentence problems.sort_by.with_index { |symbol, index| [ -symbol[:weight].to_f, index ] }
-    end
-
-    # The SPF, DKIM, DMARC and ARC passes read as one "… passed", then any other credit.
-    def passes_sentence
-      passes = @symbols.select { |symbol| pass?(symbol) }
-      credits = @symbols.select { |symbol| !pass?(symbol) && symbol[:weight].to_f.negative? }
-      passed = "#{passes.map { |pass| pass[:name].delete_suffix("_PASS") }.to_sentence(last_word_connector: " and ")} passed" if passes.any?
-
-      phrases_sentence credits, leading: passed
     end
 
     def pass?(symbol)
       symbol[:name].end_with?("_PASS")
     end
 
-    def phrases_sentence(symbols, leading: nil)
-      phrases = [ leading, *symbols.map { |symbol| phrase(symbol) } ].compact
+    def phrases_sentence(symbols)
+      phrases = symbols.map { |symbol| phrase(symbol) }
 
       "#{phrases.join("; ").upcase_first}." if phrases.any?
     end

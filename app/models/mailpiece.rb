@@ -7,7 +7,7 @@ class Mailpiece < ApplicationRecord
   delegate :subject, to: :postable
 
   scope :ordered, -> { order(created_at: :desc) }
-  scope :preloaded, -> { includes(:postable) }
+  scope :preloaded, -> { preload(postable: [ :events, :attempts ]) }
   scope :inbound, -> { where(postable_type: "InboundEmail") }
   scope :outbound, -> { where(postable_type: "Delivery") }
   scope :matching, ->(query) do

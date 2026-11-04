@@ -1,0 +1,676 @@
+@layer components {
+  /* The outside of a mailpiece, laid out for whoever sorts it. Its status class lends the colour. */
+  .envelope {
+    --envelope-ink: var(--color-ink-darker);
+    --stamp-size: 5.75rem;
+
+    background-color: var(--color-canvas);
+    border: var(--border);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-card);
+    color: var(--color-ink);
+    column-gap: 1rem;
+    display: grid;
+    grid-template-areas:
+      "postmark stamp"
+      "return return"
+      "status status"
+      "address address"
+      "foot foot";
+    grid-template-columns: minmax(0, 1fr) auto;
+    overflow: hidden;
+    padding: 1.125rem 1.25rem;
+    row-gap: 1rem;
+
+    @media (width >= 640px) {
+      grid-template-areas:
+        "return postmark stamp"
+        "status postmark stamp"
+        "address address stamp"
+        "foot foot foot";
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      grid-template-rows: auto auto 1fr auto;
+      padding: 1.375rem 1.5rem 1.125rem;
+      row-gap: 0.75rem;
+    }
+
+    p {
+      margin: 0;
+    }
+  }
+
+  .envelope__return {
+    color: var(--envelope-ink);
+    display: flex;
+    flex-direction: column;
+    font-size: 0.8125rem;
+    gap: 0.2em;
+    grid-area: return;
+    line-height: 1.3;
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
+
+    strong {
+      font-size: 0.875rem;
+    }
+  }
+
+  .envelope__status {
+    align-self: start;
+    color: var(--envelope-ink);
+    font-size: 0.75rem;
+    font-weight: 800;
+    grid-area: status;
+    letter-spacing: 0.06em;
+    overflow-wrap: anywhere;
+    text-transform: uppercase;
+
+    .envelope:is(.status--warning, .status--error) & {
+      color: var(--status-text);
+    }
+  }
+
+  .envelope__postmark {
+    align-items: center;
+    align-self: start;
+    color: var(--envelope-ink);
+    display: flex;
+    grid-area: postmark;
+    margin-block-start: -0.25rem;
+  }
+
+  /* A fixed ring, whatever the font: the date sits clear of the name on its arc. */
+  .envelope__cancellation {
+    --cancellation-size: 5.75rem;
+
+    align-items: center;
+    block-size: var(--cancellation-size);
+    border: 2px solid currentColor;
+    border-radius: 50%;
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    font-size: 0.625rem;
+    font-variant-numeric: tabular-nums;
+    gap: 0;
+    inline-size: var(--cancellation-size);
+    justify-content: center;
+    line-height: 1.05;
+    padding: calc(var(--cancellation-size) * 0.2);
+    position: relative;
+    rotate: -8deg;
+    text-align: center;
+    white-space: nowrap;
+
+    strong {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+    }
+  }
+
+  /* The office's name runs round the inside of the ring, as on a real postmark. */
+  .envelope__office {
+    fill: currentColor;
+    font-size: 9.5px;
+    font-weight: 700;
+    inset: 0;
+    letter-spacing: 0.02em;
+    pointer-events: none;
+    position: absolute;
+    text-anchor: middle;
+    text-transform: uppercase;
+
+    path {
+      fill: none;
+    }
+  }
+
+  .envelope__year {
+    font-weight: 700;
+  }
+
+  /* The cancellation runs on towards the stamp. */
+  .envelope__waves {
+    background-color: currentColor;
+    block-size: 3.5rem;
+    flex: none;
+    inline-size: 6rem;
+    margin-inline: -0.375rem -0.25rem;
+    mask: url("postmark-waves.svg ") center / contain no-repeat;
+    position: relative;
+    rotate: -8deg;
+    z-index: 1;
+
+    @media (width < 640px) {
+      inline-size: 4rem;
+    }
+
+    /* Wider by as much as its margin gives back, so it runs onto the stamp's paper without moving it. */
+    @media (width >= 640px) {
+      --waves-reach: calc(0.7rem + 10px);
+
+      inline-size: calc(6rem + var(--waves-reach));
+      margin-inline-end: calc(-0.25rem - var(--waves-reach));
+      mask: url("postmark-waves.svg ") center / 100% 100% no-repeat;
+    }
+  }
+
+  /* The mask clips borders and box shadows, so the outline and lift are drop shadows on the paper's holder. */
+  .envelope__stamp {
+    --perforation: 3px;
+    --stamp-outline: var(--color-ink-lighter);
+
+    align-self: start;
+    display: grid;
+    filter:
+      drop-shadow(1px 0 0 var(--stamp-outline)) drop-shadow(-1px 0 0 var(--stamp-outline))
+      drop-shadow(0 1px 0 var(--stamp-outline)) drop-shadow(0 -1px 0 var(--stamp-outline))
+      drop-shadow(0 1px 2px oklch(var(--lch-black) / 12%));
+    grid-area: stamp;
+    inline-size: var(--stamp-size);
+    min-block-size: 7rem;
+    rotate: 2deg;
+  }
+
+  /* Perforated paper: half circles bitten out along every edge, the middle kept whole. */
+  .envelope__paper {
+    background-color: color-mix(in oklab, var(--status-color) 7%, var(--color-canvas));
+    display: grid;
+    mask:
+      radial-gradient(var(--perforation), #0000 98%, #000) round
+        calc(var(--perforation) * -1.5) calc(var(--perforation) * -1.5) / calc(var(--perforation) * 3) calc(var(--perforation) * 3),
+      linear-gradient(#000 0 0) no-repeat 50% / calc(100% - var(--perforation) * 3) calc(100% - var(--perforation) * 3);
+    padding: calc(var(--perforation) * 2.75);
+  }
+
+  .envelope__stamp-face {
+    --icon-size: 1.625rem;
+
+    align-items: center;
+    background-color: color-mix(in oklab, var(--status-color) 14%, var(--color-canvas));
+    border: 1px solid color-mix(in oklab, var(--status-color) 45%, var(--color-canvas));
+    color: var(--status-text);
+    display: flex;
+    flex-direction: column;
+    font-size: 0.5625rem;
+    justify-content: space-between;
+    gap: 0.25rem;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+    padding: 0.5rem 0.125rem;
+    text-align: center;
+  }
+
+  .envelope__verdict {
+    font-size: 0.8125rem;
+    overflow-wrap: normal;
+    font-weight: 900;
+    letter-spacing: 0.02em;
+    line-height: 1.1;
+    text-transform: uppercase;
+  }
+
+  .envelope__checks {
+    display: flex;
+    flex-direction: column;
+    font-weight: 700;
+  }
+
+  /* Each line of the address stays on one, cut short with its whole text in a title. */
+  .envelope__address {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    grid-area: address;
+    min-inline-size: 0;
+
+    > * {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    @media (width >= 640px) {
+      padding-inline-start: 36%;
+    }
+
+    > span {
+      color: var(--envelope-ink);
+      font-size: 0.75rem;
+    }
+  }
+
+  .envelope__subject {
+    color: var(--envelope-ink);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .envelope__recipient {
+    font-size: 1.375rem;
+    line-height: 1.15;
+  }
+
+  /* Inks without room beside the barcode wrap above it; under wrap-reverse, flex-start is the bottom. */
+  .envelope__foot {
+    align-items: flex-start;
+    display: flex;
+    flex-wrap: wrap-reverse;
+    gap: 0.75rem 1rem;
+    grid-area: foot;
+    min-inline-size: 0;
+  }
+
+  .envelope__inks {
+    align-items: center;
+    display: flex;
+    flex: 1 1 auto;
+    gap: 1rem;
+    justify-content: flex-end;
+    min-inline-size: 0;
+  }
+
+  /* A rubber stamp, inked in its status colour. */
+  .envelope__ink {
+    align-items: flex-end;
+    border: 2px solid color-mix(in oklab, var(--status-color) 75%, transparent);
+    border-radius: 3px;
+    color: color-mix(in oklab, var(--status-text) 90%, transparent);
+    display: flex;
+    flex-direction: column;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.15;
+    padding: 0.25rem 0.5rem;
+    rotate: -2deg;
+
+    span {
+      font-size: 0.5625rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    strong {
+      font-size: 1rem;
+    }
+
+    &.status--neutral {
+      --status-color: var(--envelope-ink);
+      --status-text: var(--envelope-ink);
+    }
+  }
+
+  .envelope__ink--outcome {
+    align-items: center;
+    background-color: color-mix(in oklab, var(--color-canvas) 70%, transparent);
+    border: 3px solid color-mix(in oklab, var(--status-color) 80%, transparent);
+    border-radius: var(--radius-sm);
+    padding: 0.3rem 0.75rem;
+    rotate: -6deg;
+
+    /* Beside the spam check it is struck nearer the middle, and in a double frame. */
+    &:not(:last-child) {
+      border: 4px double color-mix(in oklab, var(--status-color) 80%, transparent);
+      margin-inline: auto;
+      padding: 0.375rem 1rem;
+      rotate: -9deg;
+    }
+
+    span {
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    strong {
+      font-size: 1.15rem;
+      font-weight: 900;
+      letter-spacing: 0.07em;
+      line-height: 1.05;
+      text-transform: uppercase;
+    }
+  }
+
+  /* On a wide envelope the inks rise beside the address; a held stamp stays down, off the recipient.
+     An outcome rises level with the MX line when there is one. The address's lines end short of
+     the widest the ink beside them can be, so no text sits under one. */
+  @media (width >= 640px) {
+    .envelope {
+      --ink-reach: 7rem;
+
+      &:has(.envelope__mx) {
+        --ink-reach: 10.5rem;
+      }
+    }
+
+    .envelope__address {
+      padding-inline-end: calc(var(--ink-reach) - var(--stamp-size) - 0.5rem);
+    }
+
+    .envelope__inks {
+      align-items: flex-end;
+    }
+
+    .envelope__ink {
+      margin-block-start: -2.75rem;
+
+      &:last-child {
+        max-inline-size: 7rem;
+        text-align: end;
+      }
+    }
+
+    .envelope__ink--outcome:only-child {
+      max-inline-size: 10.5rem;
+
+      .envelope:has(.envelope__mx) & {
+        margin-block-start: -4rem;
+      }
+    }
+
+    .envelope__ink--outcome:not(:last-child) {
+      margin-block-start: 0.375rem;
+
+      strong {
+        font-size: 1.875rem;
+        letter-spacing: 0.12em;
+      }
+    }
+  }
+
+  .envelope__barcode {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    min-inline-size: 0;
+  }
+
+  .envelope__bars {
+    align-items: flex-start;
+    block-size: 16px;
+    display: flex;
+    gap: 2px;
+    overflow: hidden;
+  }
+
+  /* The four bar shapes of a postal barcode: full, ascender, descender, tracker. */
+  .envelope__bar {
+    background-color: var(--color-ink);
+    block-size: 16px;
+    flex: none;
+    inline-size: 2px;
+  }
+
+  .envelope__bar--1 {
+    block-size: 11px;
+  }
+
+  .envelope__bar--2 {
+    block-size: 11px;
+    margin-block-start: 5px;
+  }
+
+  .envelope__bar--3 {
+    block-size: 6px;
+    margin-block-start: 5px;
+  }
+
+  /* Numbers and ids take tabular figures, addresses not: Adwaita Sans widens a hyphen under them. */
+  .envelope__ids {
+    color: var(--envelope-ink);
+    font-size: 0.625rem;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.12em;
+    overflow-wrap: anywhere;
+  }
+
+  .envelope__queue-id {
+    text-transform: uppercase;
+  }
+
+  /* The index's filters: a row of rubber stamps, one per status, the strip scrolling on its own when narrow. */
+  .status-stamps {
+    container-type: inline-size;
+    margin-block-end: 1.25rem;
+    overflow-x: auto;
+    padding-block: 0.5rem;
+    scrollbar-width: none;
+
+    [data-filtering] & {
+      display: none;
+    }
+  }
+
+  .status-stamps__list {
+    display: grid;
+    gap: clamp(0.3rem, 1.6cqi, 1rem);
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    list-style: none;
+    margin: 0;
+    padding: 0.25rem;
+
+    @container (width < 480px) {
+      grid-template-columns: repeat(6, 5.2rem);
+    }
+  }
+
+  /* Tilted by position, so the row always lands the same way. */
+  .status-stamp {
+    --tilt: -3deg;
+
+    font-size: clamp(0.75rem, 2.6cqi, 1.1rem);
+    min-inline-size: 0;
+    outline: none;
+    rotate: var(--tilt);
+
+    @container (width < 480px) {
+      font-size: 0.95rem;
+    }
+
+    &:nth-child(2) { --tilt: 2deg; }
+    &:nth-child(3) { --tilt: -1.5deg; }
+    &:nth-child(4) { --tilt: 2.5deg; }
+    &:nth-child(5) { --tilt: -2deg; }
+    &:nth-child(6) { --tilt: 1.5deg; }
+  }
+
+  .status-stamp__link {
+    border: clamp(2px, 0.35cqi, 2.5px) solid var(--status-color);
+    border-radius: var(--radius-sm);
+    color: var(--status-text);
+    display: grid;
+    justify-items: center;
+    opacity: 0.92;
+    padding: 0.3em 0.2em 0.25em;
+    text-decoration: none;
+
+    .status-stamp--empty & {
+      border-color: var(--color-ink-lighter);
+      border-style: dashed;
+      color: var(--color-ink-medium);
+    }
+
+    .status-stamp[aria-selected="true"] & {
+      background-color: var(--color-ink-lightest);
+    }
+
+    &:focus-visible {
+      outline: var(--focus-ring);
+      outline-offset: 2px;
+    }
+
+    @media (any-hover: hover) {
+      &:hover {
+        background-color: var(--color-ink-lightest);
+      }
+    }
+  }
+
+  .status-stamp__count {
+    font-size: 1.3em;
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+  }
+
+  .status-stamp__name {
+    font-size: 0.6em;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  /* A list of mailpieces: a stack of slim envelopes. */
+  .envelopes {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    list-style: none;
+    margin: 0.625rem 0 0;
+    padding: 0;
+  }
+
+  .envelopes__section:not(:has(.envelope:not([hidden]))) {
+    display: none;
+  }
+
+  .envelope--strip {
+    display: block;
+    outline: none;
+    padding: 0;
+
+    &[hidden] {
+      display: none;
+    }
+
+    &[aria-selected="true"] {
+      background-color: var(--color-ink-lightest);
+    }
+
+    @media (any-hover: hover) {
+      &:has(.envelope__link:hover) {
+        background-color: var(--color-ink-lightest);
+      }
+    }
+
+    .envelope__cancellation {
+      --cancellation-size: 3.25rem;
+
+      color: var(--envelope-ink);
+      font-size: 0.5rem;
+      font-weight: 700;
+      gap: 0;
+      grid-area: postmark;
+      text-transform: uppercase;
+
+      strong {
+        font-size: 0.75rem;
+      }
+    }
+
+    .envelope__address {
+      gap: 0;
+      line-height: 1.2;
+      margin: 0;
+      padding: 0;
+    }
+
+    .envelope__subject {
+      font-size: 0.6875rem;
+      letter-spacing: 0.05em;
+    }
+
+    .envelope__party {
+      font-size: 0.9375rem;
+      line-height: inherit;
+    }
+
+    .envelope__ink--outcome {
+      background: none;
+      border-width: 2px;
+      grid-area: ink;
+      justify-self: end;
+      margin-block-start: 0;
+      max-inline-size: 100%;
+      padding: 0.2rem 0.6rem;
+      rotate: -5deg;
+
+      span {
+        font-size: 0.625rem;
+        max-inline-size: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        text-transform: none;
+        white-space: nowrap;
+      }
+
+      strong {
+        font-size: 0.8125rem;
+        letter-spacing: 0.06em;
+      }
+    }
+  }
+
+  /* The tab's height is set here so the strip's top padding can clear it. */
+  .envelope__link {
+    --strip-padding-inline: 0.875rem;
+    --strip-tab-height: calc(0.7rem * 1.2 + 0.4rem);
+
+    align-items: center;
+    color: inherit;
+    column-gap: 0.75rem;
+    display: grid;
+    grid-template-areas:
+      "postmark address"
+      "postmark ink";
+    grid-template-columns: auto minmax(0, 1fr);
+    min-block-size: 4.75rem;
+    padding: calc(var(--strip-tab-height) + 0.75rem) 1.125rem 0.625rem var(--strip-padding-inline);
+    position: relative;
+    row-gap: 0.5rem;
+    text-decoration: none;
+
+    @media (width >= 640px) {
+      grid-template-areas: "postmark address ink";
+      grid-template-columns: 3.25rem minmax(0, 1fr) 8.5rem;
+    }
+  }
+
+  /* The direction and the account's own address, in a tab sharing the strip's corner. */
+  .envelope__tab {
+    --icon-size: 0.9em;
+
+    align-items: center;
+    background-color: var(--color-ink-darker);
+    block-size: var(--strip-tab-height);
+    border-radius: var(--radius-sm) 0 var(--radius-sm) 0;
+    color: var(--color-ink-inverted);
+    display: inline-flex;
+    font-size: 0.7rem;
+    font-weight: 600;
+    gap: 0.35em;
+    inset-block-start: 0;
+    inset-inline-start: 0;
+    line-height: 1.2;
+    max-inline-size: min(60%, 18rem);
+    padding-block: 0.2rem;
+    padding-inline: var(--strip-padding-inline) 1ch;
+    position: absolute;
+  }
+
+  /* A touch of ink keeps the small text on it above 4.5:1 in both themes. */
+  .envelope__tab--outbound {
+    background-color: color-mix(in oklab, var(--color-info) 88%, var(--color-ink));
+  }
+
+  .envelope__line {
+    min-inline-size: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

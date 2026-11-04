@@ -66,8 +66,8 @@ class ContactsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "[data-controller=pagination][data-pagination-paginate-on-intersection-value=true]"
     assert_select ".breadcrumbs a[href=?]", contacts_path, text: "Contacts"
-    assert_select ".row__title", text: /Held hello/
-    assert_select ".row__title", text: /Forwarded hello/
+    assert_select ".envelope__subject", text: "Held hello"
+    assert_select ".envelope__subject", text: "Forwarded hello"
   end
 
   test "show omits the mail of other contacts" do
@@ -77,7 +77,7 @@ class ContactsControllerTest < ActionDispatch::IntegrationTest
     get contact_path(contacts(:approved))
 
     assert_response :success
-    assert_select ".row__title", text: /Not theirs/, count: 0
+    assert_select ".envelope__subject", text: /Not theirs/, count: 0
   end
 
   test "show is not found for a contact on a domain you cannot reach" do

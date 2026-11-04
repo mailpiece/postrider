@@ -1,0 +1,6 @@
+<li class="<%= class_names "status-stamp", status_class(status) => count.positive?, "status-stamp--empty" => count.zero? %>" data-navigable-list-target="item" tabindex="-1">
+  <%= link_to path, class: "status-stamp__link" do %>
+    <strong class="status-stamp__count"><%= number_with_delimiter count %></strong>
+    <span class="status-stamp__name"><%= status.humanize %></span>
+  <% end %>
+</li>

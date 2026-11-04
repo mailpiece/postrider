@@ -84,10 +84,6 @@ module MailpiecesHelper
     end
   end
 
-  def mailpiece_stamp(mailpiece)
-    mailpiece.inbound_email? ? authentication_stamp(mailpiece.postable) : SIGNED_STAMP
-  end
-
   def signature_stamp(delivery)
     if delivery.message.signable?
       SIGNED_STAMP.merge(checks: [ "DKIM" ], note: delivery.domain.name)

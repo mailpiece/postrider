@@ -48,15 +48,38 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
 
     get mailpieces_path
     assert_select "li##{dom_id delivered}" do
-      assert_select ".envelope__return", text: /Outbound\s+sender@example.com/
+      assert_select ".envelope__tab .for-screen-reader", text: "Sent from"
+      assert_select ".envelope__tab .envelope__line", text: "sender@example.com"
       assert_select ".envelope__subject", text: "Hello"
-      assert_select ".envelope__recipient", text: "recipient@example.com"
-      assert_select ".envelope__stamp .for-screen-reader", text: "Signed"
+      assert_select ".envelope__party", text: "recipient@example.com"
       assert_select ".envelope__ink", text: /Delivered/
     end
 
     get mailpieces_failed_path
     assert_select "li##{dom_id bounced} .envelope__ink", text: /Bounced/
+  end
+
+  test "a listed envelope leads with the other party: the sender of inbound mail, the recipient of outbound" do
+    sign_in_as :nonstaff
+    received = mailpieces(:received)
+
+    get mailpieces_path
+
+    assert_select "##{dom_id received}" do
+      assert_select ".envelope__tab .for-screen-reader", text: "Received at"
+      assert_select ".envelope__tab .envelope__line", text: "inbox@example.com"
+      assert_select ".envelope__party", text: "friend@sender.example"
+    end
+    assert_select "##{dom_id mailpieces(:delivered)} .envelope__party", text: "recipient@example.com"
+  end
+
+  test "a listed envelope with no envelope sender says so" do
+    inbound_email = create_inbound_email(mail_from: "", status: :delivered, forwarded_at: Time.current)
+    sign_in_as :nonstaff
+
+    get mailpieces_path
+
+    assert_select "##{dom_id inbound_email.mailpiece} .envelope__party", text: "No sender"
   end
 
   test "a listed envelope's ink says how it went: the reply, or where it was forwarded" do

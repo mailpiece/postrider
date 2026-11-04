@@ -29,8 +29,9 @@ class SearchesControllerTest < ActionDispatch::IntegrationTest
 
     get search_path(q: "BILLING")
 
-    assert_select "li##{dom_id(received)}"
-    assert_select "li##{dom_id(sent)}"
+    assert_select "li##{dom_id(received)} .envelope__party", text: "billing@vendor.example"
+    assert_select "li##{dom_id(sent)} .envelope__party", text: "recipient@example.com"
+    assert_select "li##{dom_id(sent)} .envelope__tab .envelope__line", text: "billing@example.com"
     assert_select "li##{dom_id(other)}", count: 0
   end
 

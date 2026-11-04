@@ -402,4 +402,14 @@ class InboundEmailTest < ActiveSupport::TestCase
         InboundEmail.create!(domain: domains(:example), mail_from: "a@example.com", rcpt_to: rcpt_to, source: source, digest: "fanout")
       end
     end
+
+  test "a look-alike sender reads as punycode, and a plain one as it was sent" do
+    lookalike = create_inbound_email(mail_from: "receipts@str\u0456pe.com")
+    plain = create_inbound_email(mail_from: "Receipts@Stripe.com")
+
+    assert lookalike.lookalike_sender?
+    assert_equal "receipts@xn--strpe-p2e.com", lookalike.sender_address
+    assert_not plain.lookalike_sender?
+    assert_equal "Receipts@Stripe.com", plain.sender_address
+  end
 end

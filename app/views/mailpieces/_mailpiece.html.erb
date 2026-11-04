@@ -1,7 +1,7 @@
 <% postable = mailpiece.postable %>
 <% status = mailpiece_status(mailpiece) %>
 <% if mailpiece.inbound_email? %>
-  <% party, own, direction, arrow = postable.mail_from.presence || "No sender", postable.rcpt_to, "Received at", "arrow-left" %>
+  <% party, own, direction, arrow = postable.sender_address.presence || "No sender", postable.rcpt_to, "Received at", "arrow-left" %>
 <% else %>
   <% party, own, direction, arrow = postable.rcpt_to, postable.mail_from, "Sent from", "arrow-right" %>
 <% end %>
@@ -20,7 +20,7 @@
 
     <span class="envelope__address">
       <span class="envelope__subject envelope__line"><%= envelope_subject mailpiece %></span>
-      <strong class="envelope__party envelope__line"><%= party %></strong>
+      <strong class="envelope__party envelope__line"><%= phishing_mark(postable) if mailpiece.inbound_email? %><%= party %></strong>
     </span>
 
     <span class="envelope__ink envelope__ink--outcome">

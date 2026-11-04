@@ -47,6 +47,15 @@ class InboundEmail < ApplicationRecord
     bounce_address.present? && rcpt_to.to_s.casecmp?(bounce_address)
   end
 
+  # A look-alike sender reads as punycode, as its contact does, so it reads apart from the one it imitates.
+  def sender_address
+    lookalike_sender? ? Contact.normalize_email(mail_from) : mail_from
+  end
+
+  def lookalike_sender?
+    HomographicSpoofing.email_address_spoof?(Contact.scrubbed(mail_from.to_s))
+  end
+
   def to_dmarc_reports_address?
     domain && rcpt_to.to_s.casecmp?("dmarc-reports@#{domain.name}")
   end

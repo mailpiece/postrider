@@ -39,6 +39,12 @@
     }
   }
 
+  /* Neutral, such as accepted mail, inks in the envelope's own ink, darker than the shared grey. */
+  .envelope.status--neutral {
+    --status-color: var(--envelope-ink);
+    --status-text: var(--envelope-ink);
+  }
+
   .envelope__return {
     color: var(--envelope-ink);
     display: flex;

@@ -6,13 +6,13 @@ class InboundEmail::SpamCheckTest < ActiveSupport::TestCase
       [ "DKIM_PASS", -0.1, "DKIM signature valid", "example.com" ], [ "DMARC_PASS", -0.5, "DMARC passed", "example.com" ],
       [ "ARC_PASS", -1.0, "ARC chain valid" ]
 
-    assert_equal "Spam check: no action, score −1.8. Passed SPF, DKIM, DMARC and ARC.", check.sentence
+    assert_equal "Spam check: no action, score −1.8. SPF, DKIM, DMARC and ARC passed.", check.sentence
   end
 
   test "a passing check gives other credits after what passed" do
     check = spam_check "no_action", -3.2, [ "SPF_PASS", -0.2, "SPF passed" ], [ "BAYES_HAM", -3.0, "Learned filter says not spam" ]
 
-    assert_equal "Spam check: no action, score −3.2. Passed SPF; learned filter says not spam.", check.sentence
+    assert_equal "Spam check: no action, score −3.2. SPF passed; learned filter says not spam.", check.sentence
   end
 
   test "a flagged check lists only its problems, worst first" do

@@ -3,10 +3,15 @@ module Delivery::Bouncing
 
   STORED_DSN_LIMIT = 64.kilobytes
 
-  def record_async_bounce(dsn_raw:)
-    return if already_bounced?
+  # RFC 3834: any value but "no" marks an automatic message, such as an out-of-office reply.
+  AUTO_SUBMITTED = /^auto-submitted[ \t]*:[ \t]*(?!no\b)\S/i
 
-    recipient = MailBounce.parse(dsn_raw).for(rcpt_to)
+  # Delay notices, delivered reports and auto-replies reach the return path too; only a failure is a bounce.
+  def record_async_bounce(dsn_raw:)
+    report = MailBounce.parse(dsn_raw)
+    recipient = report.for(rcpt_to)
+    return if already_bounced? || not_a_failure?(report, recipient, dsn_raw)
+
     rejection = classify_recipient(recipient)
 
     transaction do
@@ -42,6 +47,17 @@ module Delivery::Bouncing
   private
     def already_bounced?
       bounced_event.present?
+    end
+
+    # The return path names this delivery, so a report naming someone else (a forward, an alias) still speaks for it.
+    def not_a_failure?(report, recipient, raw)
+      if recipient
+        !recipient.failed?
+      elsif report.any?
+        report.recipients.none?(&:failed?)
+      else
+        HeaderSection.of(raw).match?(AUTO_SUBMITTED)
+      end
     end
 
     def classify_recipient(recipient)

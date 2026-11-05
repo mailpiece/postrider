@@ -72,10 +72,12 @@ class Domain < ApplicationRecord
   end
 
   def specifically_registered?(email)
-    local = local_part(email).downcase
-    base = local.split("+", 2).first.to_s
+    mailbox_for(email).present? || bounce_address?(email)
+  end
 
-    mailboxes.exists?(local_part: [ local, base ].uniq) || base == bounce_local_part
+  # Its own mailbox, else the one before any +tag.
+  def mailbox_for(email)
+    mailboxes.where(local_part: local_parts(email)).max_by { |mailbox| mailbox.local_part.length }
   end
 
   def webhook_payload(action)
@@ -98,12 +100,20 @@ class Domain < ApplicationRecord
       RESERVED_LOCAL_PARTS.each { |local_part| mailboxes.create!(local_part:) }
     end
 
+    def local_parts(email)
+      [ local_part(email).downcase, base_local_part(email) ].uniq
+    end
+
     def bounce_address?(email)
-      local_part(email).split("+", 2).first.to_s.downcase == bounce_local_part
+      base_local_part(email) == bounce_local_part
     end
 
     def bounce_local_part
-      local_part(account.setting.bounce_address).split("+", 2).first.to_s.downcase
+      base_local_part(account.setting.bounce_address)
+    end
+
+    def base_local_part(email)
+      local_part(email).split("+", 2).first.to_s.downcase
     end
 
     def local_part(email)

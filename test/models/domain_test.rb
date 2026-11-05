@@ -83,6 +83,18 @@ class DomainTest < ActiveSupport::TestCase
     assert domains(:example).specifically_registered?("inbox+newsletter@example.com")
   end
 
+  test "mailbox_for finds a +tag address's base mailbox" do
+    assert_equal mailboxes(:inbox), domains(:example).mailbox_for("Inbox+news@example.com")
+    assert_nil domains(:example).mailbox_for("nobody+news@example.com")
+  end
+
+  test "mailbox_for prefers a mailbox registered with its own +tag over the base" do
+    tagged = domains(:example).mailboxes.create!(local_part: "inbox+news")
+
+    assert_equal tagged, domains(:example).mailbox_for("inbox+news@example.com")
+    assert_equal mailboxes(:inbox), domains(:example).mailbox_for("inbox+other@example.com")
+  end
+
   test "verified? is false until dkim_status is OK" do
     assert_not domains(:unverified).verified?
   end

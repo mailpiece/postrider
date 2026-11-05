@@ -11,8 +11,9 @@ class Delivery::ReturnPath
       end
     end
 
+    # Only signed VERP addresses and postmaster are handed out at mailer.<domain>.
     def address?(address)
-      bounce_domain(address)&.account&.active?
+      (postmaster?(address) || verp.identifier_for(address)) && bounce_domain(address)&.account&.active?
     end
 
     # mailer.<domain>, or VERP on a relay-owned path that resolves back to the delivery's domain.
@@ -45,6 +46,10 @@ class Delivery::ReturnPath
       def at_mail_domain?(address)
         domain = address.to_s.split("@", 2).last.to_s.downcase
         Relay.mail_domain.present? && domain == Relay.mail_domain.downcase
+      end
+
+      def postmaster?(address)
+        address.to_s.split("@", 2).first.to_s.casecmp?("postmaster")
       end
 
       def sending_domain_name(address)

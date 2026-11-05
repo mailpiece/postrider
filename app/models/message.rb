@@ -53,6 +53,11 @@ class Message < ApplicationRecord
     end
   end
 
+  # The SMTP client sends a bare CR or LF as CRLF, so mail is signed or sealed in that form.
+  def self.with_crlf(raw)
+    raw.b.gsub(/\r\n?|\n/n, "\r\n").force_encoding(raw.encoding)
+  end
+
   def smtp_envelope_from
     envelope_from.nil? ? mail_from : envelope_from
   end

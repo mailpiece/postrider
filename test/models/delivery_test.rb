@@ -1,6 +1,8 @@
 require "test_helper"
 
 class DeliveryTest < ActiveSupport::TestCase
+  include SmtpTestHelper
+
   setup do
     @delivery = deliveries(:queued)
     @message = @delivery.message
@@ -901,6 +903,18 @@ class DeliveryTest < ActiveSupport::TestCase
     assert @delivery.reload.delivered?
   end
 
+  test "a message with bare LF goes out with a signature that verifies over the bytes sent" do
+    @message.update!(raw: "From: sender@example.com\nTo: recipient@example.com\nSubject: Hi\n\nOne\nTwo\n")
+
+    assert_equal "pass", dkim_status_as_sent(deliver_and_capture_raw)
+  end
+
+  test "a message with bare CR goes out with a signature that verifies over the bytes sent" do
+    @message.update!(raw: "From: sender@example.com\r\nTo: recipient@example.com\r\nSubject: Hi\r\n\r\nOne\rTwo\r\n")
+
+    assert_equal "pass", dkim_status_as_sent(deliver_and_capture_raw)
+  end
+
   test "a forward is never signed with the tenant's key — it carries the relay's ARC seal instead" do
     @message.update!(origin: :forwarded)
     Delivery::DkimSigning.expects(:sign).never
@@ -925,6 +939,20 @@ class DeliveryTest < ActiveSupport::TestCase
         "--BB\r\nContent-Type: text/plain\r\n\r\nDelivery to the recipient failed.\r\n\r\n" \
         "--BB\r\nContent-Type: message/delivery-status\r\n\r\nReporting-MTA: dns; mx.example.com\r\n\r\n" \
         "#{per_recipient}\r\n--BB--\r\n"
+    end
+
+    def deliver_and_capture_raw
+      sent = nil
+      SmtpDelivery.expects(:new).with { |raw:, **| sent = raw }.returns(
+        stub(deliver: SmtpDelivery::Result.new(:sent, "250", "OK", "mx.example.com", "transcript")))
+
+      @delivery.deliver
+      sent
+    end
+
+    def dkim_status_as_sent(raw)
+      resolver = stub(txt: [ DkimKey.txt_value(@message.domain.dkim_key) ])
+      MailAuth::Dkim.verify(MailAuth::Message.new(as_sent_over_smtp(raw)), resolver: resolver).status
     end
 
     def stub_smtp(status, code, output)

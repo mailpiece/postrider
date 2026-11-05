@@ -12,7 +12,7 @@ One `Delivery` exists per recipient of an outbound `Message`. `Message` itself h
 | `delivered`  | The recipient's MX accepted the message                                         |
 | `deferred`   | A transient SMTP failure occurred, or sending to its domain is paused; the delivery will be retried |
 | `bounced`    | The recipient's MX rejected it outright, or a DSN reported the failure later; a full mailbox or an address that does not exist is also suppressed until it is removed |
-| `exhausted`  | Every retry (over ~2 days) was used up without a successful delivery; if the last refusal was the mailbox itself (full, or permanently no such user), the address is suppressed until it is removed |
+| `exhausted`  | It was still undelivered after retrying for 5 days from its first failed try, at most about an hour apart; if the last refusal was the mailbox itself (full, or permanently no such user), the address is suppressed until it is removed |
 | `suppressed` | The recipient was on this domain's suppression list, so delivery was skipped entirely |
 | `withheld`   | The message contained one of the domain's blocked phrases, so it was never sent    |
 

@@ -454,7 +454,7 @@ Delivery to other mail servers uses opportunistic STARTTLS: encrypted where the 
 
 The catch is that opportunistic TLS folds under pressure. An attacker on the network path can force plaintext by breaking the handshake, or by stripping the `STARTTLS` advertisement from the greeting — and that one succeeds silently, with no error at all.
 
-Two mechanisms close the gap: a static suffix list you set, and [MTA-STS](#mta-sts) policies that destinations publish themselves. `REQUIRE_TLS_MX_SUFFIXES` names the destinations where the plaintext trade-off isn't acceptable: for any MX hostname ending in a listed suffix, PostRider verifies the certificate against the MX name and refuses to fall back — a TLS failure defers the delivery and retries it for the usual two days.
+Two mechanisms close the gap: a static suffix list you set, and [MTA-STS](#mta-sts) policies that destinations publish themselves. `REQUIRE_TLS_MX_SUFFIXES` names the destinations where the plaintext trade-off isn't acceptable: for any MX hostname ending in a listed suffix, PostRider verifies the certificate against the MX name and refuses to fall back — a TLS failure defers the delivery and retries it for the usual five days.
 
 Google and Microsoft carry most transactional mail, and both publish MTA-STS policies asking senders to do exactly this, so they're the sensible starting point:
 
@@ -479,7 +479,7 @@ Destinations that publish an [MTA-STS](https://www.rfc-editor.org/rfc/rfc8461) (
 
 On each delivery, PostRider looks up the destination's `_mta-sts` TXT record, fetches the policy over HTTPS, and caches it in the database, refreshing when the record advertises a new policy id. The cache is what resists downgrade: once a policy is stored, a vanished TXT record or a failed refresh never weakens it — it stands until its own `max_age` runs out, and only a validated new policy replaces it. An attacker who can drop DNS answers or block the HTTPS fetch gains nothing against a domain you've delivered to before. A daily task re-checks every cached policy, so enforcement doesn't lapse for domains you rarely send to, and purges entries long past expiry.
 
-When a policy's mode is `enforce`, delivery goes only to MX hosts matching the policy's `mx` patterns, over TLS verified against the MX hostname, and a server that doesn't offer `STARTTLS` is refused. Any TLS failure defers the delivery — retried for the usual two days — rather than falling back to plaintext. `testing` and `none` policies change nothing: `testing` is meant to be observed through TLSRPT reports, which PostRider doesn't send, so for us it's a no-op.
+When a policy's mode is `enforce`, delivery goes only to MX hosts matching the policy's `mx` patterns, over TLS verified against the MX hostname, and a server that doesn't offer `STARTTLS` is refused. Any TLS failure defers the delivery — retried for the usual five days — rather than falling back to plaintext. `testing` and `none` policies change nothing: `testing` is meant to be observed through TLSRPT reports, which PostRider doesn't send, so for us it's a no-op.
 
 The scope matches the suffix list: direct-to-MX delivery on port 25 only, `OUTBOUND_RELAY` exempt. The two compose — whichever demands TLS for a destination wins — so keep `REQUIRE_TLS_MX_SUFFIXES` as your floor for providers that publish no policy.
 

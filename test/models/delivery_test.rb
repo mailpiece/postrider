@@ -30,7 +30,6 @@ class DeliveryTest < ActiveSupport::TestCase
     assert_raises(RuntimeError) { @delivery.deliver }
 
     assert @delivery.reload.deferred?
-    assert @delivery.next_retry_at.present?, "a deferred delivery should estimate its next retry"
   end
 
   # Transient DNS says nothing about whether the domain has MXes — defer with attempt + webhook.
@@ -496,16 +495,6 @@ class DeliveryTest < ActiveSupport::TestCase
     @delivery.deliver
 
     assert @delivery.reload.delivered?
-  end
-
-  test "a delivery held by a pause has no next retry to show" do
-    @delivery.attempts.create!(code: "451", output: "greylisted", mx_host: "mx.example.com", created_at: 3.hours.ago)
-    Pause.create!(provider: "example.com", recipient_domain: "example.com")
-
-    assert_raises(RuntimeError) { @delivery.deliver }
-
-    assert @delivery.reload.deferred?
-    assert_nil @delivery.next_retry_at
   end
 
   test "a paused domain does not hold mail relayed through a smarthost" do

@@ -1,10 +1,15 @@
 class Delivery::DeliverJob < ApplicationJob
   queue_as :deliveries
 
-  retry_on StandardError,
-    attempts: Delivery::RETRY_SCHEDULE.size + 1,
-    wait: ->(executions) { Delivery::RETRY_SCHEDULE[executions - 1] || Delivery::RETRY_SCHEDULE.last } do |job, _error|
-    job.arguments.first.exhaust
+  # Retried until the delivery's deadline rather than for a number of tries.
+  rescue_from StandardError do |error|
+    delivery = arguments.first
+
+    if delivery.retry_expired?
+      delivery.exhaust
+    else
+      retry_job wait_until: delivery.schedule_retry, error: error
+    end
   end
 
   # After catch-all retry so a deleted-mid-flight delivery is discarded, not re-raised via arguments.first.

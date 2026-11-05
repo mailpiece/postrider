@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.2].define(version: 2026_11_03_120000) do
+ActiveRecord::Schema[8.2].define(version: 2026_11_05_160000) do
   create_table "accesses", id: :uuid, force: :cascade do |t|
     t.uuid "account_id", null: false
     t.uuid "user_id", null: false
@@ -123,6 +123,8 @@ ActiveRecord::Schema[8.2].define(version: 2026_11_03_120000) do
     t.string "subject", limit: 255, default: "", null: false
     t.string "mail_from", limit: 255
     t.uuid "domain_id", null: false
+    t.datetime "first_failed_at"
+    t.datetime "next_retry_at"
     t.index ["account_id", "created_at"], name: "index_deliveries_on_account_id_and_created_at"
     t.index ["account_id", "status"], name: "index_deliveries_on_account_id_and_status"
     t.index ["domain_id"], name: "index_deliveries_on_domain_id"

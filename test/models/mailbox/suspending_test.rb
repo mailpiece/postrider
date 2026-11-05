@@ -18,6 +18,15 @@ class Mailbox::SuspendingTest < ActiveSupport::TestCase
     assert_nil @mailbox.reload.forward_confirmed_at
   end
 
+  test "a permanent refusal of a forward for its content leaves forwarding alone" do
+    stub_smtp(:hard_fail, "550", "5.7.1 Message rejected by spam filter")
+
+    @delivery.deliver
+
+    assert @delivery.reload.bounced?
+    assert @mailbox.reload.forward_confirmed_at.present?
+  end
+
   test "a permanent bounce of an ordinary message leaves forwarding alone" do
     @message.update!(origin: :submitted)
     stub_smtp(:hard_fail, "550", "no such user")

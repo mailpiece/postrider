@@ -1,7 +1,8 @@
 module Delivery::Delivering
   extend ActiveSupport::Concern
 
-  PERMANENT_CATEGORIES = %i[ invalid full oversized ].freeze
+  # What the mailbox itself refused, as against our mail or our IP.
+  RECIPIENT_CATEGORIES = %i[ invalid full oversized ].freeze
 
   SUPPRESSIBLE_CATEGORIES = %i[ invalid full ].freeze
 
@@ -146,15 +147,18 @@ module Delivery::Delivering
     def record_rejection(result)
       rejection = MailBounce.classify(response: result.output, sending_ip: Relay.own_addresses)
 
-      if rejection.category.in?(PERMANENT_CATEGORIES)
+      if refused_every_message?(rejection)
+        record_deferral(result)
+      else
         bounced!
-        suppress(reason: rejection.category) if rejection.category.in?(SUPPRESSIBLE_CATEGORIES) && !message.system?
-        suspend_forwarding_destination
+
+        if rejection.category.in?(RECIPIENT_CATEGORIES)
+          suppress(reason: rejection.category) if rejection.category.in?(SUPPRESSIBLE_CATEGORIES) && !message.system?
+          suspend_forwarding_destination
+        end
+
         track_event("bounced", rcpt_to: rcpt_to, smtp_code: result.code, smtp_output: result.output,
           category: rejection.category.to_s)
-      else
-        pause_mail_provider(result) if !relaying? && blocklisted_by_recipient?(rejection)
-        defer(result)
       end
     end
 
@@ -162,8 +166,8 @@ module Delivery::Delivering
       rejection = MailBounce.classify(response: result.output, sending_ip: Relay.own_addresses)
 
       if !relaying? && (blocklisted_by_recipient?(rejection) || told_to_slow_down?(rejection))
-        # A refusal at connect arrives here too, so a permanent one still holds until resumed.
-        if rejection.permanent?
+        # A permanent blocklisting, at connect or after, holds until resumed.
+        if blocklisted_by_recipient?(rejection) && rejection.permanent?
           pause_mail_provider(result)
         else
           pause_mail_provider(result, ends_at: Relay.slow_down_pause_period.from_now)
@@ -171,6 +175,12 @@ module Delivery::Delivering
       end
 
       defer(result)
+    end
+
+    # Our IP refused, or a smarthost refusing for itself (quota, auth, sender), says nothing of this message.
+    def refused_every_message?(rejection)
+      blocklisted_by_recipient?(rejection) || told_to_slow_down?(rejection) ||
+        (relaying? && !rejection.category.in?(RECIPIENT_CATEGORIES))
     end
 
     def exhausted_suppression_reason

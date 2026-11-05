@@ -47,6 +47,31 @@ class DeliveryTest < ActiveSupport::TestCase
     assert_equal "server failure resolving MX example.com", @delivery.attempts.last.output
   end
 
+  test "a recipient domain that publishes a null MX bounces at once without connecting" do
+    Delivery.any_instance.stubs(:destination_hosts).raises(DnsResolver::NullMx, "example.com does not accept mail (null MX)")
+    SmtpDelivery.any_instance.expects(:deliver).never
+
+    @delivery.deliver
+
+    assert @delivery.reload.bounced?
+    assert_equal "556", @delivery.attempts.last.code
+    assert_equal "556 5.1.10 example.com does not accept mail (null MX)", @delivery.attempts.last.output
+    assert_equal "invalid", @delivery.events.last.particulars["category"]
+  end
+
+  test "a recipient domain that does not exist bounces at once as host not found, without suppressing" do
+    Delivery.any_instance.stubs(:destination_hosts).raises(DnsResolver::NoSuchDomain, "example.com: host or domain name not found")
+    SmtpDelivery.any_instance.expects(:deliver).never
+
+    assert_no_difference -> { Current.account.suppressions.count } do
+      @delivery.deliver
+    end
+
+    assert @delivery.reload.bounced?
+    assert_equal "550 5.1.2 example.com: host or domain name not found", @delivery.attempts.last.output
+    assert_equal "delivery_bounced", @delivery.events.last.action
+  end
+
   test "delivering hands the recipient domain's MTA-STS policy to smtp" do
     with_env(MTA_STS: "true") do
       Delivery.any_instance.stubs(:destination_hosts).returns([ "mx.unlisted.example" ])

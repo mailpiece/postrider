@@ -120,6 +120,10 @@ module Delivery::Delivering
         hosts: destination_hosts, policy: mta_sts_policy).deliver
     rescue DnsResolver::TransientError => error
       SmtpDelivery::Result.new(:soft_fail, nil, error.message, nil, nil)
+    rescue DnsResolver::NullMx => error
+      SmtpDelivery::Result.new(:hard_fail, "556", "556 5.1.10 #{error.message}", nil, nil)
+    rescue DnsResolver::NoSuchDomain => error
+      SmtpDelivery::Result.new(:hard_fail, "550", "550 5.1.2 #{error.message}", nil, nil)
     end
 
     def destination_hosts
@@ -152,7 +156,7 @@ module Delivery::Delivering
       else
         bounced!
 
-        if rejection.category.in?(RECIPIENT_CATEGORIES)
+        if refused_by_mailbox?(rejection)
           suppress(reason: rejection.category) if rejection.category.in?(SUPPRESSIBLE_CATEGORIES) && !message.system?
           suspend_forwarding_destination
         end
@@ -181,6 +185,11 @@ module Delivery::Delivering
     def refused_every_message?(rejection)
       blocklisted_by_recipient?(rejection) || told_to_slow_down?(rejection) ||
         (relaying? && !rejection.category.in?(RECIPIENT_CATEGORIES))
+    end
+
+    # A domain not found (x.1.2) may be back within the hour, so it costs none of its addresses.
+    def refused_by_mailbox?(rejection)
+      rejection.category.in?(RECIPIENT_CATEGORIES) && rejection.status&.condition != "1.2"
     end
 
     def exhausted_suppression_reason

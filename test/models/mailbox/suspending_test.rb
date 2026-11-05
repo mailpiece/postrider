@@ -27,6 +27,15 @@ class Mailbox::SuspendingTest < ActiveSupport::TestCase
     assert @mailbox.reload.forward_confirmed_at.present?
   end
 
+  test "a forward to a domain that does not exist bounces but leaves forwarding alone" do
+    Delivery.any_instance.stubs(:destination_hosts).raises(DnsResolver::NoSuchDomain, "example.com: host or domain name not found")
+
+    @delivery.deliver
+
+    assert @delivery.reload.bounced?
+    assert @mailbox.reload.forward_confirmed_at.present?
+  end
+
   test "a permanent bounce of an ordinary message leaves forwarding alone" do
     @message.update!(origin: :submitted)
     stub_smtp(:hard_fail, "550", "no such user")

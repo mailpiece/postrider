@@ -187,6 +187,21 @@ class Delivery::ReturnPathTest < ActiveSupport::TestCase
     assert_not Delivery::ReturnPath.address?(address)
   end
 
+  test "address? rejects any other local part at the mailer subdomain" do
+    assert_not Delivery::ReturnPath.address?("anyone@mailer.example.com")
+    assert_not Delivery::ReturnPath.address?("bounces+nohmac@mailer.example.com")
+    assert_not Delivery::ReturnPath.address?(tamper_hmac(Delivery::ReturnPath.new(@delivery).address))
+  end
+
+  test "address? accepts a signed address at the mailer subdomain, under either secret, and postmaster" do
+    previous = MailVerp.new(secret: Rails.application.secret_key_base, prefix: "bounces")
+      .address_for(@delivery.id, domain: "mailer.example.com")
+
+    assert Delivery::ReturnPath.address?(Delivery::ReturnPath.new(@delivery).address)
+    assert Delivery::ReturnPath.address?(previous)
+    assert Delivery::ReturnPath.address?("Postmaster@mailer.example.com")
+  end
+
   private
     # Verified so it may send at all, but without the advanced records — the one
     # configuration where ordinary mail still falls back to the relay's Return-Path.

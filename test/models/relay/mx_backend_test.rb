@@ -43,16 +43,104 @@ class Relay::MxBackendTest < ActiveSupport::TestCase
     assert_equal "client.sender.example", inbound_email.helo
   end
 
-  test "persists mailauth's SPF, DKIM, and DMARC verdicts on the inbound email" do
+  test "authenticates before answering DATA and stores the verdicts, so forwarding doesn't authenticate again" do
     stub_mailauth(spf: "pass", dkim: "pass", dmarc: "pass")
 
     deliver(from: "sender@example.com", to: "everyone@mx-listener-test.example", raw: "Subject: Hi\r\n\r\nBody.\r\n")
-    perform_enqueued_jobs only: InboundEmail::ForwardJob
 
     inbound_email = InboundEmail.order(:created_at).last
     assert_equal "pass", inbound_email.spf
     assert_equal "pass", inbound_email.dkim
     assert_equal "pass", inbound_email.dmarc
+    assert_equal "test; spf=pass; dkim=pass; dmarc=pass; arc=none", inbound_email.authentication_results
+
+    ::MailAuth.expects(:authenticate).never
+    perform_enqueued_jobs only: InboundEmail::ForwardJob
+    assert inbound_email.reload.delivered?
+  end
+
+  test "asks the sender to retry, storing nothing, when the sender's DNS fails for now" do
+    ::MailAuth.unstub(:authenticate)
+    InboundAuthentication::MailAuth.stubs(:resolver).returns(MailResolver::Testing::FakeResolver.new("example.com" => { txt: :servfail }))
+
+    error = assert_raises(Net::SMTPServerBusy) do
+      deliver(from: "sender@example.com", to: "everyone@mx-listener-test.example", raw: "From: sender@example.com\r\nSubject: Hi\r\n\r\nBody.\r\n")
+    end
+
+    assert_match "451 4.4.3 Try again later", error.message
+    assert_equal 0, inbound_email_count
+  end
+
+  test "asks the sender to retry, storing nothing, when the sender's DNS doesn't answer in time" do
+    ::MailAuth.unstub(:authenticate)
+    InboundAuthentication::MailAuth.expects(:resolver).with { |timeouts: nil| timeouts && timeouts.sum <= 0.2 }
+      .at_least_once.returns(slow_resolver)
+
+    with_mx_listener(INBOUND_AUTHENTICATION_TIMEOUT: 0.2) do |port|
+      error = assert_raises(Net::SMTPServerBusy) do
+        mx_deliver(port:, from: "sender@example.com", to: "everyone@mx-listener-test.example",
+          raw: "From: sender@example.com\r\nSubject: Hi\r\n\r\nBody.\r\n")
+      end
+
+      assert_match "451 4.4.3", error.message
+    end
+
+    assert_equal 0, inbound_email_count
+  end
+
+  test "asks the sender to retry, storing nothing, when no authentication slot is free" do
+    ::MailAuth.expects(:authenticate).never
+
+    with_mx_listener(MX_MAX_AUTHENTICATIONS: 0) do |port|
+      error = assert_raises(Net::SMTPServerBusy) do
+        mx_deliver(port:, from: "sender@example.com", to: "everyone@mx-listener-test.example", raw: "Subject: Hi\r\n\r\nBody.\r\n")
+      end
+
+      assert_match "451 4.4.3", error.message
+    end
+
+    assert_equal 0, inbound_email_count
+  end
+
+  test "asks the sender to retry, storing nothing, when the authenticator crashes, and reports it once" do
+    ::MailAuth.stubs(:authenticate).raises(RuntimeError, "boom")
+    Rails.error.expects(:report).with(instance_of(RuntimeError), severity: :warning).once
+
+    error = assert_raises(Net::SMTPServerBusy) do
+      deliver(from: "sender@example.com", to: "everyone@mx-listener-test.example", raw: "From: sender@example.com\r\nSubject: Hi\r\n\r\nBody.\r\n")
+    end
+
+    assert_match "451 4.4.3 Try again later", error.message
+    assert_equal 0, inbound_email_count
+  end
+
+  test "asks the sender to retry, keeping the connection, when the authenticator crashes beyond an ordinary error" do
+    ::MailAuth.stubs(:authenticate).raises(NotImplementedError, "unsupported")
+    Rails.error.expects(:report).with(instance_of(NotImplementedError), severity: :warning).once
+
+    smtp = Net::SMTP.new("127.0.0.1", @port)
+    smtp.disable_starttls
+    smtp.start("test.client.example") do
+      error = assert_raises(Net::SMTPServerBusy) do
+        smtp.send_message("From: sender@example.com\r\nSubject: Hi\r\n\r\nBody.\r\n", "sender@example.com", "everyone@mx-listener-test.example")
+      end
+
+      assert_match "451 4.4.3", error.message
+      assert smtp.rset.success?
+    end
+
+    assert_equal 0, inbound_email_count
+  end
+
+  test "takes a bounce to our return path without authenticating anyone" do
+    ::MailAuth.expects(:authenticate).never
+    Delivery::ReturnPath.stubs(:bounce_domain).returns(nil)
+    Delivery::ReturnPath.stubs(:bounce_domain).with("bounces+abc@mx-listener-test.example").returns(@domain)
+    Delivery::ReturnPath.stubs(:address?).returns(true)
+
+    deliver(from: "", to: "bounces+abc@mx-listener-test.example", raw: "Subject: Undelivered\r\n\r\nBody.\r\n")
+
+    assert_nil InboundEmail.order(:created_at).last.authentication_results
   end
 
   test "accepts and forwards mail nested too deep to parse" do
@@ -165,6 +253,7 @@ class Relay::MxBackendTest < ActiveSupport::TestCase
 
   test "with catch_all_policy discard, an unregistered local part is accepted but recorded as discarded and never forwarded" do
     @domain.update!(catch_all_policy: "discard")
+    ::MailAuth.expects(:authenticate).never
 
     assert_no_enqueued_jobs only: InboundEmail::ForwardJob do
       assert_difference -> { Event.count }, 0 do
@@ -838,8 +927,8 @@ class Relay::MxBackendTest < ActiveSupport::TestCase
     backend = Relay::MxBackend.new
     Current.account = nil
 
-    backend.store("everyone@mx-listener-test.example", raw: "Subject: One\r\n\r\nBody.\r\n", digest: "one", envelope: envelope)
-    backend.store("everyone@mx-other-account-test.example", raw: "Subject: Two\r\n\r\nBody.\r\n", digest: "two", envelope: envelope)
+    backend.store("everyone@mx-listener-test.example", raw: "Subject: One\r\n\r\nBody.\r\n", digest: "one", envelope: envelope, verdict: nil)
+    backend.store("everyone@mx-other-account-test.example", raw: "Subject: Two\r\n\r\nBody.\r\n", digest: "two", envelope: envelope, verdict: nil)
 
     assert_nil Current.account
     assert_equal @domain.account, InboundEmail.find_by!(digest: "one").account
@@ -928,6 +1017,16 @@ class Relay::MxBackendTest < ActiveSupport::TestCase
       socket
     rescue Errno::EADDRNOTAVAIL
       skip "#{from} is not a local address here"
+    end
+
+    # A lookup nobody answers in its timeouts.
+    def slow_resolver
+      Class.new(MailResolver::Testing::FakeResolver) do
+        def txt(name)
+          sleep 0.2
+          raise MailResolver::Timeout, "timed out resolving TXT #{name.inspect}"
+        end
+      end.new
     end
 
     def inbound_email_count

@@ -71,6 +71,11 @@ module Relay
       Integer(ENV.fetch("INBOUND_MAX_MESSAGE_SIZE", 25 * 1024 * 1024))
     end
 
+    # Seconds the MX may spend authenticating a message before it answers DATA with a 451 instead.
+    def inbound_authentication_timeout
+      Float(ENV.fetch("INBOUND_AUTHENTICATION_TIMEOUT", 10))
+    end
+
     def max_outbound_message_size
       Integer(ENV.fetch("OUTBOUND_MAX_MESSAGE_SIZE", 10 * 1024 * 1024))
     end
@@ -111,6 +116,11 @@ module Relay
     # Defaults to half of MX_MAX_PROCESSINGS, as Postfix lets one client hold half its smtpd processes.
     def mx_max_processings_per_ip
       Integer(ENV.fetch("MX_MAX_PROCESSINGS_PER_IP") { [ mx_max_processings / 2, 1 ].max })
+    end
+
+    # Messages the MX authenticates at once; when none is free, DATA gets a 451.
+    def mx_max_authentications
+      Integer(ENV.fetch("MX_MAX_AUTHENTICATIONS") { mx_max_processings })
     end
 
     def mx_max_connections

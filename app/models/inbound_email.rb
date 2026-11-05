@@ -134,8 +134,11 @@ class InboundEmail < ApplicationRecord
   end
 
   private
+    # The MX authenticates before it answers; this is for mail that reached us without verdicts.
     def authenticate(ip:, helo:)
-      update!(**InboundAuthentication.verdicts(raw, ip:, helo:, mail_from:))
+      if authentication_results.nil?
+        update!(**InboundAuthentication.verdicts(raw, ip:, helo:, mail_from:))
+      end
     end
 
     # The host is named only once its name resolved back to the address.

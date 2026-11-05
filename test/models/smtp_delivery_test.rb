@@ -327,6 +327,37 @@ class SmtpDeliveryTest < ActiveSupport::TestCase
     assert_equal :sent, result.status
   end
 
+  test "a server that never greets is let go when the time to connect runs out" do
+    server = TCPServer.new("127.0.0.1", 0)
+
+    stub_const(SmtpDelivery, :OPEN_TIMEOUT, 0.3) do
+      with_env(OUTBOUND_RELAY: "127.0.0.1:#{server.addr[1]}") do
+        started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        result = SmtpDelivery.new(raw: "raw", mail_from: "a@example.com", rcpt_to: "b@example.com", hosts: []).deliver
+
+        assert_equal :soft_fail, result.status
+        assert_operator Process.clock_gettime(Process::CLOCK_MONOTONIC) - started, :<, 2
+      end
+    end
+  ensure
+    server.close
+  end
+
+  test "a server that hangs leaves the next its own time to connect" do
+    Surfguard.stubs(:resolve_public_ips).with("mx1.example").returns([ "93.184.216.34" ])
+    Surfguard.stubs(:resolve_public_ips).with("mx2.example").returns([ "93.184.216.35" ])
+    hanging = stub_everything.tap { |smtp| smtp.define_singleton_method(:start) { |*| sleep 5 } }
+    Net::SMTP.expects(:new).with("93.184.216.34", 25).returns(hanging)
+    Net::SMTP.expects(:new).with("93.184.216.35", 25).returns(stub_everything(start: true, data: Net::SMTP::Response.new("250", "250 2.0.0 OK")))
+
+    stub_const(SmtpDelivery, :OPEN_TIMEOUT, 0.3) do
+      result = SmtpDelivery.new(raw: "raw", mail_from: "a@example.com", rcpt_to: "b@example.com", hosts: %w[ mx1.example mx2.example ]).deliver
+
+      assert_equal :sent, result.status
+      assert_equal "mx2.example", result.mx_host
+    end
+  end
+
   test "a reply dripped past the command deadline is a soft failure" do
     stub_const(SmtpDelivery, :COMMAND_TIMEOUT, 0.3) do
       result = with_fake_mx(rcpt: ->(client) { loop { client.write("250-still here\r\n"); sleep 0.05 } }) do

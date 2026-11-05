@@ -6,9 +6,11 @@ class SmtpDelivery
   # MX records carry no port; RFC 5321 relay delivery is 25.
   SMTP_PORT = 25
 
-  OPEN_TIMEOUT = 10
+  # Each address dialed, to connect, greet and finish STARTTLS, so one that hangs leaves the next its turn.
+  OPEN_TIMEOUT = 30
 
-  COMMAND_TIMEOUT = 30
+  # Each command once connected: MAIL, RCPT, and closing.
+  COMMAND_TIMEOUT = 60
 
   DATA_TIMEOUT = 10.minutes.to_i
 
@@ -112,7 +114,7 @@ class SmtpDelivery
       else
         smtp.disable_starttls
       end
-      Timeout.timeout(COMMAND_TIMEOUT) { smtp.start(helo_hostname) }
+      Timeout.timeout(OPEN_TIMEOUT) { smtp.start(helo_hostname) }
       smtp
     rescue OpenSSL::SSL::SSLError => error
       finish smtp

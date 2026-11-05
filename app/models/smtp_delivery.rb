@@ -20,6 +20,11 @@ class SmtpDelivery
 
   MAX_MX_ADDRESSES = 5
 
+  # An address that could not be reached is not dialed again for a while, so every delivery to it doesn't wait out the same failure.
+  UNREACHABLE_HOLD = 30.minutes
+
+  UNREACHABLE_ERRORS = [ Net::OpenTimeout, Errno::ECONNREFUSED, Errno::EHOSTUNREACH, Errno::ENETUNREACH ].freeze
+
   # Replies arrive as bytes; keep them as text so an attempt can always be saved.
   Result = Struct.new(:status, :code, :output, :mx_host, :transcript) do
     def output
@@ -116,7 +121,15 @@ class SmtpDelivery
       @policy&.enforce? && !@policy.allows?(host)
     end
 
-    def connect(host, address, port, transcript, starttls: true)
+    def connect(host, address, port, transcript)
+      if unreachable?(address)
+        record_connection_error(host, "#{address} not tried, unreachable in the last #{UNREACHABLE_HOLD.inspect}")
+      else
+        dial(host, address, port, transcript)
+      end
+    end
+
+    def dial(host, address, port, transcript, starttls: true)
       smtp = Net::SMTP.new(address, port)
       smtp.source_address = @sending_ip&.address
       smtp.open_timeout = OPEN_TIMEOUT
@@ -132,17 +145,38 @@ class SmtpDelivery
         smtp.disable_starttls
       end
       Timeout.timeout(OPEN_TIMEOUT) { smtp.start(helo_hostname) }
+      reachable(address)
       smtp
+    rescue *UNREACHABLE_ERRORS => error
+      finish smtp
+      unreachable(address)
+      record_connection_error(host, error.message.strip)
     rescue OpenSSL::SSL::SSLError => error
       finish smtp
       if starttls && !require_tls?(host)
-        connect(host, address, port, transcript, starttls: false)
+        dial(host, address, port, transcript, starttls: false)
       else
         record_connection_error(host, error.message.strip)
       end
     rescue StandardError => error
       finish smtp
       record_connection_error(host, error.message.strip)
+    end
+
+    def unreachable?(address)
+      Rails.cache.exist?(unreachable_key(address))
+    end
+
+    def unreachable(address)
+      Rails.cache.write(unreachable_key(address), true, expires_in: UNREACHABLE_HOLD)
+    end
+
+    def reachable(address)
+      Rails.cache.delete(unreachable_key(address))
+    end
+
+    def unreachable_key(address)
+      "smtp_unreachable:#{address}"
     end
 
     # Operator smarthost may keep a self-signed cert.

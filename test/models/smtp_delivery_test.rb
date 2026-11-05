@@ -120,6 +120,76 @@ class SmtpDeliveryTest < ActiveSupport::TestCase
     end
   end
 
+  test "an address that could not be reached is not dialed again for a while" do
+    with_memory_cache do
+      Surfguard.stubs(:resolve_public_ips).returns([ "93.184.216.34" ])
+      Net::SMTP.any_instance.expects(:start).once.raises(Net::OpenTimeout.new("execution expired"))
+
+      deliver_to "mx.example"
+      result = deliver_to "mx.example"
+
+      assert_equal :soft_fail, result.status
+      assert_equal "No SMTP servers available: mx.example: 93.184.216.34 not tried, unreachable in the last 30 minutes", result.output
+
+      travel SmtpDelivery::UNREACHABLE_HOLD + 1.second do
+        Net::SMTP.stubs(:new).returns(stub_everything(start: true, data: Net::SMTP::Response.new("250", "250 2.0.0 OK")))
+
+        assert_equal :sent, deliver_to("mx.example").status
+      end
+    end
+  end
+
+  test "an address held as unreachable leaves the host's next address to be tried" do
+    with_memory_cache do
+      Surfguard.stubs(:resolve_public_ips).returns([ "93.184.216.34", "93.184.216.35" ])
+      Net::SMTP.expects(:new).with("93.184.216.34", 25).once.returns(refusing_smtp)
+      Net::SMTP.expects(:new).with("93.184.216.35", 25).twice.returns(stub_everything(start: true, data: Net::SMTP::Response.new("250", "250 2.0.0 OK")))
+
+      assert_equal :sent, deliver_to("mx.example").status
+      result = deliver_to "mx.example"
+
+      assert_equal :sent, result.status
+      assert_equal "mx.example", result.mx_host
+    end
+  end
+
+  test "an address held as unreachable leaves the next host to be tried" do
+    with_memory_cache do
+      Rails.cache.write("smtp_unreachable:93.184.216.34", true)
+      Surfguard.stubs(:resolve_public_ips).with("mx1.example").returns([ "93.184.216.34" ])
+      Surfguard.stubs(:resolve_public_ips).with("mx2.example").returns([ "93.184.216.35" ])
+      Net::SMTP.expects(:new).with("93.184.216.35", 25).once.returns(stub_everything(start: true, data: Net::SMTP::Response.new("250", "250 2.0.0 OK")))
+
+      result = SmtpDelivery.new(raw: "raw", mail_from: "a@example.com", rcpt_to: "b@example.com", hosts: %w[ mx1.example mx2.example ]).deliver
+
+      assert_equal "mx2.example", result.mx_host
+    end
+  end
+
+  test "an address that answers is no longer held as unreachable" do
+    with_memory_cache do
+      Surfguard.stubs(:resolve_public_ips).returns([ "93.184.216.34" ])
+      Net::SMTP.stubs(:new).returns(stub_everything(start: true, data: Net::SMTP::Response.new("250", "250 2.0.0 OK")))
+      Rails.cache.write("smtp_unreachable:93.184.216.34", true)
+      Rails.cache.stubs(:exist?).returns(false)
+
+      deliver_to "mx.example"
+
+      assert_nil Rails.cache.read("smtp_unreachable:93.184.216.34")
+    end
+  end
+
+  test "a server that answers slowly is not held as unreachable" do
+    with_memory_cache do
+      Surfguard.stubs(:resolve_public_ips).returns([ "93.184.216.34" ])
+      Net::SMTP.any_instance.stubs(:start).raises(Timeout::Error)
+
+      deliver_to "mx.example"
+
+      assert_nil Rails.cache.read("smtp_unreachable:93.184.216.34")
+    end
+  end
+
   test "connects to the vetted public address and sends" do
     Surfguard.stubs(:resolve_public_ips).returns([ "93.184.216.34" ])
     Net::SMTP.expects(:new).with("93.184.216.34", 25).returns(stub_everything(start: true, data: Net::SMTP::Response.new("250", "250 2.0.0 OK")))
@@ -437,6 +507,17 @@ class SmtpDeliveryTest < ActiveSupport::TestCase
   end
 
   private
+    def deliver_to(host)
+      SmtpDelivery.new(raw: "raw", mail_from: "a@example.com", rcpt_to: "b@example.com", hosts: [ host ]).deliver
+    end
+
+    def with_memory_cache
+      previous_cache, Rails.cache = Rails.cache, ActiveSupport::Cache::MemoryStore.new
+      yield
+    ensure
+      Rails.cache = previous_cache
+    end
+
     def with_fake_mx(rcpt: ->(client) { client.write("250 OK\r\n") }, data: ->(client) { client.write("250 OK\r\n") })
       server = TCPServer.new("127.0.0.1", 0)
       thread = Thread.new do

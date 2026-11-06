@@ -47,6 +47,31 @@ class DeliveryTest < ActiveSupport::TestCase
     assert_equal "server failure resolving MX example.com", @delivery.attempts.last.output
   end
 
+  test "a recipient domain that publishes a null MX bounces at once without connecting" do
+    Delivery.any_instance.stubs(:destination_hosts).raises(DnsResolver::NullMx, "example.com does not accept mail (null MX)")
+    SmtpDelivery.any_instance.expects(:deliver).never
+
+    @delivery.deliver
+
+    assert @delivery.reload.bounced?
+    assert_equal "556", @delivery.attempts.last.code
+    assert_equal "556 5.1.10 example.com does not accept mail (null MX)", @delivery.attempts.last.output
+    assert_equal "invalid", @delivery.events.last.particulars["category"]
+  end
+
+  test "a recipient domain that does not exist bounces at once as host not found, without suppressing" do
+    Delivery.any_instance.stubs(:destination_hosts).raises(DnsResolver::NoSuchDomain, "example.com: host or domain name not found")
+    SmtpDelivery.any_instance.expects(:deliver).never
+
+    assert_no_difference -> { Current.account.suppressions.count } do
+      @delivery.deliver
+    end
+
+    assert @delivery.reload.bounced?
+    assert_equal "550 5.1.2 example.com: host or domain name not found", @delivery.attempts.last.output
+    assert_equal "delivery_bounced", @delivery.events.last.action
+  end
+
   test "delivering hands the recipient domain's MTA-STS policy to smtp" do
     with_env(MTA_STS: "true") do
       Delivery.any_instance.stubs(:destination_hosts).returns([ "mx.unlisted.example" ])
@@ -228,15 +253,45 @@ class DeliveryTest < ActiveSupport::TestCase
     assert @delivery.reload.bounced?
   end
 
-  test "a rejection aimed at us defers instead of bouncing, and never suppresses" do
+  test "a permanent refusal of our mail bounces at once, and never suppresses" do
     stub_smtp(:hard_fail, "550", "5.7.1 Message rejected by spam filter")
 
     assert_no_difference -> { Current.account.suppressions.count } do
+      @delivery.deliver
+    end
+
+    assert @delivery.reload.bounced?
+    assert_equal "delivery_bounced", @delivery.events.last.action
+    assert_equal "blocked", @delivery.events.last.particulars["category"]
+  end
+
+  test "a permanent refusal for a reason it does not name bounces at once" do
+    stub_smtp(:hard_fail, "554", "Transaction failed")
+
+    @delivery.deliver
+
+    assert @delivery.reload.bounced?
+    assert_equal "unknown", @delivery.events.last.particulars["category"]
+  end
+
+  test "a smarthost refusing our mail for itself defers rather than bouncing" do
+    with_env(OUTBOUND_RELAY: "smarthost.example:2525") do
+      stub_smtp(:hard_fail, "550", "5.7.1 Sender address not verified")
+
       assert_raises(RuntimeError) { @delivery.deliver }
     end
 
     assert @delivery.reload.deferred?
-    assert_equal "delivery_deferred", @delivery.events.last.action
+  end
+
+  test "a smarthost refusing the recipient bounces at once" do
+    with_env(OUTBOUND_RELAY: "smarthost.example:2525") do
+      stub_smtp(:hard_fail, "550", "5.1.1 no such user")
+
+      @delivery.deliver
+    end
+
+    assert @delivery.reload.bounced?
   end
 
   test "a blocklisting that quotes our own IP pauses sending to the recipient's domain" do
@@ -294,44 +349,52 @@ class DeliveryTest < ActiveSupport::TestCase
     end
   end
 
-  test "Gmail's verdict on one message never pauses, though it quotes our IP" do
+  test "Gmail's verdict on one message bounces without pausing, though it quotes our IP" do
     with_env(SENDING_IPS: "primary=203.0.113.7=mx.example") do
       stub_smtp(:hard_fail, "550", "5.7.1 [203.0.113.7] Gmail has detected that this message is likely unsolicited mail.")
 
       assert_no_difference -> { Pause.count } do
-        assert_raises(RuntimeError) { @delivery.deliver }
+        @delivery.deliver
       end
     end
+
+    assert @delivery.reload.bounced?
   end
 
-  test "Gmail's verdict on the sending domain's reputation never pauses, though it quotes our IP" do
+  test "Gmail's verdict on the sending domain's reputation bounces without pausing, though it quotes our IP" do
     with_env(SENDING_IPS: "primary=203.0.113.7=mx.example") do
       stub_smtp(:hard_fail, "550", "5.7.1 [203.0.113.7] This message is likely suspicious due to the very low reputation of the sending domain.")
 
       assert_no_difference -> { Pause.count } do
-        assert_raises(RuntimeError) { @delivery.deliver }
+        @delivery.deliver
       end
     end
+
+    assert @delivery.reload.bounced?
   end
 
-  test "a rejection that quotes our IP without naming a blocklist never pauses" do
+  test "a rejection that quotes our IP without naming a blocklist bounces without pausing" do
     with_env(SENDING_IPS: "primary=203.0.113.7=mx.example") do
       stub_smtp(:hard_fail, "550", "5.7.26 [203.0.113.7] Unauthenticated email from example.com is not accepted due to its DMARC policy.")
 
       assert_no_difference -> { Pause.count } do
-        assert_raises(RuntimeError) { @delivery.deliver }
+        @delivery.deliver
       end
     end
+
+    assert @delivery.reload.bounced?
   end
 
-  test "a block that does not quote our IP never pauses, whatever it says" do
+  test "a block that does not quote our IP bounces without pausing, whatever it says" do
     with_env(SENDING_IPS: "primary=203.0.113.7=mx.example") do
       stub_smtp(:hard_fail, "550", "5.7.1 Message rejected as spam, 198.51.100.4 is listed on Spamhaus")
 
       assert_no_difference -> { Pause.count } do
-        assert_raises(RuntimeError) { @delivery.deliver }
+        @delivery.deliver
       end
     end
+
+    assert @delivery.reload.bounced?
   end
 
   test "Outlook.com rate limiting our IP pauses it for SLOW_DOWN_PAUSE_MINUTES" do
@@ -373,6 +436,20 @@ class DeliveryTest < ActiveSupport::TestCase
     end
 
     assert Pause.find_by!(provider: "gmail").ends_at
+  end
+
+  test "a permanent refusal telling our IP to slow down pauses it for a while and defers" do
+    with_env(SENDING_IPS: "primary=203.0.113.7=mx.example", SLOW_DOWN_PAUSE_MINUTES: 30) do
+      stub_smtp(:hard_fail, "550", "5.7.1 [203.0.113.7] rate limit exceeded, try again later")
+
+      freeze_time do
+        assert_raises(RuntimeError) { @delivery.deliver }
+
+        assert_equal 30.minutes.from_now, Pause.find_by!(provider: "example.com").ends_at
+      end
+    end
+
+    assert @delivery.reload.deferred?
   end
 
   test "a blocklisting as we connect pauses until resumed" do

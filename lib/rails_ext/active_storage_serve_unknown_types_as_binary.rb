@@ -14,10 +14,9 @@
 # Kept as-is:
 #
 #   * content_types_allowed_inline: images and PDFs.
-#   * audio/* and video/*: the attachment players point straight at the file.
-#   * image/heic and image/heif: we convert them, and a card background or an image in the editor points
-#     straight at the original.
-#   * application/zip: account and user exports.
+#   * audio/* and video/*: inert, and a mail's attachment keeps its type for whoever downloads it.
+#   * image/heic and image/heif: a phone's photos attached to a mail keep their type when downloaded.
+#   * application/zip: a mail's zip attachment keeps its type when downloaded.
 #
 # Nothing else needs its type. Every other file is a download, named by its filename. Each type on this list
 # must be inert as a document and as a script, and adding one is a deliberate act with a stated benefit.

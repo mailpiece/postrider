@@ -64,6 +64,62 @@ class SmtpDeliveryTest < ActiveSupport::TestCase
     assert_equal :sent, result.status
   end
 
+  test "tries each address of a host before the next host" do
+    Surfguard.stubs(:resolve_public_ips).with("mx1.example").returns([ "93.184.216.34", "93.184.216.35" ])
+    Surfguard.expects(:resolve_public_ips).with("mx2.example").never
+    Net::SMTP.expects(:new).with("93.184.216.34", 25).returns(refusing_smtp)
+    Net::SMTP.expects(:new).with("93.184.216.35", 25).returns(stub_everything(start: true, data: Net::SMTP::Response.new("250", "250 2.0.0 OK")))
+
+    result = SmtpDelivery.new(raw: "raw", mail_from: "a@example.com", rcpt_to: "b@example.com", hosts: %w[ mx1.example mx2.example ]).deliver
+
+    assert_equal :sent, result.status
+    assert_equal "mx1.example", result.mx_host
+  end
+
+  test "dials an address shared by two hosts once" do
+    Surfguard.stubs(:resolve_public_ips).returns([ "93.184.216.34" ])
+    Net::SMTP.any_instance.expects(:start).once.raises(Errno::ECONNREFUSED)
+
+    result = SmtpDelivery.new(raw: "raw", mail_from: "a@example.com", rcpt_to: "b@example.com", hosts: %w[ mx1.example mx2.example ]).deliver
+
+    assert_equal :soft_fail, result.status
+  end
+
+  test "dials at most five addresses" do
+    Surfguard.stubs(:resolve_public_ips).with("mx1.example").returns((1..4).map { |n| "93.184.216.#{n}" })
+    Surfguard.stubs(:resolve_public_ips).with("mx2.example").returns((5..8).map { |n| "93.184.216.#{n}" })
+    Net::SMTP.any_instance.expects(:start).times(5).raises(Errno::ECONNREFUSED)
+
+    result = SmtpDelivery.new(raw: "raw", mail_from: "a@example.com", rcpt_to: "b@example.com", hosts: %w[ mx1.example mx2.example ]).deliver
+
+    assert_equal :soft_fail, result.status
+  end
+
+  test "dials only addresses in the sending IP's family" do
+    with_env(SENDING_IPS: "primary=203.0.113.10=mx1.example") do
+      Surfguard.stubs(:resolve_public_ips).with("mx1.example").returns([ "2606:2800:220:1::1" ])
+      Surfguard.stubs(:resolve_public_ips).with("mx2.example").returns([ "93.184.216.34", "2606:2800:220:1::2" ])
+      Net::SMTP.expects(:new).with("93.184.216.34", 25).returns(refusing_smtp)
+
+      result = SmtpDelivery.new(raw: "raw", mail_from: "a@example.com", rcpt_to: "b@example.com", hosts: %w[ mx1.example mx2.example ]).deliver
+
+      assert_equal :soft_fail, result.status
+      assert_match "mx1.example: no IPv4 address", result.output
+    end
+  end
+
+  test "dials only the families the relay hostname resolves to when no sending IP is set" do
+    with_env(SENDING_IPS: nil) do
+      Relay.stubs(:own_addresses).returns([ "2001:db8::25" ])
+      Surfguard.stubs(:resolve_public_ips).returns([ "93.184.216.34", "2606:2800:220:1::1" ])
+      Net::SMTP.expects(:new).with("2606:2800:220:1::1", 25).returns(stub_everything(start: true, data: Net::SMTP::Response.new("250", "250 2.0.0 OK")))
+
+      result = SmtpDelivery.new(raw: "raw", mail_from: "a@example.com", rcpt_to: "b@example.com", hosts: [ "mx.example" ]).deliver
+
+      assert_equal :sent, result.status
+    end
+  end
+
   test "connects to the vetted public address and sends" do
     Surfguard.stubs(:resolve_public_ips).returns([ "93.184.216.34" ])
     Net::SMTP.expects(:new).with("93.184.216.34", 25).returns(stub_everything(start: true, data: Net::SMTP::Response.new("250", "250 2.0.0 OK")))
@@ -327,6 +383,37 @@ class SmtpDeliveryTest < ActiveSupport::TestCase
     assert_equal :sent, result.status
   end
 
+  test "a server that never greets is let go when the time to connect runs out" do
+    server = TCPServer.new("127.0.0.1", 0)
+
+    stub_const(SmtpDelivery, :OPEN_TIMEOUT, 0.3) do
+      with_env(OUTBOUND_RELAY: "127.0.0.1:#{server.addr[1]}") do
+        started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        result = SmtpDelivery.new(raw: "raw", mail_from: "a@example.com", rcpt_to: "b@example.com", hosts: []).deliver
+
+        assert_equal :soft_fail, result.status
+        assert_operator Process.clock_gettime(Process::CLOCK_MONOTONIC) - started, :<, 2
+      end
+    end
+  ensure
+    server.close
+  end
+
+  test "a server that hangs leaves the next its own time to connect" do
+    Surfguard.stubs(:resolve_public_ips).with("mx1.example").returns([ "93.184.216.34" ])
+    Surfguard.stubs(:resolve_public_ips).with("mx2.example").returns([ "93.184.216.35" ])
+    hanging = stub_everything.tap { |smtp| smtp.define_singleton_method(:start) { |*| sleep 5 } }
+    Net::SMTP.expects(:new).with("93.184.216.34", 25).returns(hanging)
+    Net::SMTP.expects(:new).with("93.184.216.35", 25).returns(stub_everything(start: true, data: Net::SMTP::Response.new("250", "250 2.0.0 OK")))
+
+    stub_const(SmtpDelivery, :OPEN_TIMEOUT, 0.3) do
+      result = SmtpDelivery.new(raw: "raw", mail_from: "a@example.com", rcpt_to: "b@example.com", hosts: %w[ mx1.example mx2.example ]).deliver
+
+      assert_equal :sent, result.status
+      assert_equal "mx2.example", result.mx_host
+    end
+  end
+
   test "a reply dripped past the command deadline is a soft failure" do
     stub_const(SmtpDelivery, :COMMAND_TIMEOUT, 0.3) do
       result = with_fake_mx(rcpt: ->(client) { loop { client.write("250-still here\r\n"); sleep 0.05 } }) do
@@ -376,6 +463,10 @@ class SmtpDeliveryTest < ActiveSupport::TestCase
     ensure
       server.close
       thread.join
+    end
+
+    def refusing_smtp
+      stub_everything.tap { |smtp| smtp.stubs(:start).raises(Errno::ECONNREFUSED) }
     end
 
     def enforce_policy

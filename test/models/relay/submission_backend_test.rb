@@ -2,7 +2,7 @@ require "test_helper"
 require "net/smtp"
 require "base64"
 
-class SubmissionListenerTest < ActiveSupport::TestCase
+class Relay::SubmissionBackendTest < ActiveSupport::TestCase
   include SmtpTestHelper
   include CertificateTestHelper
 
@@ -12,7 +12,7 @@ class SubmissionListenerTest < ActiveSupport::TestCase
     stub_env RELAY_HOSTNAME: "smtp-test.local"
     @test_started_at = Time.current
     @port = free_port
-    @listener = start_listener(SubmissionListener, "SUBMISSION_PORT", @port)
+    @listener = start_submission_listener(@port)
   end
 
   teardown do
@@ -179,7 +179,7 @@ class SubmissionListenerTest < ActiveSupport::TestCase
   end
 
   test "redacts the credential from the debug wire log in every auth-value state" do
-    listener = SubmissionListener.allocate
+    listener = MailGate::SubmissionListener.allocate
     session = MailSmtp::Session.new
 
     session.phase = :ready
@@ -402,9 +402,9 @@ class SubmissionListenerTest < ActiveSupport::TestCase
     assert_match "Reply-To: help@unrelated.example", Message.order(:created_at).last.raw
   end
 
-  test "refuses a message whose header section passes 1 MB" do
+  test "refuses a message whose header section passes 256 KB" do
     message = "From: sender@example.com\r\nTo: recipient@example.com\r\n" +
-      ("X-Filler: #{"x" * 70}\r\n" * 16_000) + "\r\nBody.\r\n"
+      ("X-Filler: #{"x" * 70}\r\n" * 4_000) + "\r\nBody.\r\n"
 
     error = assert_raises(Net::SMTPFatalError) do
       deliver(from: "sender@example.com", to: "recipient@example.com", message: message)
@@ -566,6 +566,7 @@ class SubmissionListenerTest < ActiveSupport::TestCase
     SendingToken.stubs(:authenticate).raises(RuntimeError, "boom")
 
     Rails.error.expects(:report).with(instance_of(RuntimeError), handled: false, source: "smtp").at_least_once
+    Rails.error.stubs(:report).with(instance_of(RuntimeError), handled: false, source: "application.active_support")
 
     assert_raises(Net::SMTPAuthenticationError) do
       with_starttls_smtp(@port) { |smtp| smtp.authenticate(DomainTestHelper::SENDING_TOKEN, "irrelevant", :plain) }
@@ -581,6 +582,28 @@ class SubmissionListenerTest < ActiveSupport::TestCase
 
     assert_match "451", error.message
     assert_empty Message.where(account: accounts(:davids_account)).where("created_at >= ?", @test_started_at)
+  end
+
+  test "refuses a message its model finds invalid as the sender's to fix, and lets any other error through to be retried" do
+    Message.stubs(:submit_raw).raises(ActiveRecord::RecordInvalid.new(Message.new))
+    assert_raises(MailGate::Errors::InvalidMessage) { submit_directly }
+
+    Message.stubs(:submit_raw).raises(RuntimeError, "boom")
+    assert_raises(RuntimeError) { submit_directly }
+  end
+
+  test "answers each call under its own token's account, whatever an earlier call on the thread was for" do
+    other = domains(:other_account).sending_tokens.create!(name: "Other")
+    backend = Relay::SubmissionBackend.new
+    SubmissionRateLimiter.expects(:exceeded?).twice.with { |account| account == Current.account }.returns(false)
+    Current.account = nil
+
+    backend.rate_limited?(sending_tokens(:example).id)
+    backend.rate_limited?(other.id)
+
+    assert_nil Current.account
+  ensure
+    other&.destroy
   end
 
   test "refuses a BODY declaration with a 501, since submission never advertises 8BITMIME" do
@@ -632,21 +655,26 @@ class SubmissionListenerTest < ActiveSupport::TestCase
   end
 
   test "greets with SUBMISSION_HOSTNAME, not RELAY_HOSTNAME, when they differ" do
-    with_env(SUBMISSION_HOSTNAME: "submission-test.local") do
-      Socket.tcp("127.0.0.1", @port) do |socket|
-        greeting = socket.gets
-        assert_match(/submission-test\.local/, greeting)
-        assert_no_match(/smtp-test\.local/, greeting)
-      end
+    port = free_port
+    listener = with_env(SUBMISSION_HOSTNAME: "submission-test.local") do
+      start_submission_listener(port)
     end
+
+    Socket.tcp("127.0.0.1", port) do |socket|
+      greeting = socket.gets
+      assert_match(/submission-test\.local/, greeting)
+      assert_no_match(/smtp-test\.local/, greeting)
+    end
+  ensure
+    stop_listener(listener)
   end
 
   test "tolerates a few protocol errors but drops a connection that floods them" do
     Socket.tcp("127.0.0.1", @port) do |socket|
       socket.gets
 
-      # Engine default: counts every protocol error, not just unrecognized commands.
-      (MailSmtp::Server::MAX_EXCEPTIONS - 1).times do
+      # Counts every protocol error, not just unrecognized commands; past the soft limit each reply waits.
+      (MailGate::SubmissionListener::DEFAULTS[:hard_error_limit] - 1).times do
         socket.write("GARBAGE\r\n")
         assert_match(/\A5\d\d /, socket.gets.to_s)
       end
@@ -742,6 +770,12 @@ class SubmissionListenerTest < ActiveSupport::TestCase
 
     def deliver(from:, to:, token: DomainTestHelper::SENDING_TOKEN, username: SendingToken::SMTP_USERNAME, message: nil, auth_type: :plain)
       submission_deliver(port: @port, token: token, from: from, to: to, username: username, message: message, auth_type: auth_type)
+    end
+
+    def submit_directly
+      Relay::SubmissionBackend.new.submit(sending_tokens(:example).id, raw: "From: sender@example.com\r\nTo: recipient@example.com\r\n\r\nBody.\r\n",
+        received: "Received: by smtp-test.local with ESMTPSA; Wed, 04 Nov 2026 00:00:00 +0000\r\n",
+        envelope: envelope(rcpt_to: [ "recipient@example.com" ]), key: SecureRandom.hex(32))
     end
 
     def submitted_messages

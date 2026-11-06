@@ -107,13 +107,11 @@ class ActiveStorageAuthorizationTest < ActionDispatch::IntegrationTest
     assert_response :forbidden
   end
 
-  test "proxied bytes never get public cache headers" do
+  test "proxy routes answer 404 for a signed-in user with access" do
     sign_in_as :leo
 
     get rails_storage_proxy_path(attachment_blob)
-
-    assert_response :success
-    assert_not_includes response.headers["Cache-Control"], "public"
+    assert_response :not_found
   end
 
   [ "text/html;charset=utf-8", "text/html,foo", "TEXT/HTML", "text/x-html", "text/vnd.turbo-stream.html",
@@ -121,40 +119,47 @@ class ActiveStorageAuthorizationTest < ActionDispatch::IntegrationTest
     test "a blob declared #{declared_type} is served as octet-stream" do
       sign_in_as :leo
 
-      get rails_storage_proxy_path(markup_blob(declared_type))
+      serve markup_blob(declared_type)
 
-      assert_response :success
       assert_equal "application/octet-stream", response.media_type
       assert_match %r{attachment}, response.headers["Content-Disposition"]
     end
   end
 
   test "an unauthenticated request never runs the representation parser" do
-    paths = representation_paths
+    redirect_path, proxy_path = representation_paths
     ActiveStorage::Blob.any_instance.expects(:representation).never
 
-    paths.each do |path|
-      get path
+    get redirect_path
+    assert_response :redirect
+    assert_match %r{/session/new}, response.location
 
-      assert_response :redirect
-      assert_match %r{/session/new}, response.location
-    end
+    get proxy_path
+    assert_response :not_found
   end
 
   test "a forbidden request never runs the representation parser" do
     sign_in_as :leo
 
-    paths = representation_paths
+    redirect_path, proxy_path = representation_paths
     ActiveStorage::Blob.any_instance.expects(:representation).never
 
-    paths.each do |path|
-      get path
+    get redirect_path
+    assert_response :forbidden
 
-      assert_response :forbidden
-    end
+    get proxy_path
+    assert_response :not_found
   end
 
   private
+    def serve(blob)
+      get rails_blob_path(blob)
+      assert_response :redirect
+
+      follow_redirect!
+      assert_response :success
+    end
+
     def attachment_blob(domain: domains(:example))
       create_inbound_email(domain: domain, raw: raw_with_attachment)
         .tap(&:extract_attachments)

@@ -21,6 +21,13 @@ module SmtpTestHelper
     listener&.stop
   end
 
+  # The bytes a receiver keeps from Net::SMTP's DATA: its own line endings, dot-stuffing undone.
+  def as_sent_over_smtp(raw)
+    wire = StringIO.new
+    Net::InternetMessageIO.new(wire).write_message(raw)
+    wire.string.b.delete_suffix(".\r\n").gsub(/^\.\./n, ".")
+  end
+
   def mx_deliver(port:, from:, to:, raw:, helo: "test.client.example")
     smtp = Net::SMTP.new("127.0.0.1", port)
     smtp.disable_starttls

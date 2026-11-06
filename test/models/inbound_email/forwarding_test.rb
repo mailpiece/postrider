@@ -1,6 +1,8 @@
 require "test_helper"
 
 class InboundEmail::ForwardingTest < ActiveSupport::TestCase
+  include SmtpTestHelper
+
   FRIEND = "Friend <friend@sender.example>"
   JANE = "Jane <jane@remote.example>"
 
@@ -72,6 +74,13 @@ class InboundEmail::ForwardingTest < ActiveSupport::TestCase
     assert_equal "pass", result.status
     assert_equal 1, result.sets.sole.instance
     assert_equal "mx.example", result.sets.sole.seal.domain
+  end
+
+  test "a forward of mail with bare CR and LF carries a seal that verifies over the bytes sent" do
+    stub_verdicts(dmarc: "pass", from_aligned: true)
+    inbound_to_mailbox(raw: "From: #{FRIEND}\nSubject: Hi\r\n\rOne\rTwo\n").forward(ip: "203.0.113.1", helo: "sender.example")
+
+    assert_equal "pass", verify_arc(as_sent_over_smtp(Message.last.raw)).status
   end
 
   test "the seal states what this hop concluded at receipt rather than a verdict reached later" do

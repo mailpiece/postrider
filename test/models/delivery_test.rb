@@ -772,7 +772,7 @@ class DeliveryTest < ActiveSupport::TestCase
 
   test "record_async_bounce appends a bounced event carrying the raw DSN without changing delivered status" do
     assert_difference -> { deliveries(:delivered).events.count }, 1 do
-      deliveries(:delivered).record_async_bounce(dsn_raw: "raw-inbound-dsn")
+      deliveries(:delivered).record_async_bounce(dsn_raw: failing_dsn)
     end
 
     assert deliveries(:delivered).reload.delivered?, "an async bounce must not rewrite the recorded delivered handoff"
@@ -780,11 +780,12 @@ class DeliveryTest < ActiveSupport::TestCase
     assert_equal "delivery_bounced", event.action
     assert_equal "recipient@example.com", event.particulars["rcpt_to"]
     assert_equal "dsn", event.particulars["source"]
-    assert_equal "raw-inbound-dsn", event.particulars["dsn"]
+    assert_equal failing_dsn, event.particulars["dsn"]
   end
 
   test "record_async_bounce stores at most 64KB of the DSN" do
-    deliveries(:delivered).record_async_bounce(dsn_raw: "x" * (Delivery::Bouncing::STORED_DSN_LIMIT + 1))
+    padded = failing_dsn.sub("Delivery to the recipient failed.", "x" * Delivery::Bouncing::STORED_DSN_LIMIT)
+    deliveries(:delivered).record_async_bounce(dsn_raw: padded)
 
     assert_equal Delivery::Bouncing::STORED_DSN_LIMIT, deliveries(:delivered).events.last.particulars["dsn"].bytesize
   end
@@ -799,9 +800,56 @@ class DeliveryTest < ActiveSupport::TestCase
     assert_equal "invalid", deliveries(:delivered).events.last.particulars["category"]
   end
 
-  test "record_async_bounce leaves the recipient alone when the report is only a delay notice" do
-    assert_no_difference -> { Current.account.suppressions.count } do
+  test "a delay notice is not a bounce" do
+    assert_no_difference [ -> { deliveries(:delivered).events.count }, -> { Current.account.suppressions.count } ] do
       deliveries(:delivered).record_async_bounce(dsn_raw: failing_dsn(action: "delayed", status: "4.4.7"))
+    end
+  end
+
+  test "a report that the message was delivered, relayed or expanded is not a bounce" do
+    %w[ delivered relayed expanded ].each do |action|
+      assert_no_difference -> { deliveries(:delivered).events.count } do
+        deliveries(:delivered).record_async_bounce(dsn_raw: failing_dsn(action: action, status: "2.0.0"))
+      end
+    end
+  end
+
+  test "an auto-reply to the return path is not a bounce" do
+    auto_reply = "From: recipient@example.com\r\nAuto-Submitted: auto-replied\r\nSubject: Out of office\r\n\r\nI am away until Monday.\r\n"
+
+    assert_no_difference -> { deliveries(:delivered).events.count } do
+      deliveries(:delivered).record_async_bounce(dsn_raw: auto_reply)
+    end
+  end
+
+  test "a failure reported after a delay notice is the bounce" do
+    deliveries(:delivered).record_async_bounce(dsn_raw: failing_dsn(action: "delayed", status: "4.4.7"))
+
+    assert_difference [ -> { Event.where(action: "delivery_bounced", eventable: deliveries(:delivered)).count },
+      -> { Current.account.suppressions.count } ], 1 do
+      deliveries(:delivered).record_async_bounce(dsn_raw: failing_dsn)
+    end
+
+    assert_equal failing_dsn, deliveries(:delivered).webhook_payload("delivery_bounced")[:raw]
+  end
+
+  test "a failure reported for the address a forward reached is this delivery's bounce, without suppressing" do
+    forwarded = failing_dsn.sub("rfc822; recipient@example.com", "rfc822; someone-else@example.com")
+
+    assert_difference -> { Event.where(action: "delivery_bounced", eventable: deliveries(:delivered)).count }, 1 do
+      assert_no_difference -> { Current.account.suppressions.count } do
+        deliveries(:delivered).record_async_bounce(dsn_raw: forwarded)
+      end
+    end
+
+    assert_nil deliveries(:delivered).events.last.particulars["category"]
+  end
+
+  test "a delay notice for the address a forward reached is not a bounce" do
+    forwarded = failing_dsn(action: "delayed", status: "4.4.7").sub("rfc822; recipient@example.com", "rfc822; someone-else@example.com")
+
+    assert_no_difference -> { deliveries(:delivered).events.count } do
+      deliveries(:delivered).record_async_bounce(dsn_raw: forwarded)
     end
   end
 
@@ -821,23 +869,27 @@ class DeliveryTest < ActiveSupport::TestCase
     end
   end
 
-  test "record_async_bounce tells the tenant about a report it cannot read, but acts on nothing" do
+  test "a bounce with no report part tells the tenant, but acts on nothing" do
     assert_difference -> { Event.where(action: "delivery_bounced", eventable: deliveries(:delivered)).count }, 1 do
       assert_no_difference -> { Current.account.suppressions.count } do
-        deliveries(:delivered).record_async_bounce(dsn_raw: "a human-readable bounce with no report part")
+        deliveries(:delivered).record_async_bounce(dsn_raw: "Subject: failure notice\r\n\r\nSorry, I couldn't deliver your message.\r\n")
       end
     end
 
-    assert deliveries(:delivered).events.last.particulars.key?("category")
-    assert_nil deliveries(:delivered).events.last.particulars["category"]
     payload = deliveries(:delivered).webhook_payload("delivery_bounced")
     assert payload.key?(:category)
     assert_nil payload[:category]
   end
 
+  test "a failed report counts though it carries Auto-Submitted, as most do" do
+    assert_difference -> { Event.where(action: "delivery_bounced", eventable: deliveries(:delivered)).count }, 1 do
+      deliveries(:delivered).record_async_bounce(dsn_raw: "Auto-Submitted: auto-replied\r\n" + failing_dsn)
+    end
+  end
+
   test "record_async_bounce dispatches a delivery_bounced webhook" do
     assert_difference -> { Event.where(action: "delivery_bounced", eventable: deliveries(:delivered)).count }, 1 do
-      deliveries(:delivered).record_async_bounce(dsn_raw: "raw-inbound-dsn")
+      deliveries(:delivered).record_async_bounce(dsn_raw: failing_dsn)
     end
   end
 

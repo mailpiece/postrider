@@ -5,7 +5,10 @@ module Delivery::Delivering
 
   SUPPRESSIBLE_CATEGORIES = %i[ invalid full ].freeze
 
-  RETRY_SCHEDULE = [ 15.minutes, 1.hour, 2.hours, 4.hours, 8.hours, 16.hours, 1.day ].freeze
+  RETRY_PERIOD = 5.days
+
+  # The wait grows with the time since the first failed try, between these bounds.
+  RETRY_INTERVAL = 15.minutes..4000.seconds
 
   def deliver_later
     if paced?
@@ -94,10 +97,20 @@ module Delivery::Delivering
     end
   end
 
+  # Counted from the first failed try, so mail paced days out keeps all of its retries.
+  def retry_expired?
+    first_failed_at.present? && (first_failed_at + RETRY_PERIOD).past?
+  end
+
+  def schedule_retry
+    self.first_failed_at ||= Time.current
+    wait = (Time.current - first_failed_at).seconds.clamp(RETRY_INTERVAL)
+
+    (Time.current + wait).tap { |retry_at| update!(next_retry_at: retry_at) }
+  end
+
   def next_retry_at
-    if deferred? && last_attempt && (relaying? || !provider_paused?(last_attempt.mx_host))
-      last_attempt.created_at + RETRY_SCHEDULE[[ attempts.count - 1, RETRY_SCHEDULE.size - 1 ].min]
-    end
+    super if deferred?
   end
 
   private

@@ -5,8 +5,6 @@ require "test_helper"
 # URL-generation options, and any other key as a possible path segment, so a query
 # must never reach it as options: only as the link's own query string.
 class PaginationHelperTest < ActionView::TestCase
-  include Turbo::FramesHelper
-
   OWN_PATH = "/domains/the-domain/webhooks"
   OWN_ROUTE = { controller: "webhooks", action: "index", domain_id: "the-domain" }
 
@@ -28,9 +26,9 @@ class PaginationHelperTest < ActionView::TestCase
     use_route: "root",
     path_params: { format: "xml" },
     params: { elsewhere: "true" },
-    _recall: { controller: "cards", action: "index" },
+    _recall: { controller: "mailpieces", action: "index" },
     format: "xml",
-    controller: "cards",
+    controller: "mailpieces",
     action: "index",
     id: "elsewhere",
     domain_id: "elsewhere"
@@ -76,7 +74,7 @@ class PaginationHelperTest < ActionView::TestCase
     end
 
     def pagination_uri
-      URI(Nokogiri::HTML::DocumentFragment.parse(pagination_link(:stream_column, 2)).at_css("a")["href"])
+      URI(Nokogiri::HTML::DocumentFragment.parse(pagination_link(:webhooks, 2)).at_css("a")["href"])
     end
 
     def pagination_query

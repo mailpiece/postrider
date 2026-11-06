@@ -1,41 +1,85 @@
 require "test_helper"
 
+# pagination_link builds the "next page" URL from the request. url_for reads
+# reserved keys such as `script_name`, `host`, `only_path` and `use_route` as
+# URL-generation options, and any other key as a possible path segment, so a query
+# must never reach it as options: only as the link's own query string.
 class PaginationHelperTest < ActionView::TestCase
-  test "next-page link does not honor an attacker-supplied script_name" do
-    with_request_params controller: "events", action: "index", script_name: "/rails/active_storage/blobs/proxy/SIGNED/x.html%23" do
-      assert_no_match %r{active_storage}, pagination_href(:events, 2)
-      assert_match %r{\A/events\?}, pagination_href(:events, 2)
+  include Turbo::FramesHelper
+
+  OWN_PATH = "/domains/the-domain/webhooks"
+  OWN_ROUTE = { controller: "webhooks", action: "index", domain_id: "the-domain" }
+
+  {
+    script_name: "/elsewhere",
+    original_script_name: "/elsewhere",
+    relative_url_root: "/elsewhere",
+    host: "elsewhere.example",
+    protocol: "ftp",
+    port: "8080",
+    subdomain: "elsewhere",
+    domain: "elsewhere.example",
+    tld_length: "0",
+    only_path: "false",
+    trailing_slash: "true",
+    anchor: "elsewhere",
+    user: "someone",
+    password: "secret",
+    use_route: "root",
+    path_params: { format: "xml" },
+    params: { elsewhere: "true" },
+    _recall: { controller: "cards", action: "index" },
+    format: "xml",
+    controller: "cards",
+    action: "index",
+    id: "elsewhere",
+    domain_id: "elsewhere"
+  }.each do |option, value|
+    test "next-page link keeps to its own route when the query names #{option}" do
+      with_request query: { option => value } do
+        assert_equal OWN_PATH, pagination_uri.path
+        assert_nil pagination_uri.host
+        assert_nil pagination_uri.fragment
+        assert_equal "2", pagination_query["page"]
+      end
     end
   end
 
-  test "next-page link does not honor an attacker-supplied original_script_name" do
-    with_request_params controller: "events", action: "index", original_script_name: "/rails/active_storage/blobs/proxy/SIGNED/x.html%23" do
-      assert_no_match %r{active_storage}, pagination_href(:events, 2)
-      assert_match %r{\A/events\?}, pagination_href(:events, 2)
+  test "next-page link keeps the query" do
+    with_request query: { tag: "urgent", terms: [ "one", "two" ], nested: { key: "value" } } do
+      assert_equal OWN_PATH, pagination_uri.path
+      assert_equal "urgent", pagination_query["tag"]
+      assert_equal [ "one", "two" ], pagination_query["terms"]
+      assert_equal({ "key" => "value" }, pagination_query["nested"])
     end
   end
 
-  test "next-page link does not honor other url_for control options" do
-    with_request_params controller: "events", action: "index", host: "attacker.example", protocol: "https" do
-      assert_no_match %r{attacker\.example}, pagination_href(:events, 2)
-      assert_match %r{\A/events\?}, pagination_href(:events, 2)
+  test "next-page link replaces the query's page" do
+    with_request query: { page: "7" } do
+      assert_equal "2", pagination_query["page"]
     end
   end
 
-  test "next-page link preserves ordinary filter params" do
-    with_request_params controller: "searches", action: "show", q: "invoice" do
-      assert_match %r{q=invoice}, pagination_href(:mailpieces, 2)
-      assert_match %r{page=2}, pagination_href(:mailpieces, 2)
+  test "next-page link leaves out form params" do
+    with_request form: { authenticity_token: "secret" } do
+      assert_nil pagination_query["authenticity_token"]
     end
   end
 
   private
-    def with_request_params(**params)
-      controller.params = ActionController::Parameters.new(params)
+    def with_request(query: {}, form: {})
+      request.path_parameters = OWN_ROUTE
+      request.set_header "QUERY_STRING", query.to_query
+      request.request_parameters = form
+      controller.params = ActionController::Parameters.new(query.merge(form).merge(OWN_ROUTE))
       yield
     end
 
-    def pagination_href(namespace, page_number)
-      Nokogiri::HTML::DocumentFragment.parse(pagination_link(namespace, page_number)).at_css("a")["href"]
+    def pagination_uri
+      URI(Nokogiri::HTML::DocumentFragment.parse(pagination_link(:stream_column, 2)).at_css("a")["href"])
+    end
+
+    def pagination_query
+      Rack::Utils.parse_nested_query(pagination_uri.query)
     end
 end

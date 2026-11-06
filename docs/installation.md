@@ -26,7 +26,7 @@ That first account arrives complete: an owner (you), a system user, an invite co
 
 ## 2. Publish the relay's own DNS
 
-**Server Settings** (`/adminland/settings`, staff only) has a **DNS records** screen that checks A/AAAA, PTR, SPF and the certificate delegation against live DNS — weekly, on Sunday at 3:30am, or on demand with **Check DNS now**. Publish these once on `<RELAY_HOSTNAME>` (and its IP), and they cover every domain you'll ever add:
+**Server Settings** (`/adminland/settings`, staff only) has a **DNS records** screen that checks A/AAAA, PTR, SPF and the certificate delegation against live DNS — daily at 3:30am, or on demand with **Check DNS now**. Publish these once on `<RELAY_HOSTNAME>` (and its IP), and they cover every domain you'll ever add:
 
 
 | Record     | Value                                                    | Notes                                                                                                                                                                    |

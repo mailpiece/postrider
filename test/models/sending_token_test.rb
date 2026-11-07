@@ -51,7 +51,7 @@ class SendingTokenTest < ActiveSupport::TestCase
     assert_difference -> { Domain.count }, -1 do
       domain.destroy!
     end
-    assert_not Event.exists?(action: "sending_token_revoked")
+    assert_not domain.events.exists?(action: "sending_token_revoked")
   end
 
   test "a refusal is recorded once an hour for each address" do

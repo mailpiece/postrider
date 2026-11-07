@@ -7,6 +7,6 @@ module Webhook::Triggerable
   end
 
   def trigger(event)
-    deliveries.create_or_find_by!(event:) unless account.cancelled?
+    deliveries.create!(event: event) unless account.cancelled?
   end
 end

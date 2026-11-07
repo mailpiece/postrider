@@ -3,22 +3,29 @@ module Delivery::Bouncing
 
   STORED_DSN_LIMIT = 64.kilobytes
 
+  # RFC 3834: any value but "no" marks an automatic message, such as an out-of-office reply.
+  AUTO_SUBMITTED = /^auto-submitted[ \t]*:[ \t]*(?!no\b)\S/i
+
+  # Delay notices, delivered reports and auto-replies reach the return path too; only a failure is a bounce.
   def record_async_bounce(dsn_raw:)
     return if already_bounced?
 
     report = MailBounce.parse(dsn_raw)
     recipient = report.for(rcpt_to) || report.for(ascii_rcpt_to)
-    rejection = classify_recipient(recipient)
 
-    transaction do
-      track_event("bounced", rcpt_to: rcpt_to, source: "dsn", dsn: dsn_raw.byteslice(0, STORED_DSN_LIMIT),
-        category: rejection&.category&.to_s)
+    if reports_failure?(report, recipient, dsn_raw)
+      rejection = classify_recipient(recipient)
 
-      if recipient&.permanent_failure? && rejection.category.in?(Delivery::Delivering::SUPPRESSIBLE_CATEGORIES)
-        domain.suppressions.find_or_create_by!(address: rcpt_to) do |suppression|
-          suppression.reason = rejection.category.to_s
+      transaction do
+        track_event("bounced", rcpt_to: rcpt_to, source: "dsn", dsn: dsn_raw.byteslice(0, STORED_DSN_LIMIT),
+          category: rejection&.category&.to_s)
+
+        if recipient&.permanent_failure? && rejection.category.in?(Delivery::Delivering::SUPPRESSIBLE_CATEGORIES)
+          domain.suppressions.find_or_create_by!(address: rcpt_to) do |suppression|
+            suppression.reason = rejection.category.to_s
+          end
+          suspend_forwarding_destination
         end
-        suspend_forwarding_destination
       end
     end
   end
@@ -43,6 +50,17 @@ module Delivery::Bouncing
   private
     def already_bounced?
       bounced_event.present?
+    end
+
+    # The return path names this delivery, so a report naming someone else (a forward, an alias) still speaks for it.
+    def reports_failure?(report, recipient, raw)
+      if recipient
+        recipient.failed?
+      elsif report.any?
+        report.recipients.any?(&:failed?)
+      else
+        !HeaderSection.of(raw).match?(AUTO_SUBMITTED)
+      end
     end
 
     def classify_recipient(recipient)

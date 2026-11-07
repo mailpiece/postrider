@@ -947,6 +947,27 @@ class DeliveryTest < ActiveSupport::TestCase
     assert Pause.exists?(provider: "xn--mller-kva.de")
   end
 
+  test "a suppression of an internationalized recipient holds under either spelling of its domain" do
+    @delivery.update!(rcpt_to: "b@xn--mller-kva.de")
+    domains(:example).suppressions.create!(address: "b@müller.de")
+    SmtpDelivery.any_instance.expects(:deliver).never
+
+    @delivery.deliver
+
+    assert @delivery.reload.suppressed?
+  end
+
+  test "a bounce to the A-label spelling suppresses the U-label spelling" do
+    stub_smtp(:hard_fail, "550", "no such user")
+    @delivery.update!(rcpt_to: "b@xn--mller-kva.de")
+    @delivery.deliver
+    later = @message.deliveries.create!(rcpt_to: "b@müller.de")
+
+    later.deliver
+
+    assert later.reload.suppressed?
+  end
+
   private
     def verp_enabled_domain
       domains(:example).update!(dmarc_status: :ok, return_path_status: :ok)

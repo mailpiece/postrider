@@ -318,6 +318,8 @@ A backup also keeps mail past `RETENTION_DAYS`: the sweep incinerates mail in th
 
 The listeners bind 25, 587 and 53 inside the container, and the Dockerfile `EXPOSE`s them; publish them on `RELAY_PUBLIC_IP` as above. Development uses 2525, 2587 and 2553 instead (bin/dev on a Mac cannot bind 25 or 53, and 5353 belongs to mDNS). `MX_PORT` / `SUBMISSION_PORT` / `ACME_DNS_PORT` override any of them.
 
+The MX and submission listeners are [mailgate](https://github.com/mailpiece/mailgate)'s. Their log lines name `MailGate::MxListener` or `MailGate::SubmissionListener`, and each line about a message carries its queue id in brackets, such as `[XPNMNGGFVNRD]`: search for it to follow one message through. A header section over 256 KB is refused, and past ten errors on one connection each error reply waits a second, with a `421` and a hang-up at twenty.
+
 ## Submission & authentication
 
 Point mail clients at the submission listener on **port 587 with STARTTLS**. That's the only submission transport: there's no implicit-TLS (SMTPS) listener on 465, so a client configured for 465 will fail to connect rather than quietly falling back. Encryption isn't optional — the listener refuses `AUTH`, `MAIL FROM`, and everything after until the client has issued `STARTTLS`.

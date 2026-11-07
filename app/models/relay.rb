@@ -22,6 +22,10 @@ module Relay
       Logger::INFO
     end
 
+    def smtp_session_duration
+      10.minutes
+    end
+
     def bind_address
       ENV.fetch("BIND_ADDRESS", "0.0.0.0")
     end

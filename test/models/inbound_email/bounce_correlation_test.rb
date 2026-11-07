@@ -12,7 +12,7 @@ class InboundEmail::BounceCorrelationTest < ActiveSupport::TestCase
       dkim_status: :ok)
     @return_path = "bounces+abc123.deadbeef01@mailer.bounce-corr-test.example"
     @port = free_port
-    @listener = start_listener(MxListener, "MX_PORT", @port)
+    @listener = start_mx_listener(@port)
   end
 
   teardown do

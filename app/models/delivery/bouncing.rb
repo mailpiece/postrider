@@ -9,7 +9,7 @@ module Delivery::Bouncing
   # Delay notices, delivered reports and auto-replies reach the return path too; only a failure is a bounce.
   def record_async_bounce(dsn_raw:)
     report = MailBounce.parse(dsn_raw)
-    recipient = report.for(rcpt_to)
+    recipient = report.for(rcpt_to) || report.for(ascii_rcpt_to)
     return if already_bounced? || not_a_failure?(report, recipient, dsn_raw)
 
     rejection = classify_recipient(recipient)

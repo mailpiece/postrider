@@ -24,6 +24,53 @@ class SmtpDeliveryTest < ActiveSupport::TestCase
     assert_equal "530 5.7.0 Authentication required", result.output
   end
 
+  test "a non-ASCII domain goes in RCPT TO as its A-label to a server without SMTPUTF8" do
+    stub_session(smtputf8: false)
+    Net::SMTP.any_instance.expects(:mailfrom).with("a@example.com")
+    Net::SMTP.any_instance.expects(:rcptto).with("b@xn--mller-kva.de")
+
+    result = SmtpDelivery.new(raw: "raw", mail_from: "a@example.com", rcpt_to: "b@müller.de", hosts: [ "mx.example" ]).deliver
+
+    assert_equal :sent, result.status
+  end
+
+  test "a non-ASCII domain goes in RCPT TO as it is to a server offering SMTPUTF8" do
+    stub_session(smtputf8: true)
+    Net::SMTP.any_instance.expects(:mailfrom).with { |address| address.parameters.include?("SMTPUTF8") }
+    Net::SMTP.any_instance.expects(:rcptto).with("b@müller.de")
+
+    result = SmtpDelivery.new(raw: "raw", mail_from: "a@example.com", rcpt_to: "b@müller.de", hosts: [ "mx.example" ]).deliver
+
+    assert_equal :sent, result.status
+  end
+
+  test "a non-ASCII mailbox fails for good when no server offers SMTPUTF8" do
+    stub_session(smtputf8: false)
+    Net::SMTP.any_instance.expects(:mailfrom).never
+    Net::SMTP.any_instance.expects(:rcptto).never
+
+    result = SmtpDelivery.new(raw: "raw", mail_from: "a@example.com", rcpt_to: "jürgen@müller.de", hosts: [ "mx.example" ]).deliver
+
+    assert_equal :session_fail, result.status
+    assert_equal "5.6.7 mx.example does not offer SMTPUTF8, which the non-ASCII mailbox jürgen@müller.de needs", result.output
+  end
+
+  test "a non-ASCII mailbox goes on to the next server when one does not offer SMTPUTF8" do
+    Surfguard.stubs(:resolve_public_ips).returns([ "93.184.216.34" ])
+    without = stub_everything(start: true)
+    without.stubs(:capable?).with("SMTPUTF8").returns(false)
+    without.expects(:rcptto).never
+    with = stub_everything(start: true, data: Net::SMTP::Response.new("250", "250 2.0.0 OK"))
+    with.stubs(:capable?).with("SMTPUTF8").returns(true)
+    with.expects(:rcptto).with("jürgen@müller.de")
+    Net::SMTP.stubs(:new).returns(without).then.returns(with)
+
+    result = SmtpDelivery.new(raw: "raw", mail_from: "a@example.com", rcpt_to: "jürgen@müller.de", hosts: %w[ mx1.example mx2.example ]).deliver
+
+    assert_equal :sent, result.status
+    assert_equal "mx2.example", result.mx_host
+  end
+
   test "deliver lists connection errors in the soft failure when every host fails" do
     Surfguard.stubs(:resolve_public_ips).returns([ "93.184.216.34" ])
     Net::SMTP.any_instance.stubs(:start).raises(SocketError.new("getaddrinfo failed"))
@@ -380,5 +427,13 @@ class SmtpDeliveryTest < ActiveSupport::TestCase
 
     def enforce_policy
       MtaSts::Policy.new(mode: :enforce, mx: [ "mx.example" ], max_age: 86400)
+    end
+
+    def stub_session(smtputf8:)
+      Surfguard.stubs(:resolve_public_ips).returns([ "93.184.216.34" ])
+      Net::SMTP.any_instance.stubs(:start).returns(true)
+      Net::SMTP.any_instance.stubs(:finish).returns(true)
+      Net::SMTP.any_instance.stubs(:capable?).with("SMTPUTF8").returns(smtputf8)
+      Net::SMTP.any_instance.stubs(:data).returns(stub(status: "250", string: "250 OK"))
     end
 end

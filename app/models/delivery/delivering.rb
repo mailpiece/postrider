@@ -107,10 +107,12 @@ module Delivery::Delivering
     end
 
     def outgoing_raw
+      raw = Message.with_crlf(message.raw)
+
       if message.signable?
-        Delivery::DkimSigning.sign(message.raw, domain: domain)
+        Delivery::DkimSigning.sign(raw, domain: domain)
       else
-        message.raw
+        raw
       end
     end
 

@@ -84,7 +84,7 @@ module InboundEmail::Forwarding
     end
 
     def forwardable_raw(destination)
-      sealed(InboundEmail::ForwardingHeaders.new(self, destination).prepended_to(raw))
+      sealed(Message.with_crlf(InboundEmail::ForwardingHeaders.new(self, destination).prepended_to(raw)))
     end
 
     # Forwarding breaks SPF and often DKIM, so we seal what we concluded before it does.

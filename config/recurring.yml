@@ -31,7 +31,7 @@ default: &default
     schedule: every day at 3am
   recheck_relay_dns:
     command: "Relay::DnsCheck.instance.check_dns_later"
-    schedule: every sunday at 3:30am
+    schedule: every day at 3:30am
   refresh_mta_sts_policies:
     command: "MtaStsPolicy.refresh_all"
     schedule: every day at 4:30am

@@ -8,21 +8,24 @@ module Delivery::Bouncing
 
   # Delay notices, delivered reports and auto-replies reach the return path too; only a failure is a bounce.
   def record_async_bounce(dsn_raw:)
+    return if already_bounced?
+
     report = MailBounce.parse(dsn_raw)
     recipient = report.for(rcpt_to) || report.for(ascii_rcpt_to)
-    return if already_bounced? || not_a_failure?(report, recipient, dsn_raw)
 
-    rejection = classify_recipient(recipient)
+    if reports_failure?(report, recipient, dsn_raw)
+      rejection = classify_recipient(recipient)
 
-    transaction do
-      track_event("bounced", rcpt_to: rcpt_to, source: "dsn", dsn: dsn_raw.byteslice(0, STORED_DSN_LIMIT),
-        category: rejection&.category&.to_s)
+      transaction do
+        track_event("bounced", rcpt_to: rcpt_to, source: "dsn", dsn: dsn_raw.byteslice(0, STORED_DSN_LIMIT),
+          category: rejection&.category&.to_s)
 
-      if recipient&.permanent_failure? && rejection.category.in?(Delivery::Delivering::SUPPRESSIBLE_CATEGORIES)
-        domain.suppressions.find_or_create_by!(address: rcpt_to) do |suppression|
-          suppression.reason = rejection.category.to_s
+        if recipient&.permanent_failure? && rejection.category.in?(Delivery::Delivering::SUPPRESSIBLE_CATEGORIES)
+          domain.suppressions.find_or_create_by!(address: rcpt_to) do |suppression|
+            suppression.reason = rejection.category.to_s
+          end
+          suspend_forwarding_destination
         end
-        suspend_forwarding_destination
       end
     end
   end
@@ -50,13 +53,13 @@ module Delivery::Bouncing
     end
 
     # The return path names this delivery, so a report naming someone else (a forward, an alias) still speaks for it.
-    def not_a_failure?(report, recipient, raw)
+    def reports_failure?(report, recipient, raw)
       if recipient
-        !recipient.failed?
+        recipient.failed?
       elsif report.any?
-        report.recipients.none?(&:failed?)
+        report.recipients.any?(&:failed?)
       else
-        HeaderSection.of(raw).match?(AUTO_SUBMITTED)
+        !HeaderSection.of(raw).match?(AUTO_SUBMITTED)
       end
     end
 

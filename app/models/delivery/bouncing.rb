@@ -6,7 +6,8 @@ module Delivery::Bouncing
   def record_async_bounce(dsn_raw:)
     return if already_bounced?
 
-    recipient = MailBounce.parse(dsn_raw).for(rcpt_to)
+    report = MailBounce.parse(dsn_raw)
+    recipient = report.for(rcpt_to) || report.for(ascii_rcpt_to)
     rejection = classify_recipient(recipient)
 
     transaction do

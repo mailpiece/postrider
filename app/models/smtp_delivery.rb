@@ -1,4 +1,5 @@
 require "ipaddr"
+require "mailauth"
 require "net/smtp"
 require "openssl"
 require "stringio"
@@ -66,14 +67,19 @@ class SmtpDelivery
       transcript = StringIO.new
       if smtp = connect(host, address, port, transcript)
         begin
-          return send_message(smtp, host, transcript)
+          if smtputf8_required?(smtp)
+            # Another MX may offer it; only when none does is the mailbox out of reach.
+            @smtputf8_refusal = Result.new(:session_fail, nil, "5.6.7 #{host} does not offer SMTPUTF8, which the non-ASCII mailbox #{@rcpt_to} needs", host, transcript.string)
+          else
+            return send_message(smtp, host, transcript)
+          end
         ensure
           finish smtp
         end
       end
     end
 
-    unavailable_result
+    @smtputf8_refusal || unavailable_result
   end
 
   private
@@ -167,7 +173,7 @@ class SmtpDelivery
 
     def send_message(smtp, host, transcript)
       Timeout.timeout(COMMAND_TIMEOUT) { smtp.mailfrom(sender(smtp)) }
-      Timeout.timeout(COMMAND_TIMEOUT) { smtp.rcptto(@rcpt_to) }
+      Timeout.timeout(COMMAND_TIMEOUT) { smtp.rcptto(recipient(smtp)) }
       response = Timeout.timeout(DATA_TIMEOUT) { smtp.data(@raw) }
       Result.new(:sent, response.status, response.string.strip, host, transcript.string)
     rescue Net::SMTPFatalError => error
@@ -184,6 +190,20 @@ class SmtpDelivery
         Net::SMTP::Address.new(@mail_from, "SMTPUTF8")
       else
         @mail_from
+      end
+    end
+
+    # A mailbox name has no ASCII form; a domain has its A-label (RFC 5890).
+    def smtputf8_required?(smtp)
+      !@rcpt_to.rpartition("@").first.ascii_only? && !smtp.capable?("SMTPUTF8")
+    end
+
+    def recipient(smtp)
+      if @rcpt_to.ascii_only? || smtp.capable?("SMTPUTF8")
+        @rcpt_to
+      else
+        local_part, _, domain = @rcpt_to.rpartition("@")
+        "#{local_part}@#{MailAuth::Domain.normalize(domain)}"
       end
     end
 

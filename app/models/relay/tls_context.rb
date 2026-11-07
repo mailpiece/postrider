@@ -9,6 +9,16 @@ class Relay::TlsContext
   SELF_SIGNED_CN = "postrider.invalid"
 
   class << self
+    def current
+      if pem = Relay::Certificate.instance.pem.presence
+        new(pem, pem)
+      elsif Rails.env.local?
+        self_signed
+      else
+        raise Relay::Certificate::Missing, "No TLS certificate for #{Relay.hostname.inspect} yet. It is issued automatically via ACME; check Adminland"
+      end
+    end
+
     def self_signed
       key = OpenSSL::PKey::RSA.new(2048)
 

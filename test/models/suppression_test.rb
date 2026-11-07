@@ -30,6 +30,16 @@ class SuppressionTest < ActiveSupport::TestCase
     assert_equal "bounced@example.com", suppression.address
   end
 
+  test "normalizes an internationalized domain to its A-label" do
+    suppression = domains(:example).suppressions.create!(address: "B@Müller.de")
+
+    assert_equal "b@xn--mller-kva.de", suppression.address
+  end
+
+  test "an address without a domain normalizes as before" do
+    assert_equal "bounced", Suppression.normalize_address(" Bounced ")
+  end
+
   test "an account reaches its suppressions through its domains" do
     theirs = domains(:other_account).suppressions.create!(address: "elsewhere@example.com")
 

@@ -24,7 +24,7 @@ module Delivery::Pausable
     end
 
     def mail_provider(mx_host)
-      MailProvider.for(mx_host) || recipient_domain
+      MailProvider.for(mx_host) || ascii_recipient_domain
     end
 
     # Quoting our IP is not enough: Gmail quotes it when it judges a single message too.

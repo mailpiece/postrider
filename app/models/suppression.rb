@@ -3,7 +3,13 @@ class Suppression < ApplicationRecord
   belongs_to :domain, counter_cache: true
 
   def self.normalize_address(address)
-    address.to_s.strip.downcase
+    local_part, at, domain = address.to_s.strip.downcase.rpartition("@")
+
+    if at.present?
+      "#{local_part}@#{MailAuth::Domain.normalize(domain)}"
+    else
+      domain
+    end
   end
 
   normalizes :address, with: ->(address) { normalize_address(address) }

@@ -98,12 +98,21 @@ class SmtpDelivery
     def targets_for(host)
       if prohibited_by_policy?(host)
         record_connection_error(host, "not permitted by MTA-STS policy")
-      elsif (addresses = Surfguard.resolve_public_ips(host)).empty?
+      elsif addresses = sendable_addresses(host)
+        addresses.map { |address| [ host, address, SMTP_PORT ] }
+      end
+    end
+
+    def sendable_addresses(host)
+      addresses = Surfguard.resolve_public_ips(host)
+      sendable = addresses.select { |address| sendable?(address) }
+
+      if addresses.empty?
         record_connection_error(host, "no public address")
-      elsif (addresses = addresses.select { |address| sendable?(address) }).empty?
+      elsif sendable.empty?
         record_connection_error(host, "no #{own_addresses.first.ipv6? ? "IPv6" : "IPv4"} address")
       else
-        addresses.map { |address| [ host, address, SMTP_PORT ] }
+        sendable
       end
     rescue Surfguard::Unresolvable
       record_connection_error(host, "could not be resolved")

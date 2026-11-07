@@ -1,17 +1,10 @@
 require "mailauth"
 
 class InboundAuthentication::MailAuth
-  # A lookup cut to the time left may answer this much later, past mailresolver's own margin.
-  GRACE = MailResolver::Resolver::DEADLINE_MARGIN + 0.5
-
   class << self
-    # Shared: MailResolver multiplexes only when callers reuse one Resolver. One with its own timeouts is new.
-    def resolver(timeouts: nil)
-      if timeouts
-        MailResolver::Resolver.new(timeouts:)
-      else
-        @resolver ||= MailResolver::Resolver.new
-      end
+    # Shared: MailResolver multiplexes only when callers reuse one Resolver.
+    def resolver
+      @resolver ||= MailResolver::Resolver.new
     end
   end
 
@@ -33,10 +26,12 @@ class InboundAuthentication::MailAuth
   # so the sender should try again.
   def settled_verdicts(within:, slots: nil)
     if slots.nil? || slots.claim
-      lookup = authenticate_within(within, slots:)
-
-      if lookup.join(within + GRACE) && (result = lookup.value) && !unsettled?(result)
-        verdicts_of(result)
+      begin
+        if (result = authenticate_within(within)) && !unsettled?(result)
+          verdicts_of(result)
+        end
+      ensure
+        slots&.release
       end
     end
   end
@@ -52,19 +47,12 @@ class InboundAuthentication::MailAuth
       }
     end
 
-    # Every lookup ends by the deadline, so the thread does too and then frees its slot.
-    def authenticate_within(seconds, slots:)
-      resolver = InboundAuthentication::DeadlineResolver.new(seconds) { |timeouts| self.class.resolver(timeouts:) }
-
-      Thread.new do
-        authenticate(resolver:)
-      # Any crash, not only a StandardError: the thread ends here, and the sender is asked to retry.
-      rescue Exception => error
-        Rails.error.report(error, severity: :warning)
-        nil
-      ensure
-        slots&.release
-      end
+    # Every lookup ends by the deadline, so authentication does too.
+    def authenticate_within(seconds)
+      authenticate(resolver: self.class.resolver.with_deadline(Process.clock_gettime(Process::CLOCK_MONOTONIC) + seconds))
+    rescue StandardError => error
+      Rails.error.report(error, severity: :warning)
+      nil
     end
 
     def authenticate(resolver: self.class.resolver)

@@ -160,32 +160,26 @@ class InboundAuthentication::MailAuthTest < ActiveSupport::TestCase
     assert_equal "temperror", settle[:iprev]
   end
 
-  test "settles despite a reverse name that took its own time to time out" do
-    ::MailAuth.unstub(:authenticate)
-    zone = MailResolver::Testing::FakeResolver.new("sender.example" => { txt: [ "v=spf1 -all" ] })
-    def zone.ptr(address) = (sleep 0.3; raise MailResolver::Timeout, "timed out resolving PTR")
-    InboundAuthentication::MailAuth.stubs(:resolver).returns(zone)
-
-    verdicts = settle(within: 1)
-    assert_equal "temperror", verdicts[:iprev]
-    assert_equal "fail", verdicts[:spf]
-  end
-
-  test "asks nothing after its time, so a check it had no time for is unsettled" do
-    ::MailAuth.unstub(:authenticate)
+  test "authenticates over the shared resolver, every lookup cut to end within its time" do
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 1
     zone = MailResolver::Testing::FakeResolver.new
-    def zone.ptr(address) = (sleep 0.2; super)
-    InboundAuthentication::MailAuth.stubs(:resolver).returns(zone)
+    InboundAuthentication::MailAuth.resolver.expects(:with_deadline).with { (it - deadline).between?(0, 0.5) }.returns(zone)
+    ::MailAuth.expects(:authenticate).with(RAW, ip: "203.0.113.1", helo: "sender.example", mail_from: "person@sender.example",
+      mta: "relay.example", resolver: zone).returns(result_of(spf: "pass", dkim: "pass", dmarc: "pass"))
 
-    assert_nil settle(within: 0.1)
-    assert_equal 1, zone.queries.size
+    assert_equal "pass", settle(within: 1)[:dmarc]
   end
 
-  test "leaves unsettled authentication that is still running well past its time" do
-    passed = result_of(spf: "pass", dkim: "pass", dmarc: "pass", aligned: true)
-    ::MailAuth.stubs(:authenticate).with { sleep InboundAuthentication::MailAuth::GRACE + 0.3; true }.returns(passed)
+  test "leaves unsettled, by its time, a sender whose DNS doesn't answer" do
+    ::MailAuth.unstub(:authenticate)
 
-    assert_nil settle(within: 0.01)
+    MailResolver::Testing::LocalNameserver.answering(nil, timeouts: MailResolver::Resolver::TIMEOUTS) do |resolver|
+      InboundAuthentication::MailAuth.stubs(:resolver).returns(resolver)
+      started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
+      assert_nil settle(within: 0.3)
+      assert_operator Process.clock_gettime(Process::CLOCK_MONOTONIC) - started, :<, 0.3 + MailResolver::Resolver::DEADLINE_MARGIN + 0.5
+    end
   end
 
   test "leaves unsettled, without authenticating, when every slot is taken" do
@@ -203,16 +197,9 @@ class InboundAuthentication::MailAuthTest < ActiveSupport::TestCase
     2.times { assert_equal "pass", settle(slots:)[:dmarc] }
   end
 
-  test "settles on nothing, reporting why, when authentication crashes" do
+  test "settles on nothing, reporting why and freeing its slot, when authentication crashes" do
     ::MailAuth.stubs(:authenticate).raises(RuntimeError, "boom")
     Rails.error.expects(:report).with(instance_of(RuntimeError), severity: :warning).once
-
-    assert_nil settle
-  end
-
-  test "settles on nothing, reporting why, when authentication crashes beyond an ordinary error" do
-    ::MailAuth.stubs(:authenticate).raises(NotImplementedError, "unsupported")
-    Rails.error.expects(:report).with(instance_of(NotImplementedError), severity: :warning).once
     slots = MailGate::Slots.new(1)
 
     assert_nil settle(slots:)

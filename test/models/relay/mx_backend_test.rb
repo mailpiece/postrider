@@ -213,6 +213,26 @@ class Relay::MxBackendTest < ActiveSupport::TestCase
     assert_equal "bounces@mx-listener-test.example", InboundEmail.order(:created_at).last.rcpt_to
   end
 
+  test "refuses an unsigned recipient at the Return-Path subdomain" do
+    @domain.update!(dmarc_status: :ok, return_path_status: :ok)
+
+    error = assert_raises(Net::SMTPFatalError) do
+      deliver(from: "mailer-daemon@example.com", to: "anyone@mailer.mx-listener-test.example", raw: "Subject: Hi\r\n\r\nBody.\r\n")
+    end
+
+    assert_match "550 5.7.1", error.message
+    assert_equal 0, InboundEmail.where(domain: @domain).count
+  end
+
+  test "accepts a signed bounce address and postmaster at the Return-Path subdomain" do
+    @domain.update!(dmarc_status: :ok, return_path_status: :ok)
+    signed = Delivery::ReturnPath.verp.address_for("someid", domain: "mailer.mx-listener-test.example")
+
+    deliver(from: "mailer-daemon@example.com", to: [ signed, "postmaster@mailer.mx-listener-test.example" ], raw: "Subject: Hi\r\n\r\nBody.\r\n")
+
+    assert_equal [ signed, "postmaster@mailer.mx-listener-test.example" ].sort, InboundEmail.where(domain: @domain).pluck(:rcpt_to).sort
+  end
+
   test "a recipient repeated in another case is received once, in lowercase" do
     deliver(from: "sender@example.com",
       to: %w[ everyone@mx-listener-test.example Everyone@MX-Listener-Test.example EVERYONE@mx-listener-test.EXAMPLE ],

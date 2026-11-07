@@ -1,3 +1,5 @@
+require "ipaddr"
+require "mailauth"
 require "net/smtp"
 require "openssl"
 require "stringio"
@@ -6,14 +8,18 @@ class SmtpDelivery
   # MX records carry no port; RFC 5321 relay delivery is 25.
   SMTP_PORT = 25
 
-  OPEN_TIMEOUT = 10
+  # Each address dialed, to connect, greet and finish STARTTLS, so one that hangs leaves the next its turn.
+  OPEN_TIMEOUT = 30
 
-  COMMAND_TIMEOUT = 30
+  # Each command once connected: MAIL, RCPT, and closing.
+  COMMAND_TIMEOUT = 60
 
   DATA_TIMEOUT = 10.minutes.to_i
 
-  # Postfix's smtp_mx_address_limit: a domain listing hundreds of hosts can't hold a worker for hours.
+  # A domain listing hundreds of hosts or addresses can't hold a worker for hours.
   MAX_MX_HOSTS = 5
+
+  MAX_MX_ADDRESSES = 5
 
   # Replies arrive as bytes; keep them as text so an attempt can always be saved.
   Result = Struct.new(:status, :code, :output, :mx_host, :transcript) do
@@ -61,14 +67,19 @@ class SmtpDelivery
       transcript = StringIO.new
       if smtp = connect(host, address, port, transcript)
         begin
-          return send_message(smtp, host, transcript)
+          if smtputf8_required?(smtp)
+            # Another MX may offer it; only when none does is the mailbox out of reach.
+            @smtputf8_refusal = Result.new(:session_fail, nil, "5.6.7 #{host} does not offer SMTPUTF8, which the non-ASCII mailbox #{@rcpt_to} needs", host, transcript.string)
+          else
+            return send_message(smtp, host, transcript)
+          end
         ensure
           finish smtp
         end
       end
     end
 
-    unavailable_result
+    @smtputf8_refusal || unavailable_result
   end
 
   private
@@ -77,24 +88,47 @@ class SmtpDelivery
         host, port = @relay
         [ [ host, host, port ] ]
       else
-        @hosts.first(MAX_MX_HOSTS).lazy.filter_map { |host| target_for(host) }
+        @hosts.first(MAX_MX_HOSTS).lazy
+          .flat_map { |host| Array(targets_for(host)) }
+          .uniq { |_, address, _| address }
+          .take(MAX_MX_ADDRESSES)
       end
     end
 
-    def target_for(host)
+    def targets_for(host)
       if prohibited_by_policy?(host)
         record_connection_error(host, "not permitted by MTA-STS policy")
-      elsif address = Surfguard.resolve_public_ips(host).first
-        [ host, address, SMTP_PORT ]
-      else
+      elsif addresses = sendable_addresses(host)
+        addresses.map { |address| [ host, address, SMTP_PORT ] }
+      end
+    end
+
+    def prohibited_by_policy?(host)
+      @policy&.enforce? && !@policy.allows?(host)
+    end
+
+    def sendable_addresses(host)
+      addresses = Surfguard.resolve_public_ips(host)
+      sendable = addresses.select { |address| sendable?(address) }
+
+      if addresses.empty?
         record_connection_error(host, "no public address")
+      elsif sendable.empty?
+        record_connection_error(host, "no #{own_addresses.first.ipv6? ? "IPv6" : "IPv4"} address")
+      else
+        sendable
       end
     rescue Surfguard::Unresolvable
       record_connection_error(host, "could not be resolved")
     end
 
-    def prohibited_by_policy?(host)
-      @policy&.enforce? && !@policy.allows?(host)
+    # Without a bound sending IP, the relay hostname's own addresses tell which families we send from.
+    def sendable?(address)
+      own_addresses.none? || own_addresses.any? { |own| own.ipv6? == IPAddr.new(address).ipv6? }
+    end
+
+    def own_addresses
+      @own_addresses ||= (@sending_ip ? [ @sending_ip.address ] : Relay.own_addresses).map { |address| IPAddr.new(address) }
     end
 
     def connect(host, address, port, transcript, starttls: true)
@@ -112,7 +146,7 @@ class SmtpDelivery
       else
         smtp.disable_starttls
       end
-      Timeout.timeout(COMMAND_TIMEOUT) { smtp.start(helo_hostname) }
+      Timeout.timeout(OPEN_TIMEOUT) { smtp.start(helo_hostname) }
       smtp
     rescue OpenSSL::SSL::SSLError => error
       finish smtp
@@ -146,9 +180,14 @@ class SmtpDelivery
       nil
     end
 
+    # A mailbox name has no ASCII form; a domain has its A-label (RFC 5890).
+    def smtputf8_required?(smtp)
+      !@rcpt_to.rpartition("@").first.ascii_only? && !smtp.capable?("SMTPUTF8")
+    end
+
     def send_message(smtp, host, transcript)
       Timeout.timeout(COMMAND_TIMEOUT) { smtp.mailfrom(sender(smtp)) }
-      Timeout.timeout(COMMAND_TIMEOUT) { smtp.rcptto(@rcpt_to) }
+      Timeout.timeout(COMMAND_TIMEOUT) { smtp.rcptto(recipient(smtp)) }
       response = Timeout.timeout(DATA_TIMEOUT) { smtp.data(@raw) }
       Result.new(:sent, response.status, response.string.strip, host, transcript.string)
     rescue Net::SMTPFatalError => error
@@ -165,6 +204,15 @@ class SmtpDelivery
         Net::SMTP::Address.new(@mail_from, "SMTPUTF8")
       else
         @mail_from
+      end
+    end
+
+    def recipient(smtp)
+      if @rcpt_to.ascii_only? || smtp.capable?("SMTPUTF8")
+        @rcpt_to
+      else
+        local_part, _, domain = @rcpt_to.rpartition("@")
+        "#{local_part}@#{MailAuth::Domain.normalize(domain)}"
       end
     end
 

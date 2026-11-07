@@ -2,15 +2,31 @@ require "mailresolver"
 require "ipaddr"
 
 class DnsResolver
-  class TransientError < StandardError; end
+  class Error < StandardError; end
+
+  class TransientError < Error; end
+
+  # The recipient domain takes no mail: a null MX (RFC 7505), or no such domain at all.
+  class NullMx < Error; end
+
+  class NoSuchDomain < Error; end
 
   class << self
+    # No MX falls back to the domain's own address; no domain at all has none to fall back to.
     def mail_exchangers(domain)
-      mx(domain).presence || [ normalize(domain) ]
+      exchangers = exchanges(domain)
+
+      if exchangers == [ "" ]
+        raise NullMx, "#{domain} does not accept mail (null MX)"
+      else
+        exchangers.presence || [ normalize(domain) ]
+      end
     end
 
     def mx(domain)
-      lookup(:mx, domain).map { |exchange| normalize(exchange) }
+      exchanges(domain)
+    rescue NoSuchDomain
+      []
     end
 
     def addresses(host)
@@ -43,6 +59,16 @@ class DnsResolver
     private
       def lookup(method, name)
         resolving { resolver.public_send(method, name) }
+      end
+
+      def exchanges(domain)
+        records = resolving do
+          resolver.mx(domain)
+        rescue MailResolver::NoSuchName
+          raise NoSuchDomain, "#{domain}: host or domain name not found"
+        end
+
+        records.map { |exchange| normalize(exchange) }
       end
 
       def resolving

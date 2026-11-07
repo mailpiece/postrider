@@ -118,10 +118,10 @@ class WebhookTest < ActiveSupport::TestCase
     end
   end
 
-  test "trigger is idempotent for the same event" do
+  test "trigger creates a delivery each time for the same event" do
     event = deliveries(:delivered).track_event("delivered")
 
-    assert_difference -> { webhooks(:active).deliveries.count }, 1 do
+    assert_difference -> { webhooks(:active).deliveries.count }, 2 do
       2.times { webhooks(:active).trigger(event) }
     end
   end

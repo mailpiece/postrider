@@ -1,10 +1,12 @@
 class InboundAuthentication
-  def self.strip(data)
-    new(data).stripped
-  end
+  class << self
+    def verdicts(data, ip:, helo:, mail_from:)
+      new(data, ip:, helo:, mail_from:).verdicts
+    end
 
-  def self.verdicts(data, ip:, helo:, mail_from:)
-    new(data, ip:, helo:, mail_from:).verdicts
+    def settled_verdicts(data, ip:, helo:, mail_from:, within:, slots: nil)
+      new(data, ip:, helo:, mail_from:).settled_verdicts(within:, slots:)
+    end
   end
 
   def initialize(data, ip: nil, helo: nil, mail_from: nil)
@@ -14,41 +16,16 @@ class InboundAuthentication
     @mail_from = mail_from
   end
 
-  def stripped
-    data_without_authentication_results
+  def verdicts
+    mail_auth.verdicts
   end
 
-  def verdicts
-    MailAuth.new(@data, ip: @ip, helo: @helo, mail_from: @mail_from).verdicts
+  def settled_verdicts(within:, slots: nil)
+    mail_auth.settled_verdicts(within:, slots:)
   end
 
   private
-    def data_without_authentication_results
-      headers, separator, body = @data.partition("\r\n\r\n")
-
-      if separator.empty?
-        genuine_fields(headers)
-      else
-        genuine_fields(headers + "\r\n") + "\r\n" + body
-      end
-    end
-
-    def genuine_fields(headers)
-      fields_in(headers).reject { |field| receiver_verdict?(field) }.join
-    end
-
-    def fields_in(headers)
-      headers.lines.each_with_object([]) do |line, fields|
-        if fields.any? && line.start_with?(" ", "\t")
-          fields.last << line
-        else
-          fields << line
-        end
-      end
-    end
-
-    # A name may be folded before its colon, so whitespace there includes line breaks.
-    def receiver_verdict?(field)
-      field.match?(/\A(Authentication-Results|Received-SPF)\s*:/i)
+    def mail_auth
+      MailAuth.new(@data, ip: @ip, helo: @helo, mail_from: @mail_from)
     end
 end

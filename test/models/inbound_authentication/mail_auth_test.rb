@@ -1,5 +1,6 @@
 require "test_helper"
 require "mailauth"
+require "mailresolver/testing"
 
 class InboundAuthentication::MailAuthTest < ActiveSupport::TestCase
   RAW = <<~RAW.gsub("\n", "\r\n")
@@ -115,15 +116,110 @@ class InboundAuthentication::MailAuthTest < ActiveSupport::TestCase
       verdicts[:authentication_results].gsub(/\r\n\s+/, " ")
   end
 
+  test "settles on the verdicts when every check finished" do
+    stub_mailauth(spf: "pass", dkim: "pass", dmarc: "pass")
+
+    assert_equal "pass", settle[:dmarc]
+  end
+
+  test "leaves unsettled an SPF check or DKIM signature aligned with the From that failed for now" do
+    ::MailAuth.stubs(:authenticate).returns(result_of(spf: "temperror", dkim: "none", dmarc: "none"))
+    assert_nil settle
+
+    ::MailAuth.stubs(:authenticate).returns(result_of(spf: "fail", dkim: "temperror", dmarc: "fail", aligned: true))
+    assert_nil settle
+  end
+
+  test "settles when nothing that failed for now could vouch for the From on a retry" do
+    ::MailAuth.stubs(:authenticate).returns(result_of(spf: "pass", spf_domain: "bounces.unrelated.example", dkim: "none", dmarc: "temperror"))
+    assert_equal "temperror", settle[:dmarc]
+    assert_not settle[:from_aligned]
+
+    ::MailAuth.stubs(:authenticate).returns(result_of(spf: "fail", dkim: "temperror", dmarc: "fail"))
+    assert_equal "temperror", settle[:dkim]
+
+    ::MailAuth.stubs(:authenticate).returns(result_of(spf: "temperror", spf_domain: "bounces.unrelated.example", dkim: "none", dmarc: "none"))
+    assert_equal "temperror", settle[:spf]
+  end
+
+  test "settles once DMARC or an aligned pass vouches for the sender, whatever failed for now" do
+    ::MailAuth.stubs(:authenticate).returns(result_of(spf: "temperror", dkim: "pass", dmarc: "none", aligned: true))
+    assert_equal "temperror", settle[:spf]
+
+    ::MailAuth.stubs(:authenticate).returns(result_of(spf: "none", dkim: "pass", dmarc: "temperror", aligned: true))
+    assert_equal "temperror", settle[:dmarc]
+
+    ::MailAuth.stubs(:authenticate).returns(result_of(spf: "pass", dkim: "pass", dmarc: "pass").then do |result|
+      result.with(dkim: ::MailAuth::DkimResult.new(signatures: [ ::MailAuth::Signature.new(status: "temperror"), *result.dkim.signatures ]))
+    end)
+    assert_equal "pass", settle[:dkim]
+  end
+
+  test "settles despite a reverse name that failed for now" do
+    stub_mailauth(spf: "fail", dkim: "none", dmarc: "none", iprev: "temperror")
+    assert_equal "temperror", settle[:iprev]
+  end
+
+  test "authenticates over the shared resolver, every lookup cut to end within its time" do
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 1
+    zone = MailResolver::Testing::FakeResolver.new
+    InboundAuthentication::MailAuth.resolver.expects(:with_deadline).with { (it - deadline).between?(0, 0.5) }.returns(zone)
+    ::MailAuth.expects(:authenticate).with(RAW, ip: "203.0.113.1", helo: "sender.example", mail_from: "person@sender.example",
+      mta: "relay.example", resolver: zone).returns(result_of(spf: "pass", dkim: "pass", dmarc: "pass"))
+
+    assert_equal "pass", settle(within: 1)[:dmarc]
+  end
+
+  test "leaves unsettled, by its time, a sender whose DNS doesn't answer" do
+    ::MailAuth.unstub(:authenticate)
+
+    MailResolver::Testing::LocalNameserver.answering(nil, timeouts: MailResolver::Resolver::TIMEOUTS) do |resolver|
+      InboundAuthentication::MailAuth.stubs(:resolver).returns(resolver)
+      started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
+      assert_nil settle(within: 0.3)
+      assert_operator Process.clock_gettime(Process::CLOCK_MONOTONIC) - started, :<, 0.3 + MailResolver::Resolver::DEADLINE_MARGIN + 0.5
+    end
+  end
+
+  test "leaves unsettled, without authenticating, when every slot is taken" do
+    ::MailAuth.expects(:authenticate).never
+    slots = MailGate::Slots.new(1)
+    slots.claim
+
+    assert_nil settle(slots:)
+  end
+
+  test "frees its slot once authenticated" do
+    stub_mailauth(spf: "pass", dkim: "pass", dmarc: "pass")
+    slots = MailGate::Slots.new(1)
+
+    2.times { assert_equal "pass", settle(slots:)[:dmarc] }
+  end
+
+  test "settles on nothing, reporting why and freeing its slot, when authentication crashes" do
+    ::MailAuth.stubs(:authenticate).raises(RuntimeError, "boom")
+    Rails.error.expects(:report).with(instance_of(RuntimeError), severity: :warning).once
+    slots = MailGate::Slots.new(1)
+
+    assert_nil settle(slots:)
+    assert slots.claim
+  end
+
   private
+    def settle(within: 1, slots: nil)
+      InboundAuthentication.settled_verdicts(RAW, ip: "203.0.113.1", helo: "sender.example", mail_from: "person@sender.example",
+        within:, slots:)
+    end
+
     def authenticate
       InboundAuthentication.verdicts(RAW, ip: "203.0.113.1", helo: "sender.example", mail_from: "person@sender.example")
     end
 
-    def result_of(spf:, dkim:, dmarc:)
+    def result_of(spf:, dkim:, dmarc:, aligned: false, spf_domain: "sender.example")
       ::MailAuth::Result.new(
-        spf: ::MailAuth::SpfResult.new(status: spf, domain: "sender.example"),
-        dkim: ::MailAuth::DkimResult.new(signatures: [ ::MailAuth::Signature.new(status: dkim, domain: "sender.example") ]),
+        spf: ::MailAuth::SpfResult.new(status: spf, domain: spf_domain),
+        dkim: ::MailAuth::DkimResult.new(signatures: [ ::MailAuth::Signature.new(status: dkim, domain: "sender.example", aligned:) ]),
         dmarc: ::MailAuth::DmarcResult.new(status: dmarc, policy: "reject"),
         authentication_results: "relay.example; spf=#{spf}; dkim=#{dkim}; dmarc=#{dmarc}"
       )

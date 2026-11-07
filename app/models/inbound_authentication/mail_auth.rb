@@ -16,25 +16,63 @@ class InboundAuthentication::MailAuth
   end
 
   def verdicts
-    result = authenticate || undetermined
+    verdicts_of(authenticate)
+  rescue StandardError => error
+    Rails.error.report(error, severity: :warning)
+    verdicts_of(undetermined)
+  end
 
-    {
-      spf: result.spf&.status, dkim: result.dkim&.status,
-      dmarc: result.dmarc&.status, dmarc_policy: result.dmarc&.policy,
-      arc: result.arc&.status, arc_sealer: result.arc&.newest&.seal&.domain,
-      iprev: result.iprev&.status, remote_host: result.iprev&.name,
-      from_aligned: from_aligned?(result), authentication_results: result.authentication_results
-    }
+  # Nil when a retry could still vouch for the sender, no slot was free, or authentication crashed,
+  # so the sender should try again.
+  def settled_verdicts(within:, slots: nil)
+    if slots.nil? || slots.claim
+      begin
+        if (result = authenticate_within(within)) && !unsettled?(result)
+          verdicts_of(result)
+        end
+      ensure
+        slots&.release
+      end
+    end
   end
 
   private
-    def authenticate
-      # `mta:` is the authserv-id every seal we later write is stamped with.
-      ::MailAuth.authenticate(@data, ip: @ip, helo: @helo, mail_from: @mail_from, mta: Relay.hostname,
-        resolver: self.class.resolver)
+    def verdicts_of(result)
+      {
+        spf: result.spf&.status, dkim: result.dkim&.status,
+        dmarc: result.dmarc&.status, dmarc_policy: result.dmarc&.policy,
+        arc: result.arc&.status, arc_sealer: result.arc&.newest&.seal&.domain,
+        iprev: result.iprev&.status, remote_host: result.iprev&.name,
+        from_aligned: from_aligned?(result), authentication_results: result.authentication_results
+      }
+    end
+
+    # Every lookup ends by the deadline, so authentication does too.
+    def authenticate_within(seconds)
+      authenticate(resolver: self.class.resolver.with_deadline(Process.clock_gettime(Process::CLOCK_MONOTONIC) + seconds))
     rescue StandardError => error
       Rails.error.report(error, severity: :warning)
       nil
+    end
+
+    def authenticate(resolver: self.class.resolver)
+      # `mta:` is the authserv-id every seal we later write is stamped with.
+      ::MailAuth.authenticate(@data, ip: @ip, helo: @helo, mail_from: @mail_from, mta: Relay.hostname, resolver:)
+    end
+
+    # Only while nothing vouches for the From and a retry could change that: SPF or a DKIM signature
+    # aligned with the From failed for now. A DMARC pass needs one of those, and a reverse name decides nothing.
+    def unsettled?(result)
+      !authenticated?(result) &&
+        (temporary?(result.spf) && spf_aligned?(result.spf) || result.dkim.signatures.any? { temporary?(it) && it.aligned })
+    end
+
+    def authenticated?(result)
+      result.dmarc&.status == ::MailAuth::Status::PASS || from_aligned?(result)
+    end
+
+    def temporary?(check)
+      check&.status == ::MailAuth::Status::TEMPERROR
     end
 
     # A check that could not finish still states its result, so ours is the first a reader finds.
@@ -58,11 +96,11 @@ class InboundAuthentication::MailAuth
     end
 
     def aligned_spf?(result)
-      if result.spf&.status == "pass" && result.spf.domain.present?
-        from_domain = ::MailAuth::Message.new(@data).header_from_domain
-        from_domain.present? && ::MailAuth::Dmarc::Alignment.aligned?(from_domain, result.spf.domain, strict: false)
-      else
-        false
-      end
+      result.spf&.status == ::MailAuth::Status::PASS && spf_aligned?(result.spf)
+    end
+
+    def spf_aligned?(spf)
+      from_domain = ::MailAuth::Message.new(@data).header_from_domain
+      from_domain.present? && spf.domain.present? && ::MailAuth::Dmarc::Alignment.aligned?(from_domain, spf.domain, strict: false)
     end
 end

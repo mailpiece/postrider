@@ -182,8 +182,7 @@ class SurfguardPolicyTest < ActiveSupport::TestCase
   end
 
   private
-    # Exactly what Webhook::Delivery#resolved_ip and SmtpDelivery#target_for
-    # do with the host they pin on.
+    # Exactly what Webhook::Delivery#resolved_ip does with the host it pins on.
     def resolve(host)
       Surfguard.resolve_public_ips(host).first
     end

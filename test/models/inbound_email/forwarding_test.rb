@@ -1,6 +1,8 @@
 require "test_helper"
 
 class InboundEmail::ForwardingTest < ActiveSupport::TestCase
+  include SmtpTestHelper
+
   FRIEND = "Friend <friend@sender.example>"
   JANE = "Jane <jane@remote.example>"
 
@@ -72,6 +74,13 @@ class InboundEmail::ForwardingTest < ActiveSupport::TestCase
     assert_equal "pass", result.status
     assert_equal 1, result.sets.sole.instance
     assert_equal "mx.example", result.sets.sole.seal.domain
+  end
+
+  test "a forward of mail with bare CR and LF carries a seal that verifies over the bytes sent" do
+    stub_verdicts(dmarc: "pass", from_aligned: true)
+    inbound_to_mailbox(raw: "From: #{FRIEND}\nSubject: Hi\r\n\rOne\rTwo\n").forward(ip: "203.0.113.1", helo: "sender.example")
+
+    assert_equal "pass", verify_arc(as_sent_over_smtp(Message.last.raw)).status
   end
 
   test "the seal states what this hop concluded at receipt rather than a verdict reached later" do
@@ -146,6 +155,30 @@ class InboundEmail::ForwardingTest < ActiveSupport::TestCase
 
     assert email.reload.held?
     assert_equal "forwarding_loop", email.events.last.particulars["reason"]
+  end
+
+  test "mail to a +tag address is forwarded by its base mailbox" do
+    stub_verdicts(dmarc: "pass", from_aligned: true)
+    email = create_inbound_email(rcpt_to: "forwarding+news@example.com", mail_from: "friend@sender.example", raw: raw_from(FRIEND))
+
+    assert_difference -> { Message.count }, 1 do
+      email.forward(ip: "203.0.113.1", helo: "sender.example")
+    end
+
+    assert email.reload.forwarded?
+    assert_equal mailboxes(:forwarding).forward_to, Message.last.deliveries.sole.rcpt_to
+  end
+
+  test "a mailbox registered with its own +tag keeps that address's mail from its base's forward" do
+    domains(:example).mailboxes.create!(local_part: "forwarding+news")
+    stub_verdicts(dmarc: "pass", from_aligned: true)
+    email = create_inbound_email(rcpt_to: "forwarding+news@example.com", mail_from: "friend@sender.example", raw: raw_from(FRIEND))
+
+    assert_no_difference -> { Message.count } do
+      email.forward(ip: "203.0.113.1", helo: "sender.example")
+    end
+
+    assert_not email.reload.forwarded?
   end
 
   test "a mailbox whose destination is unconfirmed keeps the ordinary webhook-only path" do

@@ -6,6 +6,12 @@ class AcmeDnsListener
   READ_TIMEOUT = 5
   MAX_TCP_CLIENTS = 10
 
+  class << self
+    def listener
+      new
+    end
+  end
+
   def initialize
     @host = Relay.bind_address
     @port = Relay.acme_dns_port

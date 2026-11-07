@@ -6,7 +6,7 @@ module Delivery::Pacing
     gap = 1.day.to_f / Relay.bulk_messages_per_day(provider)
 
     Delivery::DeliverJob.set(wait_until: PacingSlot.reserve(provider, gap)).perform_later(self)
-  rescue DnsResolver::TransientError
+  rescue DnsResolver::Error
     Delivery::DeliverJob.perform_later(self)
   end
 

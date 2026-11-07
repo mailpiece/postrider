@@ -1,6 +1,8 @@
 require "test_helper"
 
 class MessageTest < ActiveSupport::TestCase
+  include SmtpTestHelper
+
   test "from_name adds a display name to a plain from address" do
     message = Message.submit(domain: domains(:example), from: "a@example.com", from_name: "Example List",
       to: [ "b@example.com" ], subject: "hi", text: "hello")
@@ -711,5 +713,32 @@ class MessageTest < ActiveSupport::TestCase
         Message.submit(domain: domains(:example), from: "a@example.com", to: [ "b@example.com" ], subject: "hi", text: "Free money")
       end
     end
+  end
+
+  test "with_crlf turns a bare LF into CRLF" do
+    assert_equal "Subject: Hi\r\n\r\nBody\r\n", Message.with_crlf("Subject: Hi\n\nBody\n")
+  end
+
+  test "with_crlf turns a bare CR into CRLF" do
+    assert_equal "Subject: Hi\r\n\r\nOne\r\nTwo\r\n", Message.with_crlf("Subject: Hi\r\n\r\nOne\rTwo\r")
+  end
+
+  test "with_crlf leaves CRLF alone" do
+    assert_equal "Subject: Hi\r\n\r\nBody\r\n", Message.with_crlf("Subject: Hi\r\n\r\nBody\r\n")
+  end
+
+  test "with_crlf gives what Net::SMTP sends" do
+    [ "A: b\n\nOne\nTwo\n", "A: b\r\rOne\rTwo\r", "A: b\r\n\r\nOne\r\r\nTwo\n\rThree\r\n", "A: b\r\n\r\n.dot\n..two\r\n" ].each do |raw|
+      assert_equal as_sent_over_smtp(raw), Message.with_crlf(raw).b, raw.inspect
+    end
+  end
+
+  test "with_crlf passes bytes outside UTF-8 through in the encoding they came in" do
+    raw = "Subject: caf\xE9\nBody \xFF\n".dup.force_encoding(Encoding::UTF_8)
+
+    normalized = Message.with_crlf(raw)
+
+    assert_equal Encoding::UTF_8, normalized.encoding
+    assert_equal "Subject: caf\xE9\r\nBody \xFF\r\n".b, normalized.b
   end
 end

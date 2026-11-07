@@ -12,7 +12,7 @@ class InboundEmail::BounceCorrelationTest < ActiveSupport::TestCase
       dkim_status: :ok)
     @return_path = "bounces+abc123.deadbeef01@mailer.bounce-corr-test.example"
     @port = free_port
-    @listener = start_listener(MxListener, "MX_PORT", @port)
+    @listener = start_mx_listener(@port)
   end
 
   teardown do
@@ -73,6 +73,23 @@ class InboundEmail::BounceCorrelationTest < ActiveSupport::TestCase
 
     assert email.reload.delivered?
     assert email.forwarded_at.present?
+  end
+
+  test "correlating a delay notice takes it in without bouncing the delivery" do
+    message = Message.create!(domain: @domain, mail_from: "sender@bounce-corr-test.example", raw: "Subject: Hi\r\n\r\nBody")
+    delivery = message.deliveries.create!(rcpt_to: "recipient@example.com")
+    address = Delivery::ReturnPath.verp.address_for(delivery.id, domain: "smtp-test.local")
+    email = InboundEmail.create!(domain: @domain, mail_from: "", rcpt_to: address,
+      raw: dsn_raw.sub("Action: failed\r\nStatus: 5.1.1", "Action: delayed\r\nStatus: 4.4.7"))
+
+    email.correlate_bounce
+
+    assert email.reload.delivered?
+    assert_not Event.exists?(eventable: delivery, action: "delivery_bounced")
+  ensure
+    Event.where(eventable: delivery).delete_all if delivery
+    delivery&.destroy
+    message&.destroy
   end
 
   test "an invalid or expired token does not crash and creates no suppression" do

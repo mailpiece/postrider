@@ -318,6 +318,8 @@ A backup also keeps mail past `RETENTION_DAYS`: the sweep incinerates mail in th
 
 The listeners bind 25, 587 and 53 inside the container, and the Dockerfile `EXPOSE`s them; publish them on `RELAY_PUBLIC_IP` as above. Development uses 2525, 2587 and 2553 instead (bin/dev on a Mac cannot bind 25 or 53, and 5353 belongs to mDNS). `MX_PORT` / `SUBMISSION_PORT` / `ACME_DNS_PORT` override any of them.
 
+The MX and submission listeners are [mailgate](https://github.com/mailpiece/mailgate)'s. Their log lines name `MailGate::MxListener` or `MailGate::SubmissionListener`, and each line about a message carries its queue id in brackets, such as `[XPNMNGGFVNRD]`: search for it to follow one message through. A header section over 256 KB is refused, mail whose sender's DNS can't be checked right now, that crashes the authentication (which is reported), or that arrives while every authentication slot (`MX_MAX_AUTHENTICATIONS`) is taken, gets a `451` to retry later, and past ten errors on one connection each error reply waits a second, with a `421` and a hang-up at twenty.
+
 ## Submission & authentication
 
 Point mail clients at the submission listener on **port 587 with STARTTLS**. That's the only submission transport: there's no implicit-TLS (SMTPS) listener on 465, so a client configured for 465 will fail to connect rather than quietly falling back. Encryption isn't optional — the listener refuses `AUTH`, `MAIL FROM`, and everything after until the client has issued `STARTTLS`.
@@ -347,11 +349,13 @@ Every variable PostRider reads, A–Z. Provide them however your deployment does
 | `DISABLE_SSL` | — | Set `true` to turn off all SSL options at once (`assume_ssl` + `force_ssl`) — for serving the web UI over plain HTTP with no proxy |
 | `FORCE_SSL` | on | Redirect HTTP→HTTPS, enable HSTS and secure cookies. Needs a TLS proxy in front (or `DISABLE_SSL=true`) |
 | `HELO_HOSTNAME` | `RELAY_HOSTNAME` | HELO/EHLO name for outbound delivery; override only if it should differ |
+| `INBOUND_AUTHENTICATION_TIMEOUT` | `10` | Seconds the MX listener spends authenticating a message before it answers `DATA`; a DNS lookup still unanswered then counts as a temporary failure, and a `451` asks the sender to retry when that could still vouch for the `From` (see [Statuses & Lifecycle](lifecycle.md#inboundemail-status)). Each message holds a processing slot meanwhile: longer waits out slower DNS, shorter frees slots sooner |
 | `INBOUND_MAX_MESSAGE_SIZE` | `26214400` (25 MB) | Reject larger inbound (MX) messages at the listener |
 | `INBOUND_STORAGE_LIMIT` | none | Bytes of all stored mail and attachments, outbound included, at which the MX listener answers `MAIL FROM` with a `452` until the sweep frees room. Unset means no ceiling |
 | `MAILER_FROM_ADDRESS` | none | Support address shown on the sign-in and forwarding confirmation pages, and in the confirmation mail. Only the address is used. PostRider sends its own mail from `noreply@<domain>` through itself, so it needs no outside mail account |
 | `MTA_STS` | — | Set `true` to enforce RFC 8461 MTA-STS on outbound delivery (see [MTA-STS](#mta-sts)) |
 | `MULTI_TENANT` | `false` | Multi-tenant signups; keep `false` for a self-hosted install |
+| `MX_MAX_AUTHENTICATIONS` | `MX_MAX_PROCESSINGS` | Messages the MX listener authenticates at once; when none is free, `DATA` gets a `451` |
 | `MX_MAX_CONNECTIONS` / `SUBMISSION_MAX_CONNECTIONS` | `50` | Concurrent connections each listener accepts |
 | `MX_MAX_CONNECTIONS_PER_IP` / `SUBMISSION_MAX_CONNECTIONS_PER_IP` | `10` / `30` | Concurrent connections from a single IP |
 | `MX_MAX_MESSAGES_PER_IP` | `20` | Messages one IP may start per minute on the MX listener; the next `MAIL FROM` gets a `450` |

@@ -103,6 +103,10 @@ class SmtpDelivery
       end
     end
 
+    def prohibited_by_policy?(host)
+      @policy&.enforce? && !@policy.allows?(host)
+    end
+
     def sendable_addresses(host)
       addresses = Surfguard.resolve_public_ips(host)
       sendable = addresses.select { |address| sendable?(address) }
@@ -125,10 +129,6 @@ class SmtpDelivery
 
     def own_addresses
       @own_addresses ||= (@sending_ip ? [ @sending_ip.address ] : Relay.own_addresses).map { |address| IPAddr.new(address) }
-    end
-
-    def prohibited_by_policy?(host)
-      @policy&.enforce? && !@policy.allows?(host)
     end
 
     def connect(host, address, port, transcript, starttls: true)
@@ -180,6 +180,11 @@ class SmtpDelivery
       nil
     end
 
+    # A mailbox name has no ASCII form; a domain has its A-label (RFC 5890).
+    def smtputf8_required?(smtp)
+      !@rcpt_to.rpartition("@").first.ascii_only? && !smtp.capable?("SMTPUTF8")
+    end
+
     def send_message(smtp, host, transcript)
       Timeout.timeout(COMMAND_TIMEOUT) { smtp.mailfrom(sender(smtp)) }
       Timeout.timeout(COMMAND_TIMEOUT) { smtp.rcptto(recipient(smtp)) }
@@ -200,11 +205,6 @@ class SmtpDelivery
       else
         @mail_from
       end
-    end
-
-    # A mailbox name has no ASCII form; a domain has its A-label (RFC 5890).
-    def smtputf8_required?(smtp)
-      !@rcpt_to.rpartition("@").first.ascii_only? && !smtp.capable?("SMTPUTF8")
     end
 
     def recipient(smtp)

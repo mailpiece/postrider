@@ -11,7 +11,7 @@ class AcmeDnsListenerTest < ActiveSupport::TestCase
   setup do
     stub_env RELAY_HOSTNAME: "smtp-test.local"
     @port = free_port
-    @listener = start_listener(AcmeDnsListener, "ACME_DNS_PORT", @port)
+    @listener = start_listener("ACME_DNS_PORT", @port) { AcmeDnsListener.new }
   end
 
   teardown do

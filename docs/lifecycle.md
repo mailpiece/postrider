@@ -11,7 +11,7 @@ One `Delivery` exists per recipient of an outbound `Message`. `Message` itself h
 | `queued`     | Waiting to be attempted — the initial state, and again between retries after a deferral |
 | `delivered`  | The recipient's MX accepted the message                                         |
 | `deferred`   | A transient SMTP failure occurred, or sending to its domain is paused; the delivery will be retried |
-| `bounced`    | The recipient's MX rejected it outright, or a DSN reported the failure later; a full mailbox or an address that does not exist is also suppressed until it is removed |
+| `bounced`    | The recipient's MX refused it permanently, its domain takes no mail or does not exist, or a DSN reported the failure later; a full mailbox or an address that does not exist is also suppressed until it is removed |
 | `exhausted`  | Every retry (over ~2 days) was used up without a successful delivery; if the last refusal was the mailbox itself (full, or permanently no such user), the address is suppressed until it is removed |
 | `suppressed` | The recipient was on this domain's suppression list, so delivery was skipped entirely |
 | `withheld`   | The message contained one of the domain's blocked phrases, so it was never sent    |
@@ -25,11 +25,13 @@ Tracks one piece of inbound mail from receipt through forwarding.
 | Status       | Meaning                                                                          |
 | ------------ | --------------------------------------------------------------------------------- |
 | `pending`    | Received, not yet processed                                                     |
-| `processing` | Authentication and forwarding are in progress                                   |
+| `processing` | Forwarding is in progress                                                       |
 | `delivered`  | Forwarded to your webhook successfully (or, for a bounce DSN, correlated back to the originating delivery) |
 | `failed`     | Processing could not complete (e.g. it stayed stuck for over a day)             |
 | `bounced`    | Discarded rather than forwarded — no registered mailbox claimed it, or a DSN couldn't be correlated to a delivery |
 | `held`       | Addressed to a forwarding mailbox but not passed on — no aligned DKIM, SPF, or DMARC pass vouches for its `From` (such mail is filed under no contact), the sender isn't an approved contact (a sender first seen starts out denied), or the message was going round a forwarding loop |
+
+Mail is authenticated (SPF, DKIM, DMARC, ARC and the client's reverse name) before the MX answers `DATA`, and stored with the verdicts. Each DNS lookup gets only what is left of `INBOUND_AUTHENTICATION_TIMEOUT`, and one unanswered by then counts as a temporary failure. When nothing yet vouches for the `From` (a DMARC pass, or an aligned DKIM or SPF pass) but an SPF check or DKIM signature aligned with it failed for now, so a retry could still vouch for it, or every authentication slot is taken, the MX answers `451 4.4.3` and stores nothing, so the sending server tries again later. A crash while authenticating gets the same `451` and is reported, like a DNS failure a retry could fix. Bounces to the relay's return path and discarded mail are taken without authenticating anyone.
 
 `held` is the one inbound status that isn't final: the mail is kept as it arrived, and approving the sender releases everything held from them — each message that nothing else blocks is forwarded then and becomes `delivered`. Held mail nobody releases ages out on its own clock (`HELD_RETENTION_DAYS`, default 90 days) rather than the ordinary retention period.
 

@@ -12,10 +12,10 @@ module Delivery::Pausable
   end
 
   private
-    # An MX that fails to resolve is left to the delivery, which defers on the same lookup.
+    # An MX that fails to resolve is left to the delivery, which fails on the same lookup.
     def held_by_pause?
       !relaying? && provider_paused?(destination_hosts.first)
-    rescue DnsResolver::TransientError
+    rescue DnsResolver::Error
       false
     end
 
@@ -24,7 +24,7 @@ module Delivery::Pausable
     end
 
     def mail_provider(mx_host)
-      MailProvider.for(mx_host) || recipient_domain
+      MailProvider.for(mx_host) || ascii_recipient_domain
     end
 
     # Quoting our IP is not enough: Gmail quotes it when it judges a single message too.

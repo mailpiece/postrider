@@ -65,7 +65,11 @@ module InboundEmail::Forwarding
     end
 
     def forwarding_mailbox
-      @forwarding_mailbox ||= domain.mailboxes.forwarding.find_by(local_part: rcpt_to.to_s.split("@", 2).first.to_s.downcase)
+      recipient_mailbox if recipient_mailbox&.forwarding?
+    end
+
+    def recipient_mailbox
+      @recipient_mailbox ||= domain.mailbox_for(rcpt_to)
     end
 
     def forward_to_destination
@@ -80,7 +84,7 @@ module InboundEmail::Forwarding
     end
 
     def forwardable_raw(destination)
-      sealed(InboundEmail::ForwardingHeaders.new(self, destination).prepended_to(raw))
+      sealed(Message.with_crlf(InboundEmail::ForwardingHeaders.new(self, destination).prepended_to(raw)))
     end
 
     # Forwarding breaks SPF and often DKIM, so we seal what we concluded before it does.

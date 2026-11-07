@@ -68,6 +68,12 @@ class DnsResolverTest < ActiveSupport::TestCase
     assert_equal %w[ backup.example.com relay.example.com ], DnsResolver.mx("example.com")
   end
 
+  test "mx reads a domain that does not exist as having none" do
+    resolving({})
+
+    assert_empty DnsResolver.mx("example.com")
+  end
+
   test "txt passes the records through" do
     resolving("example.com" => { txt: [ "v=DKIM1; k=rsa; p=MIIBIjAN" ] })
 
@@ -120,6 +126,36 @@ class DnsResolverTest < ActiveSupport::TestCase
     resolving("example.com" => {})
 
     assert_equal %w[ example.com ], DnsResolver.mail_exchangers("Example.com")
+  end
+
+  test "mail_exchangers refuses a domain that publishes a null MX" do
+    resolving("example.com" => { mx: [ "." ] })
+
+    error = assert_raises(DnsResolver::NullMx) { DnsResolver.mail_exchangers("example.com") }
+    assert_equal "example.com does not accept mail (null MX)", error.message
+  end
+
+  test "a null MX from a real nameserver refuses the domain" do
+    LocalNameserver.answering(:noerror, records: [ Resolv::DNS::Resource::IN::MX.new(0, Resolv::DNS::Name.create(".")) ]) do |resolver|
+      DnsResolver.stubs(:resolver).returns(resolver)
+
+      assert_raises(DnsResolver::NullMx) { DnsResolver.mail_exchangers("example.com") }
+    end
+  end
+
+  test "mail_exchangers refuses a domain that does not exist rather than falling back to it" do
+    resolving({})
+
+    error = assert_raises(DnsResolver::NoSuchDomain) { DnsResolver.mail_exchangers("example.com") }
+    assert_equal "example.com: host or domain name not found", error.message
+  end
+
+  test "an NXDOMAIN from a real nameserver refuses the domain in mail_exchangers" do
+    LocalNameserver.answering(:nxdomain) do |resolver|
+      DnsResolver.stubs(:resolver).returns(resolver)
+
+      assert_raises(DnsResolver::NoSuchDomain) { DnsResolver.mail_exchangers("example.com") }
+    end
   end
 
   test "normalize strips the root label and downcases" do

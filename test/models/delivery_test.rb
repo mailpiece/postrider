@@ -925,6 +925,63 @@ class DeliveryTest < ActiveSupport::TestCase
     assert @delivery.reload.delivered?
   end
 
+  test "an internationalized recipient domain is looked up by its A-label" do
+    Delivery.any_instance.unstub(:destination_hosts)
+    DnsResolver.expects(:mail_exchangers).with("xn--mller-kva.de").returns([ "mx.xn--mller-kva.de" ])
+    SmtpDelivery.expects(:new).with { |hosts:, **| hosts == [ "mx.xn--mller-kva.de" ] }.returns(
+      stub(deliver: SmtpDelivery::Result.new(:sent, "250", "OK", "mx.xn--mller-kva.de", "transcript")))
+    @delivery.update!(rcpt_to: "b@müller.de")
+
+    @delivery.deliver
+
+    assert @delivery.reload.delivered?
+  end
+
+  test "a report naming an internationalized recipient by its A-label is this delivery's bounce" do
+    delivery = deliveries(:delivered)
+    delivery.update!(rcpt_to: "b@müller.de")
+
+    assert_difference -> { Current.account.suppressions.count }, 1 do
+      delivery.record_async_bounce(dsn_raw: failing_dsn.sub("recipient@example.com", "b@xn--mller-kva.de"))
+    end
+
+    assert_equal "invalid", delivery.events.last.particulars["category"]
+  end
+
+  test "a pause on an internationalized recipient domain is keyed by its A-label, as its MX is" do
+    @delivery.update!(rcpt_to: "b@müller.de")
+    @delivery.stubs(:destination_hosts).returns([ "mx.xn--mller-kva.de" ])
+
+    with_env(SENDING_IPS: "primary=203.0.113.7=mx.example") do
+      stub_smtp(:hard_fail, "550", "5.7.1 [203.0.113.7] is listed on Spamhaus")
+
+      assert_raises(RuntimeError) { @delivery.deliver }
+    end
+
+    assert Pause.exists?(provider: "xn--mller-kva.de")
+  end
+
+  test "a suppression of an internationalized recipient holds under either spelling of its domain" do
+    @delivery.update!(rcpt_to: "b@xn--mller-kva.de")
+    domains(:example).suppressions.create!(address: "b@müller.de")
+    SmtpDelivery.any_instance.expects(:deliver).never
+
+    @delivery.deliver
+
+    assert @delivery.reload.suppressed?
+  end
+
+  test "a bounce to the A-label spelling suppresses the U-label spelling" do
+    stub_smtp(:hard_fail, "550", "no such user")
+    @delivery.update!(rcpt_to: "b@xn--mller-kva.de")
+    @delivery.deliver
+    later = @message.deliveries.create!(rcpt_to: "b@müller.de")
+
+    later.deliver
+
+    assert later.reload.suppressed?
+  end
+
   private
     def verp_enabled_domain
       domains(:example).update!(dmarc_status: :ok, return_path_status: :ok)

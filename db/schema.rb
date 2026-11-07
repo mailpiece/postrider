@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.2].define(version: 2026_11_03_120000) do
+ActiveRecord::Schema[8.2].define(version: 2026_11_06_120000) do
   create_table "accesses", id: :uuid, force: :cascade do |t|
     t.uuid "account_id", null: false
     t.uuid "user_id", null: false
@@ -484,7 +484,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_11_03_120000) do
     t.index ["account_id"], name: "index_webhook_deliveries_on_account_id"
     t.index ["created_at"], name: "index_webhook_deliveries_on_created_at"
     t.index ["event_id"], name: "index_webhook_deliveries_on_event_id"
-    t.index ["webhook_id", "event_id"], name: "index_webhook_deliveries_on_webhook_id_and_event_id", unique: true
+    t.index ["webhook_id"], name: "index_webhook_deliveries_on_webhook_id"
   end
 
   create_table "webhooks", id: :uuid, force: :cascade do |t|

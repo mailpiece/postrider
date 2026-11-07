@@ -157,6 +157,30 @@ class InboundEmail::ForwardingTest < ActiveSupport::TestCase
     assert_equal "forwarding_loop", email.events.last.particulars["reason"]
   end
 
+  test "mail to a +tag address is forwarded by its base mailbox" do
+    stub_verdicts(dmarc: "pass", from_aligned: true)
+    email = create_inbound_email(rcpt_to: "forwarding+news@example.com", mail_from: "friend@sender.example", raw: raw_from(FRIEND))
+
+    assert_difference -> { Message.count }, 1 do
+      email.forward(ip: "203.0.113.1", helo: "sender.example")
+    end
+
+    assert email.reload.forwarded?
+    assert_equal mailboxes(:forwarding).forward_to, Message.last.deliveries.sole.rcpt_to
+  end
+
+  test "a mailbox registered with its own +tag keeps that address's mail from its base's forward" do
+    domains(:example).mailboxes.create!(local_part: "forwarding+news")
+    stub_verdicts(dmarc: "pass", from_aligned: true)
+    email = create_inbound_email(rcpt_to: "forwarding+news@example.com", mail_from: "friend@sender.example", raw: raw_from(FRIEND))
+
+    assert_no_difference -> { Message.count } do
+      email.forward(ip: "203.0.113.1", helo: "sender.example")
+    end
+
+    assert_not email.reload.forwarded?
+  end
+
   test "a mailbox whose destination is unconfirmed keeps the ordinary webhook-only path" do
     mailboxes(:inbox).update!(forward_to: "dest@elsewhere.example")
     email = create_inbound_email(rcpt_to: mailboxes(:inbox).address, mail_from: "jane@remote.example", raw: raw_from(JANE))

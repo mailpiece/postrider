@@ -127,13 +127,13 @@ module Delivery::Delivering
       @destination_hosts ||= if relaying?
         []
       else
-        DnsResolver.mail_exchangers(recipient_domain)
+        DnsResolver.mail_exchangers(ascii_recipient_domain)
       end
     end
 
     def mta_sts_policy
       if Relay.mta_sts? && !relaying?
-        MtaStsPolicy.lookup(recipient_domain).policy
+        MtaStsPolicy.lookup(ascii_recipient_domain).policy
       end
     end
 
@@ -143,6 +143,16 @@ module Delivery::Delivering
 
     def recipient_domain
       rcpt_to.split("@", 2).last
+    end
+
+    # A U-label (münchen.example) is looked up as the A-label DNS carries (xn--mnchen-3ya.example).
+    def ascii_recipient_domain
+      MailAuth::Domain.normalize(recipient_domain)
+    end
+
+    # As a server without SMTPUTF8 was given it, and reports it back.
+    def ascii_rcpt_to
+      "#{rcpt_to.split("@", 2).first}@#{ascii_recipient_domain}"
     end
 
     def record_rejection(result)

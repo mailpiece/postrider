@@ -1,8 +1,7 @@
 class Webhooks::ActivationsController < ApplicationController
-  include DomainScoped
+  include WebhookScoped
 
   before_action :ensure_admin
-  before_action :set_webhook
 
   def create
     @webhook.activate
@@ -21,9 +20,4 @@ class Webhooks::ActivationsController < ApplicationController
       format.json { head :no_content }
     end
   end
-
-  private
-    def set_webhook
-      @webhook = @domain.webhooks.find(params[:webhook_id])
-    end
 end

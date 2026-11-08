@@ -1,8 +1,7 @@
 class Webhooks::DeliveriesController < ApplicationController
-  include DomainScoped
+  include WebhookScoped
 
   before_action :ensure_admin
-  before_action :set_webhook
 
   def index
     respond_to do |format|
@@ -11,9 +10,4 @@ class Webhooks::DeliveriesController < ApplicationController
       end
     end
   end
-
-  private
-    def set_webhook
-      @webhook = @domain.webhooks.find(params[:webhook_id])
-    end
 end

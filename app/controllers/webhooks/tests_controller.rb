@@ -1,8 +1,7 @@
 class Webhooks::TestsController < ApplicationController
-  include DomainScoped
+  include WebhookScoped
 
   before_action :ensure_admin
-  before_action :set_webhook
   before_action :ensure_webhook_is_testable
   # Each test makes an event, a delivery and a request to the endpoint.
   rate_limit to: 10, within: 1.minute, only: :create
@@ -17,10 +16,6 @@ class Webhooks::TestsController < ApplicationController
   end
 
   private
-    def set_webhook
-      @webhook = @domain.webhooks.find(params[:webhook_id])
-    end
-
     def ensure_webhook_is_testable
       unless @webhook.testable?
         respond_to do |format|

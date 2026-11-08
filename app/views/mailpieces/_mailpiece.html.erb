@@ -1,10 +1,10 @@
 <% status = mailpiece_status(mailpiece) %>
-<li id="<%= dom_id mailpiece %>" class="<%= class_names "row", "row--unread": status == "held" %>" data-quick-find-target="item" data-navigable-list-target="item" tabindex="-1">
+<li id="<%= dom_id mailpiece %>" class="row" data-quick-find-target="item" data-navigable-list-target="item" tabindex="-1">
   <%= link_to mailpiece_path(mailpiece), class: "display-contents mailpiece__link" do %>
     <%= mailpiece_avatar_tag mailpiece %>
     <span class="row__body flex-item-grow">
       <span class="row__title mailpiece__title">
-        <strong class="mailpiece__party"><%= mailpiece_direction_tag mailpiece %> <%= phishing_mark(mailpiece.postable) if mailpiece.inbound_email? %> <%= mailpiece_party mailpiece %></strong>
+        <span class="mailpiece__party"><%= mailpiece_direction_tag mailpiece %> <%= phishing_mark(mailpiece.postable) if mailpiece.inbound_email? %> <%= mailpiece_party mailpiece %></span>
         <span class="row__meta mailpiece__own"><%= mailpiece_addresses mailpiece %></span>
       </span>
       <span class="row__meta">

@@ -21,7 +21,6 @@
 
   /* The other party gives way before the own address, which is cut only past half the line. */
   .mailpiece__party {
-    font-weight: 600;
     min-inline-size: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -46,10 +45,9 @@
     gap: 0.2em;
   }
 
-  /* Held mail waits to be read, so its row reads as unread. */
-  .row--unread :is(.mailpiece__party, .mailpiece__subject) {
-    color: var(--color-ink);
-    font-weight: 700;
+  /* Nothing on a row is bold: what became of a piece of mail is told by its status word's colour alone. */
+  .mailpiece__end .status {
+    font-weight: normal;
   }
 
   /* The status filter: a button in the filter bar that drops a list of the status pages, each with its count. */

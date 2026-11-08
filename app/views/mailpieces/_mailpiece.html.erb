@@ -20,6 +20,6 @@
   <% end %>
   <span class="row__end mailpiece__end">
     <%= local_datetime_tag mailpiece.created_at, style: :timeordate %>
-    <span class="status <%= mailpiece_status_class(status) %>"><%= status_word status %></span>
+    <span class="status <%= mailpiece_status_class(status) %>"><%= status_label status %></span>
   </span>
 </li>

@@ -12,7 +12,7 @@ module MailpiecesHelper
   RECEIVED_ACTIONS = %w[ inbound_email_received inbound_email_bounce_received ].freeze
 
   # Statuses said in other words than their name. Withheld reads Blocked, after the setting that withholds.
-  STATUS_WORDS = { "withheld" => "Blocked", "exhausted" => "Retries ran out" }.freeze
+  STATUS_LABELS = { "withheld" => "Blocked", "exhausted" => "Retries ran out" }.freeze
 
   # A good outcome stays quiet in a list; anything else takes its colour.
   QUIET_STATUSES = %w[ delivered forwarded accepted ].freeze
@@ -55,8 +55,8 @@ module MailpiecesHelper
     mailpiece.inbound_email? ? inbound_status_word(mailpiece.postable) : mailpiece.postable.status
   end
 
-  def status_word(status)
-    STATUS_WORDS.fetch(status.to_s) { status.to_s.humanize }
+  def status_label(status)
+    STATUS_LABELS.fetch(status.to_s) { status.to_s.humanize }
   end
 
   def mailpiece_status_class(status)
@@ -75,7 +75,7 @@ module MailpiecesHelper
   end
 
   def inbound_envelope_status(inbound_email)
-    [ status_word(inbound_status_word(inbound_email)), inbound_status_detail(inbound_email) ].compact.join(" · ")
+    [ status_label(inbound_status_word(inbound_email)), inbound_status_detail(inbound_email) ].compact.join(" · ")
   end
 
   def delivery_envelope_status(delivery)

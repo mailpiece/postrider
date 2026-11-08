@@ -1,7 +1,7 @@
 <% current = local_assigns[:status] %>
 <div class="status-filter" data-controller="dialog" data-action="click@window->dialog#closeOnClickOutside keydown.esc->dialog#close">
   <%= tag.button type: "button", class: "btn status-filter__button", aria: { haspopup: "dialog", expanded: false }, data: { action: "dialog#toggle" } do %>
-    <span><%= current ? status_word(current) : "Status…" %></span>
+    <span><%= current ? status_label(current) : "Status…" %></span>
     <%= icon_tag "caret-down" %>
   <% end %>
 
@@ -12,7 +12,7 @@
       <% mailpiece_status_filters.each do |status, path, count| %>
         <li>
           <%= link_to path, aria: { current: ("page" if status == current) } do %>
-            <span><%= status_word status %></span>
+            <span><%= status_label status %></span>
             <span class="status-filter__count"><%= number_with_delimiter count %></span>
           <% end %>
         </li>

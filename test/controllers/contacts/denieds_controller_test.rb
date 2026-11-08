@@ -30,7 +30,7 @@ class Contacts::DeniedsControllerTest < ActionDispatch::IntegrationTest
 
     get contacts_denied_path
 
-    assert_select "form[action=?][data-turbo-confirm=?] button", contacts_denied_path,
+    assert_select "form[action=?][data-turbo-confirm=?] button", contacts_screened_out_mail_path,
       "Erase all 1 email from screened-out senders? This can't be undone. The senders stay screened out.", text: "Clear all…"
   end
 
@@ -42,7 +42,7 @@ class Contacts::DeniedsControllerTest < ActionDispatch::IntegrationTest
     get contacts_denied_path, headers: { "HTTP_IF_NONE_MATCH" => response.headers["ETag"] }
 
     assert_response :success
-    assert_select "form[action=?]", contacts_denied_path, count: 0
+    assert_select "form[action=?]", contacts_screened_out_mail_path, count: 0
   end
 
   test "show offers no clearing to a member" do
@@ -50,7 +50,7 @@ class Contacts::DeniedsControllerTest < ActionDispatch::IntegrationTest
 
     get contacts_denied_path
 
-    assert_select "form[action=?]", contacts_denied_path, count: 0
+    assert_select "form[action=?]", contacts_screened_out_mail_path, count: 0
   end
 
   test "show renders json" do
@@ -70,25 +70,5 @@ class Contacts::DeniedsControllerTest < ActionDispatch::IntegrationTest
 
     assert_includes response.parsed_body.pluck("id"), contacts(:denied).id
     assert_not_includes response.parsed_body.pluck("id"), contacts(:private).id
-  end
-
-  test "destroy erases the mail in the background" do
-    sign_in_as :leo
-
-    assert_enqueued_with job: User::EraseScreenedOutMailJob, args: [ users(:leo) ] do
-      delete contacts_denied_path
-    end
-
-    assert_redirected_to contacts_denied_path
-  end
-
-  test "destroy is for admins" do
-    sign_in_as :nonstaff
-
-    assert_no_enqueued_jobs only: User::EraseScreenedOutMailJob do
-      delete contacts_denied_path
-    end
-
-    assert_response :forbidden
   end
 end

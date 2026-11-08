@@ -16,7 +16,7 @@
       <p class="txt-subtle margin-none flex-item-grow">Senders you screened out. Their mail is held here, never forwarded.</p>
       <% held_count = Current.user.screened_out_mail.count %>
       <% if Current.user.admin? && held_count.positive? %>
-        <%= button_to "Clear all…", contacts_denied_path, method: :delete, class: "btn btn--plain txt-small txt-subtle font-weight-normal", form_class: "button_to flex-item-no-shrink",
+        <%= button_to "Clear all…", contacts_screened_out_mail_path, method: :delete, class: "btn btn--plain txt-small txt-subtle font-weight-normal", form_class: "button_to flex-item-no-shrink",
               form: { data: { turbo_confirm: "Erase all #{pluralize held_count, "email"} from screened-out senders? This can't be undone. The senders stay screened out." } } %>
       <% end %>
     </div>

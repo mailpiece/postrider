@@ -123,7 +123,8 @@ Rails.application.routes.draw do
   end
 
   namespace :contacts do
-    resource :denied, only: %i[ show destroy ]
+    resource :denied, only: :show
+    resource :screened_out_mail, only: :destroy
   end
 
   resources :contacts, only: %i[ index show ] do

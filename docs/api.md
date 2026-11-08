@@ -433,7 +433,7 @@ Authenticate with a personal access token (`read` permission is sufficient): `Au
 
 Each entry carries `id`, `number`, `email`, `name`, `decision` (`pending`, `approved` or `denied`), `lookalike` and `created_at`. An address that imitates another with look-alike letters is kept as punycode, and `lookalike` is `true` for it.
 
-`DELETE /contacts/denied` erases the held mail from screened-out senders, with its events, on domains the token's user can use; the senders stay screened out. It needs a `write` token belonging to an account admin, and returns `202` with no body while the mail is erased in the background.
+`DELETE /contacts/screened_out_mail` erases the held mail from screened-out senders, with its events, on domains the token's user can use; the senders stay screened out. It needs a `write` token belonging to an account admin, and returns `202` with no body while the mail is erased in the background.
 
 ## Reading mail
 

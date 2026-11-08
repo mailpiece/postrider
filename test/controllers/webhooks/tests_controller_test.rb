@@ -101,6 +101,17 @@ class Webhooks::TestsControllerTest < ActionDispatch::IntegrationTest
     assert_response :forbidden
   end
 
+  test "sending tests is rate limited by the minute" do
+    sign_in_as :leo
+    Rails.cache.stubs(:increment).returns(11)
+
+    assert_no_difference -> { Webhook::Delivery.count } do
+      post domain_webhook_test_path(@webhook.domain, @webhook)
+    end
+
+    assert_response :too_many_requests
+  end
+
   test "a non-admin cannot send a test" do
     sign_in_as :nonstaff
 

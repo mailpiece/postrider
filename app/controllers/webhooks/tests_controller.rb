@@ -4,6 +4,8 @@ class Webhooks::TestsController < ApplicationController
   before_action :ensure_admin
   before_action :set_webhook
   before_action :ensure_webhook_is_testable
+  # Each test makes an event, a delivery and a request to the endpoint.
+  rate_limit to: 10, within: 1.minute, only: :create
 
   def create
     @webhook.test

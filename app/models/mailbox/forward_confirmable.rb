@@ -1,8 +1,8 @@
 module Mailbox::ForwardConfirmable
+  extend ActiveSupport::Concern
+
   FORWARD_CONFIRMATION_TOKEN_PURPOSE = "confirm_forwarding"
   FORWARD_CONFIRMATION_TOKEN_EXPIRATION = 24.hours
-
-  extend ActiveSupport::Concern
 
   included do
     before_save :reset_forward_confirmation, if: :forward_to_changed?

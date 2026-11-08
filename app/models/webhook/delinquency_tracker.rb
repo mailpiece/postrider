@@ -7,11 +7,9 @@ class Webhook::DelinquencyTracker < ApplicationRecord
 
   # A failed test is for the admin who sent it to read, not a reason to deactivate.
   def record_delivery_of(delivery)
-    return if delivery.test?
-
     if delivery.succeeded?
       reset
-    else
+    elsif !delivery.test?
       mark_first_failure_time if consecutive_failures_count.zero?
       increment!(:consecutive_failures_count, touch: true)
 

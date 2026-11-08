@@ -106,7 +106,7 @@ An admin can send a test from the webhook's page, before any mail has moved, to 
 { "event": "webhook_tested", "payload": { "webhook_id": "…", "domain_id": "…", "domain": "yourdomain.com", "name": "Deliveries", "url": "https://your-app.example.com/hooks", "sent_at": "2026-07-15T18:00:00Z", "sent_by": "Leo" } }
 ```
 
-A Slack webhook gets its one-line form, "Sent a test to webhook Deliveries". A test that fails never counts toward deactivating the webhook, and a webhook takes at most ten tests a minute.
+A Slack webhook gets its one-line form, "Sent a test to webhook Deliveries". A test that fails never counts toward deactivating the webhook, while one that succeeds clears its run of failures as any successful delivery does, and a webhook takes at most ten tests a minute.
 
 ## Action Mailbox relay integration
 

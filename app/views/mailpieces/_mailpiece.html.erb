@@ -3,7 +3,7 @@
   <%= mailpiece_avatar_tag mailpiece %>
   <%= link_to mailpiece_path(mailpiece), class: "row__body flex-item-grow" do %>
     <span class="row__title mailpiece__title">
-      <strong class="mailpiece__party"><%= phishing_mark(mailpiece.postable) if mailpiece.inbound_email? %> <%= mailpiece_party mailpiece %></strong>
+      <strong class="mailpiece__party"><%= mailpiece_direction_tag mailpiece %> <%= phishing_mark(mailpiece.postable) if mailpiece.inbound_email? %> <%= mailpiece_party mailpiece %></strong>
       <span class="row__meta mailpiece__own"><%= mailpiece_addresses mailpiece %></span>
     </span>
     <span class="row__meta">

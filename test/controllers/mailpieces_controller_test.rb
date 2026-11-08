@@ -119,13 +119,12 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_select "##{dom_id inbound_email.mailpiece} .mailpiece__party", text: /\AReceived\s+No sender\z/
   end
 
-  test "held mail reads as unread, while a good outcome stays quiet" do
+  test "held mail is told by its status word, while a good outcome stays quiet" do
     sign_in_as :nonstaff
 
     get mailpieces_path
 
-    assert_select "li.row--unread", count: 1
-    assert_select "li.row--unread##{dom_id mailpieces(:held)} .status.status--warning", text: "Held"
+    assert_select "##{dom_id mailpieces(:held)} .status.status--warning", text: "Held"
     assert_select "##{dom_id mailpieces(:delivered)} .status.status--muted", text: "Delivered"
     assert_select "##{dom_id mailpieces(:held)} .row__end time[data-reader-time-target=timeordate]"
   end

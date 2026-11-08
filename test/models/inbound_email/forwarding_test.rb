@@ -208,14 +208,14 @@ class InboundEmail::ForwardingTest < ActiveSupport::TestCase
 
   test "held mail forwarded on approval carries the verdict it was scored with" do
     inbound_emails(:held).update!(raw: file_fixture("raw.eml").read, dmarc: "pass")
-    inbound_emails(:held).track_event "scored", action: "no_action", score: 1.2, complete: true, symbols: [ [ "SPF_PASS", -0.2, nil ] ]
+    inbound_emails(:held).track_event "scored", action: "no_action", score: 1.2, complete: true, symbols: [],
+      headers: [ [ "X-Spam-Flag", "NO" ], [ "X-Spam-Score", "1.2" ] ]
 
     perform_enqueued_jobs only: Contact::ForwardHeldJob do
       contacts(:denied).approve
     end
 
-    assert_includes Message.last.raw, "X-Spam-Flag: NO\r\nX-Spam-Score: 1.2\r\nX-Spam-Level: *\r\n" \
-      "X-Spam-Status: No, score=1.2 tests=SPF_PASS\r\nX-Spam-Action: accept\r\n"
+    assert_includes Message.last.raw, "X-Spam-Flag: NO\r\nX-Spam-Score: 1.2\r\n"
   end
 
   test "a receipt whose event fails leaves the mail to forward on the retry" do

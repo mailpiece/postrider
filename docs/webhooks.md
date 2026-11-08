@@ -37,7 +37,7 @@ Every webhook subscribed to an event gets the same body for it, with two excepti
 Payload shape:
 
 ```json
-{ "event": "inbound_email_received", "payload": { "id": "…", "rcpt_to": "support@yourdomain.com", "from": "…", "to": "…", "subject": "…", "headers": ["X-Spam-Flag: NO", "X-Spam-Score: 0.8", "X-Spam-Status: No, score=0.8 tests=DMARC_POLICY_ALLOW,SPF_PASS", "X-Spam-Action: accept", "…"], "authentication": { "spf": "pass", "dkim": "pass", "dmarc": "pass", "dmarc_policy": "quarantine", "arc": "none", "iprev": "pass", "remote_host": "mail.theirdomain.com", "authentication_results": "mx.example.com; iprev=pass (mail.theirdomain.com) policy.iprev=203.0.113.7; spf=pass smtp.mailfrom=sender@theirdomain.com; dkim=pass header.d=theirdomain.com; dmarc=pass header.from=theirdomain.com", "from_aligned": true }, "html": "…", "text": "…", "attachments": [{ "type": "attachment", "filename": "…", "contentType": "image/jpeg", "size": 1234, "checksum": "…", "contentId": "<ii_abc>", "cid": "ii_abc", "related": true, "url": "https://…/rails/active_storage/blobs/redirect/…/photo.jpg?disposition=attachment" }] } }
+{ "event": "inbound_email_received", "payload": { "id": "…", "rcpt_to": "support@yourdomain.com", "from": "…", "to": "…", "subject": "…", "headers": ["X-Spam-Flag: NO", "X-Spam-Score: 0.8", "X-Spam-Status: No, score=0.8 required=6.0 tests=DMARC_POLICY_ALLOW,SPF_PASS", "X-Spam-Action: no action", "…"], "authentication": { "spf": "pass", "dkim": "pass", "dmarc": "pass", "dmarc_policy": "quarantine", "arc": "none", "iprev": "pass", "remote_host": "mail.theirdomain.com", "authentication_results": "mx.example.com; iprev=pass (mail.theirdomain.com) policy.iprev=203.0.113.7; spf=pass smtp.mailfrom=sender@theirdomain.com; dkim=pass header.d=theirdomain.com; dmarc=pass header.from=theirdomain.com", "from_aligned": true }, "html": "…", "text": "…", "attachments": [{ "type": "attachment", "filename": "…", "contentType": "image/jpeg", "size": 1234, "checksum": "…", "contentId": "<ii_abc>", "cid": "ii_abc", "related": true, "url": "https://…/rails/active_storage/blobs/redirect/…/photo.jpg?disposition=attachment" }] } }
 ```
 
 The payload gives you the parsed message — headers, bodies, and attachment metadata (filename, type, size, checksum, cid, …) — but not the raw RFC822 bytes. Shipping those would mean parsing, JSON-encoding, and signing a large message all over again for every webhook you've subscribed.
@@ -60,15 +60,15 @@ The `authentication` object carries the SPF, DKIM, DMARC, and ARC verdicts and i
 
 ### Spam verdict
 
-When the server scores inbound mail, it says what it concluded and leaves the decision to you: nothing is held or refused on the score. The verdict leads the payload's `headers`, in these lines:
+When the server scores inbound mail, it says what it concluded and leaves the decision to you: nothing is held or refused on the score. The verdict leads the payload's `headers`, as the fields the spam scorer gives, in its order:
 
 | Header | Value |
 | ------ | ----- |
-| `X-Spam-Flag` | `YES` when the score is high enough that the mail would be marked or refused, otherwise `NO` |
-| `X-Spam-Score` | The score to one decimal; the higher, the likelier spam |
-| `X-Spam-Level` | One `*` for each whole point of the score, up to 50, so a filter can match `*****` for five or more; left out when the score is below one |
-| `X-Spam-Status` | `Yes` or `No` as in `X-Spam-Flag`, then the score and the names of the tests the message matched, comma-separated, or `none`: `Yes, score=7.3 tests=DMARC_FAIL,REVERSE_DNS_NONE` |
-| `X-Spam-Action` | What the score calls for: `accept`, `tag` (mark it, or defer it) or `reject` |
+| `X-Spam-Flag` | `YES` when the scorer would act on the mail, otherwise `NO` |
+| `X-Spam-Score` | The score, with one decimal; the higher, the likelier spam |
+| `X-Spam-Level` | One `*` for each whole point of the score, up to 50, so a filter can match `*****` for five or more; left out below one point |
+| `X-Spam-Status` | `Yes` or `No` as in `X-Spam-Flag`, then `score=`, `required=` (the lowest score the scorer acts on, when it has one) and `tests=`, the names of the tests the message matched, comma-separated, or `none` |
+| `X-Spam-Action` | What the scorer would do: `no action`, `add header`, `rewrite subject`, `soft reject` or `reject` |
 
 The same lines are prepended to the message an Action Mailbox relay receives and to a forwarded copy. Any `X-Spam-` header the sender wrote is removed from all three, so every one you see is ours. Mail the server did not score before handing it on carries none of them, so treat absent as unknown, not as `NO`.
 

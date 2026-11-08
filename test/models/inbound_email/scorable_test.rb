@@ -108,7 +108,7 @@ class InboundEmail::ScorableTest < ActiveSupport::TestCase
         symbol("HOSTNAME_UNKNOWN", 2.5, "203.0.113.9", "Sending server has no verified host name"),
         symbol("REVERSE_DNS_NONE", 2.0, nil, "No reverse DNS for the sending server"),
         symbol("ATTACHMENT_RISKY_EXTENSION", 2.0, "#{"x" * 120}.exe", "Risky attachment type"),
-        symbol("CLIENT_LISTED", 1.0, nil, nil) ]))
+        symbol("CLIENT_LISTED", 1.0, nil, nil) ], headers: [ [ "X-Spam-Flag", "YES" ], [ "X-Spam-Action", "tag" ] ]))
 
     email.score_now
 
@@ -117,7 +117,7 @@ class InboundEmail::ScorableTest < ActiveSupport::TestCase
     assert_equal({ "action" => "add_header", "score" => 6.5, "complete" => true,
       "symbols" => [ [ "HOSTNAME_UNKNOWN", 2.5, "Sending server has no verified host name", "203.0.113.9" ],
         [ "REVERSE_DNS_NONE", 2.0, "No reverse DNS for the sending server" ], [ "ATTACHMENT_RISKY_EXTENSION", 2.0, "Risky attachment type" ],
-        [ "CLIENT_LISTED", 1.0, nil ] ] },
+        [ "CLIENT_LISTED", 1.0, nil ] ], "headers" => [ [ "X-Spam-Flag", "YES" ], [ "X-Spam-Action", "tag" ] ] },
       event.particulars)
   end
 
@@ -164,8 +164,8 @@ class InboundEmail::ScorableTest < ActiveSupport::TestCase
   end
 
   private
-    def verdict(action: :no_action, score: 0.0, complete: true, symbols: [])
-      MailScore::Client::Result.new(action:, score:, complete:, symbols:, smtp_reply: nil, subject: nil)
+    def verdict(action: :no_action, score: 0.0, complete: true, symbols: [], headers: [])
+      MailScore::Client::Result.new(action:, score:, complete:, symbols:, smtp_reply: nil, subject: nil, headers:)
     end
 
     def symbol(name, weight, detail, description)

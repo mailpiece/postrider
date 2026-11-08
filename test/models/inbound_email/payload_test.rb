@@ -35,13 +35,12 @@ class InboundEmail::PayloadTest < ActiveSupport::TestCase
 
   test "leads the headers with the spam verdict, as the copies handed on carry it" do
     email = build_email
-    email.track_event "scored", action: "add_header", score: 6.5, complete: true,
-      symbols: [ [ "HOSTNAME_UNKNOWN", 2.5, nil ], [ "REVERSE_DNS_NONE", 2.0, nil ] ]
+    email.track_event "scored", action: "add_header", score: 6.5, complete: true, symbols: [],
+      headers: [ [ "X-Spam-Flag", "YES" ], [ "X-Spam-Score", "6.5" ], [ "X-Spam-Action", "tag" ] ]
 
     payload = email.webhook_payload("inbound_email_forwarded")
 
-    assert_equal [ "X-Spam-Flag: YES", "X-Spam-Score: 6.5", "X-Spam-Level: ******",
-      "X-Spam-Status: Yes, score=6.5 tests=HOSTNAME_UNKNOWN,REVERSE_DNS_NONE", "X-Spam-Action: tag" ], payload[:headers].first(5)
+    assert_equal [ "X-Spam-Flag: YES", "X-Spam-Score: 6.5", "X-Spam-Action: tag" ], payload[:headers].first(3)
     assert payload[:headers].any? { |line| line.start_with?("Subject: ") }
   end
 

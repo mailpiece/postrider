@@ -40,7 +40,7 @@ module InboundEmail::Scorable
           from: mail_from.presence || "<>", rcpt: rcpt_to, queue_id: id)
 
         track_event "scored", action: result.action.to_s, score: result.score, complete: result.complete?,
-          symbols: result.symbols.map { |symbol| scored_symbol(symbol) }
+          symbols: result.symbols.map { |symbol| scored_symbol(symbol) }, headers: result.headers
       end
     end
 

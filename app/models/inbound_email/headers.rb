@@ -22,34 +22,12 @@ class InboundEmail::Headers
       lines.map { |line| "#{line}\r\n" }.join
     end
 
-    # Every copy we hand on says what the spam check concluded, and the receiving app decides.
+    # Every copy we hand on carries the scorer's verdict, and the receiving app decides.
     def fields
       if spam_check = @inbound_email.spam_check
-        spam_fields(spam_check)
+        spam_check.headers.to_h
       else
         {}
-      end
-    end
-
-    def spam_fields(spam_check)
-      score = format("%.1f", spam_check.score)
-
-      {
-        "X-Spam-Flag" => spam_check.flagged? ? "YES" : "NO",
-        "X-Spam-Score" => score,
-        "X-Spam-Level" => "*" * spam_check.score.floor.clamp(0, 50),
-        "X-Spam-Status" => "#{spam_check.flagged? ? "Yes" : "No"}, score=#{score} tests=#{spam_check.symbol_names.join(",").presence || "none"}",
-        "X-Spam-Action" => spam_action(spam_check)
-      }
-    end
-
-    def spam_action(spam_check)
-      if !spam_check.flagged?
-        "accept"
-      elsif spam_check.action == "reject"
-        "reject"
-      else
-        "tag"
       end
     end
 

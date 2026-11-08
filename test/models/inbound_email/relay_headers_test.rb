@@ -29,28 +29,27 @@ class InboundEmail::RelayHeadersTest < ActiveSupport::TestCase
     assert_includes header_section(email.relayable_raw), "Authentication-Results: mx.example;  none"
   end
 
-  test "says what the spam check concluded, with no level below a point and no tests when none matched" do
+  test "carries the headers the scorer asked for, in its order, with any line break flattened" do
     email = create_email
-    email.track_event "scored", action: "no_action", score: -0.5, complete: true, symbols: []
+    email.track_event "scored", action: "no_action", score: -0.5, complete: true, symbols: [],
+      headers: [ [ "X-Spam-Flag", "NO" ], [ "X-Spam-Status", "No, score=-0.5\r\nBcc: x@example.com" ] ]
 
-    assert_includes header_section(email.relayable_raw), "X-Spam-Flag: NO\r\nX-Spam-Score: -0.5\r\n" \
-      "X-Spam-Status: No, score=-0.5 tests=none\r\nX-Spam-Action: accept\r\n"
+    assert header_section(email.relayable_raw).end_with?(
+      "X-PostRider-Mailpiece-Id: #{email.mailpiece.id}\r\nX-Spam-Flag: NO\r\nX-Spam-Status: No, score=-0.5 Bcc: x@example.com\r\n")
   end
 
-  test "a reject is told as one, with its stars capped at fifty" do
+  test "a verdict recorded with no headers, as an older scorer gives, adds none" do
     email = create_email
-    email.track_event "scored", action: "reject", score: 72.04, complete: true, symbols: [ [ "BAYES_SPAM", 5.0, nil ] ]
+    email.track_event "scored", action: "reject", score: 16.0, complete: true, symbols: []
 
-    headers = header_section(email.relayable_raw)
-
-    assert_includes headers, "X-Spam-Score: 72.0\r\nX-Spam-Level: #{"*" * 50}\r\n"
-    assert_includes headers, "X-Spam-Status: Yes, score=72.0 tests=BAYES_SPAM\r\nX-Spam-Action: reject\r\n"
+    assert_no_match(/^X-Spam-/, email.relayable_raw)
   end
 
   test "every X-Spam- field the sender wrote is taken out, folded lines and all, leaving its body alone" do
     email = create_inbound_email(raw: "x-spam-status: No,\r\n\tscore=-5.0\r\nFrom: a@test.com\r\nX-SPAM-Flag: NO\r\n" \
       "Subject: Hello\r\n\r\nX-Spam-Flag: quoted\r\n")
-    email.track_event "scored", action: "reject", score: 16.0, complete: true, symbols: []
+    email.track_event "scored", action: "reject", score: 16.0, complete: true, symbols: [],
+      headers: [ [ "X-Spam-Status", "Yes, score=16.0" ], [ "X-Spam-Action", "reject" ] ]
 
     assert email.relayable_raw.end_with?("X-Spam-Action: reject\r\nFrom: a@test.com\r\nSubject: Hello\r\n\r\nX-Spam-Flag: quoted\r\n")
     assert_equal 1, email.relayable_raw.scan(/^X-Spam-Status:/i).count

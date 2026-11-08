@@ -84,7 +84,8 @@ class Webhooks::TestsControllerTest < ActionDispatch::IntegrationTest
     assert_no_difference -> { Webhook::Delivery.count } do
       post domain_webhook_test_path(webhook.domain, webhook)
     end
-    assert_response :forbidden
+    assert_redirected_to webhook
+    assert_equal "This webhook takes no test while it is off", flash[:alert]
   end
 
   test "an Action Mailbox relay webhook takes no test" do
@@ -98,7 +99,8 @@ class Webhooks::TestsControllerTest < ActionDispatch::IntegrationTest
     assert_no_difference -> { Webhook::Delivery.count } do
       post domain_webhook_test_path(webhook.domain, webhook)
     end
-    assert_response :forbidden
+    assert_redirected_to webhook
+    assert_equal "A relay webhook takes no test", flash[:alert]
   end
 
   test "sending tests is rate limited by the minute" do

@@ -8,7 +8,10 @@ class Webhooks::TestsController < ApplicationController
   def create
     @webhook.test
 
-    redirect_to @webhook, notice: "Test sent. Its result will show in the deliveries below."
+    respond_to do |format|
+      format.html { redirect_to @webhook, notice: "Test sent. Its result will show in the deliveries below." }
+      format.json { render "webhooks/show", status: :created }
+    end
   end
 
   private

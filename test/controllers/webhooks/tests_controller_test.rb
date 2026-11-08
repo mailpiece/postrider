@@ -43,6 +43,29 @@ class Webhooks::TestsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 200, @webhook.deliveries.last.response[:code]
   end
 
+  test "sends a test as JSON" do
+    sign_in_as :leo
+
+    assert_difference -> { @webhook.deliveries.count }, 1 do
+      post domain_webhook_test_path(@webhook.domain, @webhook), as: :json
+    end
+
+    assert_response :created
+    assert_equal @webhook.id, response.parsed_body["id"]
+    assert_equal "webhook_tested", @webhook.deliveries.last.event.action
+  end
+
+  test "an inactive webhook takes no test as JSON" do
+    sign_in_as :leo
+    webhook = webhooks(:inactive)
+
+    assert_no_difference -> { Webhook::Delivery.count } do
+      post domain_webhook_test_path(webhook.domain, webhook), as: :json
+    end
+
+    assert_response :forbidden
+  end
+
   test "the page offers a test on an active webhook" do
     sign_in_as :leo
 

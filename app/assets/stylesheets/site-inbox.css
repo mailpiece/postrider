@@ -1,5 +1,18 @@
 @layer components {
   /* The mail log as an inbox: a row is who, then what they wrote, and at its end when and what became of it. */
+
+  /* One link covers the whole row, laid out as if it were not there; the row lights up under any part of it. */
+  .mailpiece__link {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  @media (any-hover: hover) {
+    .row:has(> .mailpiece__link:hover) {
+      background-color: var(--color-ink-lightest);
+    }
+  }
+
   .mailpiece__title {
     align-items: baseline;
     display: flex;

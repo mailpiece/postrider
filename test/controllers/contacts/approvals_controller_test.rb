@@ -23,6 +23,7 @@ class Contacts::ApprovalsControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_redirected_to contacts_path
+    assert_equal "Friend is screened out. Their mail is held.", flash[:notice]
   end
 
   test "create returns to the page it was switched from" do

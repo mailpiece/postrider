@@ -14,7 +14,7 @@ class Contacts::ApprovalsController < ApplicationController
     @contact.deny
 
     respond_to do |format|
-      format.html { redirect_back_or_to contacts_path, notice: "Now holding mail from #{@contact.email}" }
+      format.html { redirect_back_or_to contacts_path, notice: "#{@contact.title} is screened out. Their mail is held." }
       format.json { head :no_content }
     end
   end

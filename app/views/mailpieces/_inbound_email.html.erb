@@ -1,5 +1,5 @@
 <div class="page flex flex-column gap">
-  <% if inbound_email.contact&.pending? || inbound_email.contact&.denied? %>
+  <% if inbound_email.held? && (inbound_email.contact&.pending? || inbound_email.contact&.denied?) %>
     <%= render "contacts/screening", contact: inbound_email.contact %>
   <% end %>
 

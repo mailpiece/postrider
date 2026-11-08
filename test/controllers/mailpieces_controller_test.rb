@@ -455,6 +455,16 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
       "Forward 1 held email from stranger@sender.example to forwarding@elsewhere.example?", text: "Screen them in"
   end
 
+  test "the HTML show leaves the screening banner off mail that was forwarded before its sender was screened out" do
+    forwarded = create_inbound_email(status: :delivered, forwarded_at: Time.current, contact: contacts(:denied))
+    sign_in_as :leo
+
+    get mailpiece_path(forwarded.mailpiece)
+
+    assert_response :success
+    assert_select ".screener-question", count: 0
+  end
+
   test "the HTML show calls mail accepted, not forwarded, when forwarding was not on" do
     inbound_email = create_inbound_email(status: :delivered, forwarded_at: Time.current)
     inbound_email.track_event "received", rcpt_to: inbound_email.rcpt_to, remote_ip: "203.0.113.7"

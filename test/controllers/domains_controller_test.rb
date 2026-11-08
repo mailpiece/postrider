@@ -1,7 +1,7 @@
 require "test_helper"
 
 class DomainsControllerTest < ActionDispatch::IntegrationTest
-  test "index lists the verified domains and nothing else" do
+  test "index lists every domain the user reaches, those not verified first, then by name" do
     sign_in_as :leo
     missing = Current.account.domains.create!(name: "missing.example", creator: users(:leo), dkim_status: :missing)
 
@@ -10,10 +10,12 @@ class DomainsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select ".breadcrumbs strong", text: "Domains"
     assert_select "a[href=?]", new_domain_path
-    assert_select "li##{dom_id(domains(:example))}"
     assert_select ".filter__empty a[href=?]", search_path
     assert_select ".rows .row[data-quick-find-target=item]"
-    [ missing, domains(:unverified) ].each { |domain| assert_select "li##{dom_id(domain)}", count: 0 }
+    assert_equal [ missing, domains(:unverified), domains(:example), domains(:private) ].map { |domain| dom_id(domain) }, css_select(".rows li.row").pluck("id")
+    assert_select "li##{dom_id(domains(:unverified))} .row__meta", text: /\ANot verified/
+    assert_select "li##{dom_id(domains(:other_account))}", count: 0
+    assert_select "[data-controller=pagination][data-pagination-paginate-on-intersection-value=true]"
   end
 
   test "index keeps the up hotkey off a crumb that leads out of the account" do
@@ -25,28 +27,23 @@ class DomainsControllerTest < ActionDispatch::IntegrationTest
     assert_select "a.breadcrumbs__home[href=?]:not([data-controller])", "/session/menu"
   end
 
-  test "index counts the domains not verified, over the list" do
+  test "index no longer splits the domains by verification" do
     sign_in_as :leo
-    Current.account.domains.create!(name: "missing.example", creator: users(:leo), dkim_status: :missing)
 
     get domains_path
 
-    assert_select ".rows--links a[href=?]", domains_unverified_path, text: "Not verified"
-    assert_select ".rows--links .row__end", text: "2"
-    assert_select ".rows--links + .rows__section .rows__heading", text: "Verified"
-    assert_select "[data-controller=pagination][data-pagination-paginate-on-intersection-value=true]"
+    assert_select "a[href=?]", domains_unverified_path, count: 0
+    assert_select ".rows__heading", count: 0
   end
 
-  test "index says so when no domain is verified" do
+  test "index says so when the user reaches no domain" do
     sign_in_as :leo
-    Current.account.domains.update_all(dkim_status: nil)
+    users(:leo).accesses.delete_all
 
     get domains_path
 
     assert_response :success
-    assert_select ".blank-slate", text: "No verified domains."
-    assert_select ".rows--links a[href=?]", domains_unverified_path
-    assert_select ".rows--links + .blank-slate"
+    assert_select ".blank-slate", text: "Add every domain this relay sends and receives mail for."
   end
 
   test "the navigation's Domains link opens the verified domains" do
@@ -63,7 +60,7 @@ class DomainsControllerTest < ActionDispatch::IntegrationTest
     get domains_path, as: :json
 
     assert_response :success
-    assert_equal [ domains(:example).id, domains(:private).id ], response.parsed_body.pluck("id")
+    assert_equal [ domains(:unverified).id, domains(:example).id, domains(:private).id ], response.parsed_body.pluck("id")
   end
 
   test "index as JSON says whether each domain receives and sends" do
@@ -72,7 +69,7 @@ class DomainsControllerTest < ActionDispatch::IntegrationTest
 
     get domains_path, as: :json
 
-    assert_equal [ true, false ], response.parsed_body.pluck("sending")
+    assert_equal [ true, true, false ], response.parsed_body.pluck("sending")
   end
 
   test "settings lists the domain's settings as rows" do

@@ -18,7 +18,19 @@ class WebhooksControllerTest < ActionDispatch::IntegrationTest
     assert_select "##{dom_id webhooks(:active)} .row__end", count: 0
   end
 
-  test "index says a webhook an admin turned off is inactive and offers to activate it" do
+  test "index says an admin turned a webhook off and offers to activate it" do
+    webhook = webhooks(:active)
+    webhook.deactivate
+
+    get domain_webhooks_path(domains(:example))
+
+    assert_select "##{dom_id webhook}" do
+      assert_select ".row__meta", text: "Turned off webhook Deliveries · https://hooks.example.com/postrider"
+      assert_select ".row__end form[action=?] button", domain_webhook_activation_path(domains(:example), webhook), text: "Activate"
+    end
+  end
+
+  test "index says a webhook off since before its switches were recorded is inactive" do
     get domain_webhooks_path(domains(:example))
 
     assert_select "##{dom_id webhooks(:inactive)}" do
@@ -40,7 +52,7 @@ class WebhooksControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "index says a webhook turned back on and off again by hand is inactive" do
+  test "index says a webhook turned back on and off again by hand was turned off" do
     webhook = webhooks(:active)
     webhook.delinquency_tracker.update!(consecutive_failures_count: 9, first_failure_at: 2.hours.ago)
     webhook.delinquency_tracker.record_delivery_of(failed_delivery(webhook))
@@ -49,7 +61,7 @@ class WebhooksControllerTest < ActionDispatch::IntegrationTest
 
     get domain_webhooks_path(domains(:example))
 
-    assert_select "##{dom_id webhook} .row__meta", text: "Inactive · https://hooks.example.com/postrider"
+    assert_select "##{dom_id webhook} .row__meta", text: "Turned off webhook Deliveries · https://hooks.example.com/postrider"
   end
 
   test "index reads every webhook's deactivation in one query" do

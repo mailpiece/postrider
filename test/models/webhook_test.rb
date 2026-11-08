@@ -110,6 +110,33 @@ class WebhookTest < ActiveSupport::TestCase
     assert_includes Webhook.triggered_by(deliveries(:delivered).track_event("delivered")), webhooks(:active)
   end
 
+  test "switching a webhook off and on by hand records each switch once" do
+    webhook = webhooks(:active)
+
+    assert_difference -> { webhook.events.count }, 1 do
+      webhook.deactivate
+      webhook.deactivate
+    end
+    assert_equal "webhook_turned_off", webhook.events.last.action
+    assert_equal webhook.events.last, webhook.reload.deactivation
+
+    assert_difference -> { webhook.events.count }, 1 do
+      webhook.activate
+      webhook.activate
+    end
+    assert_equal "webhook_turned_on", webhook.events.last.action
+    assert_nil webhook.deactivation
+  end
+
+  test "deactivating with a failure count records the tracker's deactivation" do
+    webhook = webhooks(:active)
+
+    webhook.deactivate consecutive_failures_count: 10, code: 500
+
+    assert_equal "webhook_deactivated", webhook.events.last.action
+    assert_equal 10, webhook.events.last.particulars["consecutive_failures_count"]
+  end
+
   test "trigger creates a delivery" do
     event = deliveries(:delivered).track_event("delivered")
 

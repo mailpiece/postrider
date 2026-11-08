@@ -26,7 +26,7 @@ class Webhook < ApplicationRecord
 
   has_many :deliveries, class_name: "Webhook::Delivery", dependent: :delete_all
   has_one :delinquency_tracker, class_name: "Webhook::DelinquencyTracker", dependent: :delete
-  has_one :last_deactivation, -> { where(action: "webhook_deactivated").ordered }, as: :eventable, class_name: "Event"
+  has_one :last_deactivation, -> { where(action: %w[ webhook_deactivated webhook_turned_off ]).ordered }, as: :eventable, class_name: "Event"
 
   belongs_to :account, default: -> { domain.account }
   belongs_to :domain
@@ -53,16 +53,22 @@ class Webhook < ApplicationRecord
   end
 
   def activate
-    update! active: true unless active?
+    transaction do
+      update! active: true
+      track_event "turned_on" if saved_change_to_active?
+    end
   end
 
-  def deactivate
-    update! active: false
+  # An admin turns it off; the tracker deactivates it, saying how many deliveries failed.
+  def deactivate(**particulars)
+    transaction do
+      update! active: false
+      track_event particulars.any? ? "deactivated" : "turned_off", **particulars if saved_change_to_active?
+    end
   end
 
-  # An admin turning it off leaves no event, but touches the row after any the tracker left.
   def deactivation
-    last_deactivation if !active? && last_deactivation&.created_at&.after?(updated_at)
+    last_deactivation unless active?
   end
 
   def for_action_mailbox_relay?

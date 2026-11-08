@@ -27,6 +27,8 @@ class Event::Description
     when "inbound_email_discarded"        then discarded_sentence
     when "webhook_deactivated"            then "Deactivated webhook after #{event.particulars["consecutive_failures_count"]} failed deliveries"
     when "webhook_tested"                 then "Sent a test to webhook #{eventable_name}"
+    when "webhook_turned_off"             then "Turned off webhook #{eventable_name}"
+    when "webhook_turned_on"              then "Turned on webhook #{eventable_name}"
     when "domain_verified"                then "DNS verified for #{eventable_name}"
     when "domain_verification_lost"       then "DNS verification lost for #{eventable_name}: #{event.particulars["error"]}"
     when "domain_blocked_phrases_changed" then "Blocked phrases changed"

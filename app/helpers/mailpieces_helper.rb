@@ -199,9 +199,9 @@ module MailpiecesHelper
     end
 
     def matched_bounce_sentence(inbound_email)
-      delivery = Delivery::ReturnPath.find_delivery(inbound_email.rcpt_to)
+      mailpiece = inbound_email.matched_delivery&.mailpiece
 
-      if delivery && mailpiece = Current.user.accessible_mailpieces.find_by(postable: delivery)
+      if mailpiece && Current.user.accessible_mailpieces.include?(mailpiece)
         safe_join [ "Matched to ", link_to("the delivery it bounced", mailpiece_path(mailpiece)), "." ]
       else
         "Matched to the delivery it bounced."

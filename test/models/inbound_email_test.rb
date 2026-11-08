@@ -363,6 +363,15 @@ class InboundEmailTest < ActiveSupport::TestCase
     assert_equal "image/jpeg", payload[:attachments].sole[:contentType]
   end
 
+  test "matched_delivery is the delivery whose bounce address the mail came to" do
+    delivery = deliveries(:bounced)
+
+    with_env(RELAY_MAIL_DOMAIN: "relay.example") do
+      assert_equal delivery, create_inbound_email(rcpt_to: Delivery::ReturnPath.new(delivery).address).matched_delivery
+      assert_nil create_inbound_email(rcpt_to: "someone@example.com").matched_delivery
+    end
+  end
+
   test "nothing is a bounce until the account configures a bounce address" do
     assert_not inbound_emails(:received).to_bounce_address?
   end

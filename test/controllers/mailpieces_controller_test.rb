@@ -425,7 +425,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     get mailpiece_path(inbound_email.mailpiece)
 
     assert_response :success
-    assert_select ".trail__sentence", text: "Held because this sender was not approved."
+    assert_select ".trail__sentence", text: "Held because its sender was not approved."
   end
 
   test "the HTML show calls mail accepted, not forwarded, when forwarding was not on" do

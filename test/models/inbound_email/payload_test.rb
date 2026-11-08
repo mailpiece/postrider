@@ -33,6 +33,28 @@ class InboundEmail::PayloadTest < ActiveSupport::TestCase
     assert_includes payload[:text], "the text body"
   end
 
+  test "leads the headers with the spam verdict, as the copies handed on carry it" do
+    email = build_email
+    email.track_event "scored", action: "add_header", score: 6.5, complete: true,
+      symbols: [ [ "HOSTNAME_UNKNOWN", 2.5, nil ], [ "REVERSE_DNS_NONE", 2.0, nil ] ]
+
+    payload = email.webhook_payload("inbound_email_forwarded")
+
+    assert_equal [ "X-Spam-Flag: YES", "X-Spam-Score: 6.5", "X-Spam-Level: ******",
+      "X-Spam-Status: Yes, score=6.5 tests=HOSTNAME_UNKNOWN,REVERSE_DNS_NONE", "X-Spam-Action: tag" ], payload[:headers].first(5)
+    assert payload[:headers].any? { |line| line.start_with?("Subject: ") }
+  end
+
+  test "the sender's own X-Spam- headers are left out, scored or not" do
+    email = InboundEmail.new(mail_from: "a@test.com", rcpt_to: "b@test.com",
+      raw: "From: a@test.com\r\nX-Spam-Flag: NO\r\nx-spam-score: -5.0\r\nSubject: Hi\r\n\r\nbody")
+
+    payload = email.webhook_payload("inbound_email_received")
+
+    assert payload[:headers].none? { |line| line.match?(/\AX-Spam-/i) }
+    assert payload[:headers].any? { |line| line.start_with?("Subject: ") }
+  end
+
   test "recipients are split into an array, keeping a comma inside a display name intact" do
     email = InboundEmail.new(mail_from: "a@test.com", rcpt_to: "alice@x.com",
       raw: %(To: "Smith, Alice" <alice@x.com>, bob@y.com\r\nSubject: hi\r\n\r\nbody))

@@ -13,9 +13,13 @@ class InboundEmail::Headers
     end
   end
 
+  def lines
+    fields.compact_blank.map { |name, value| "#{name}: #{sanitize(value)}" }
+  end
+
   private
     def header_block
-      fields.compact_blank.map { |name, value| "#{name}: #{sanitize(value)}\r\n" }.join
+      lines.map { |line| "#{line}\r\n" }.join
     end
 
     # Every copy we hand on says what the spam check concluded, and the receiving app decides.

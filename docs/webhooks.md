@@ -28,7 +28,7 @@ For what each `Delivery` and `InboundEmail` status means end-to-end, see [Status
 
 Each delivery — one message to one recipient — ends in exactly one of `delivery_delivered`, `delivery_failed`, or `delivery_bounced`, after any number of `delivery_deferred`s along the way. The two failures differ by where things went wrong: `delivery_failed` means the message never reached the remote MX, while `delivery_bounced` means the MX received it, turned it down, and told us why. A hard bounce sends `delivery_bounced` and nothing else.
 
-`inbound_email_forwarded` is a second event about the same piece of mail rather than an alternative to the first: mail addressed to a forwarding mailbox fires `inbound_email_received` when it arrives, then this one once it has been re-sent to the mailbox's destination address, ARC-sealed with the relay's own key. Its payload is the same inbound payload, `authentication` object and all, so the two bodies differ only in the envelope's `event`; the destination it went to isn't in the payload, but rides on the event itself, which `GET /mailpieces/:id` returns among the mailpiece's `events`. Mail we won't pass on — a sender not yet approved as a contact or explicitly denied, a `From` that no aligned DKIM, SPF, or DMARC pass vouches for, or a forwarding loop — is held instead and fires no forwarding event.
+`inbound_email_forwarded` is a second event about the same piece of mail rather than an alternative to the first: mail addressed to a forwarding mailbox fires `inbound_email_received` when it arrives, then this one once it has been re-sent to the mailbox's destination address, ARC-sealed with the relay's own key and carrying the [spam headers](#spam-verdict) at the top. Its payload is the same inbound payload, `authentication` object and all, so the two bodies differ only in the envelope's `event`; the destination it went to isn't in the payload, but rides on the event itself, which `GET /mailpieces/:id` returns among the mailpiece's `events`. Mail we won't pass on — a sender not yet approved as a contact or explicitly denied, a `From` that no aligned DKIM, SPF, or DMARC pass vouches for, or a forwarding loop — is held instead and fires no forwarding event.
 
 PostRider records other events too. An inbound email held, failed, discarded, or incinerated; an outbound message incinerated; a webhook deactivated; a domain's DNS verified or lost. Those are for the events feed in the admin UI only, and cannot be subscribed to.
 
@@ -37,7 +37,7 @@ Every webhook subscribed to an event gets the same body for it, with two excepti
 Payload shape:
 
 ```json
-{ "event": "inbound_email_received", "payload": { "id": "…", "rcpt_to": "support@yourdomain.com", "from": "…", "to": "…", "subject": "…", "headers": ["…"], "authentication": { "spf": "pass", "dkim": "pass", "dmarc": "pass", "dmarc_policy": "quarantine", "arc": "none", "iprev": "pass", "remote_host": "mail.theirdomain.com", "authentication_results": "mx.example.com; iprev=pass (mail.theirdomain.com) policy.iprev=203.0.113.7; spf=pass smtp.mailfrom=sender@theirdomain.com; dkim=pass header.d=theirdomain.com; dmarc=pass header.from=theirdomain.com", "from_aligned": true }, "html": "…", "text": "…", "attachments": [{ "type": "attachment", "filename": "…", "contentType": "image/jpeg", "size": 1234, "checksum": "…", "contentId": "<ii_abc>", "cid": "ii_abc", "related": true, "url": "https://…/rails/active_storage/blobs/redirect/…/photo.jpg?disposition=attachment" }] } }
+{ "event": "inbound_email_received", "payload": { "id": "…", "rcpt_to": "support@yourdomain.com", "from": "…", "to": "…", "subject": "…", "headers": ["X-Spam-Flag: NO", "X-Spam-Score: 0.8", "X-Spam-Status: No, score=0.8 tests=DMARC_POLICY_ALLOW,SPF_PASS", "X-Spam-Action: accept", "…"], "authentication": { "spf": "pass", "dkim": "pass", "dmarc": "pass", "dmarc_policy": "quarantine", "arc": "none", "iprev": "pass", "remote_host": "mail.theirdomain.com", "authentication_results": "mx.example.com; iprev=pass (mail.theirdomain.com) policy.iprev=203.0.113.7; spf=pass smtp.mailfrom=sender@theirdomain.com; dkim=pass header.d=theirdomain.com; dmarc=pass header.from=theirdomain.com", "from_aligned": true }, "html": "…", "text": "…", "attachments": [{ "type": "attachment", "filename": "…", "contentType": "image/jpeg", "size": 1234, "checksum": "…", "contentId": "<ii_abc>", "cid": "ii_abc", "related": true, "url": "https://…/rails/active_storage/blobs/redirect/…/photo.jpg?disposition=attachment" }] } }
 ```
 
 The payload gives you the parsed message — headers, bodies, and attachment metadata (filename, type, size, checksum, cid, …) — but not the raw RFC822 bytes. Shipping those would mean parsing, JSON-encoding, and signing a large message all over again for every webhook you've subscribed.
@@ -57,6 +57,20 @@ The `authentication` object carries the SPF, DKIM, DMARC, and ARC verdicts and i
 `from_aligned` is the short answer to "does the `From` address actually belong to whoever authenticated" — true when an aligned DKIM signature or SPF pass vouches for the `From` domain, even where that domain publishes no DMARC record. It is always present once anything was recorded, so `false` means not aligned rather than not checked.
 
 `authentication_results` is the full RFC 8601 string, identical to the `Authentication-Results` header an Action Mailbox relay receives (below) and to the `authentication_results` field on `GET /mailpieces/:id`. It is the same verdict as the fields beside it, but it keeps the identifiers those drop — `header.d=`, `smtp.mailfrom=`, `header.from=`. Reach for it when a bare `pass` isn't enough: `dkim=pass` on a `header.d=` you don't recognise vouches for that signer, not for the `From` domain.
+
+### Spam verdict
+
+When the server scores inbound mail, it says what it concluded and leaves the decision to you: nothing is held or refused on the score. The verdict leads the payload's `headers`, in these lines:
+
+| Header | Value |
+| ------ | ----- |
+| `X-Spam-Flag` | `YES` when the score is high enough that the mail would be marked or refused, otherwise `NO` |
+| `X-Spam-Score` | The score to one decimal; the higher, the likelier spam |
+| `X-Spam-Level` | One `*` for each whole point of the score, up to 50, so a filter can match `*****` for five or more; left out when the score is below one |
+| `X-Spam-Status` | `Yes` or `No` as in `X-Spam-Flag`, then the score and the names of the tests the message matched, comma-separated, or `none`: `Yes, score=7.3 tests=DMARC_FAIL,REVERSE_DNS_NONE` |
+| `X-Spam-Action` | What the score calls for: `accept`, `tag` (mark it, or defer it) or `reject` |
+
+The same lines are prepended to the message an Action Mailbox relay receives and to a forwarded copy. Any `X-Spam-` header the sender wrote is removed from all three, so every one you see is ours. Mail the server did not score before handing it on carries none of them, so treat absent as unknown, not as `NO`.
 
 ## Delivery log
 
@@ -103,6 +117,7 @@ A relay receives the bytes and nothing else, so what we know beside the message 
 | `Delivered-To` | The envelope recipient — which of the domain's mailboxes this arrived at |
 | `Authentication-Results` | What we concluded about SPF, DKIM, DMARC and ARC, stamped under our authserv-id |
 | `X-PostRider-Mailpiece-Id` | The mailpiece id, for `GET /mailpieces/:id` |
+| `X-Spam-Flag`, `X-Spam-Score`, `X-Spam-Level`, `X-Spam-Status`, `X-Spam-Action` | The [spam verdict](#spam-verdict), when the server scored the mail |
 
 `Authentication-Results` is the same verdict the JSON payload reports in its `authentication` object, and the same string an ARC seal commits to when the message is forwarded. You can trust it as the only one in the message: whatever the sender claimed in an `Authentication-Results` header of its own is stripped at the MX before we authenticate, so there is never a second instance to tell apart from ours. **Treat an absent header as unauthenticated, never as a pass** — we omit it rather than guess when authentication couldn't be run.
 

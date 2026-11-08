@@ -1,4 +1,3 @@
-# Shadow mode: the verdict is recorded and nothing acts on it.
 module InboundEmail::Scorable
   extend ActiveSupport::Concern
 

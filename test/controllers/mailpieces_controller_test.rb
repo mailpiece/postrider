@@ -152,15 +152,42 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_select "[data-controller=pagination][data-pagination-paginate-on-intersection-value=true]"
   end
 
-  test "index says so when no mail was recorded" do
+  test "index with a domain but no mail says to publish its DNS records, an unverified domain first" do
     sign_in_as :nonstaff
     Mailpiece.delete_all
 
     get mailpieces_path
 
     assert_response :success
-    assert_select ".blank-slate", text: "No mail recorded yet."
+    assert_select ".blank-slate", text: "No mail yet. Publish the DNS records of example.com and send something."
+    assert_select ".blank-slate a[href=?]", domain_path(domains(:example)), text: "example.com"
+    assert_select ".blank-slate a[href=?]", new_domain_path, count: 0
+
+    domains(:unverified).accesses.grant_to [ users(:nonstaff) ]
+    get mailpieces_path
+
+    assert_select ".blank-slate a[href=?]", domain_path(domains(:unverified)), text: "unverified.example"
     assert_equal [ "0" ] * 7, css_select(".status-filter__count").map(&:text)
+  end
+
+  test "index with no domain tells an admin what to do and offers to add one" do
+    sign_in_as :leo
+    users(:leo).accesses.delete_all
+
+    get mailpieces_path
+
+    assert_select ".blank-slate", text: /No mail yet\. Add a domain, publish its DNS records, then create a sending token or set up a mailbox\./
+    assert_select ".blank-slate a[href=?]", new_domain_path, text: "Add a domain"
+  end
+
+  test "index with no domain gives a member the sentence without the button" do
+    sign_in_as :nonstaff
+    users(:nonstaff).accesses.delete_all
+
+    get mailpieces_path
+
+    assert_select ".blank-slate", text: /No mail yet\. Add a domain/
+    assert_select ".blank-slate a[href=?]", new_domain_path, count: 0
   end
 
   test "index lists mail that was never delivered" do
@@ -170,7 +197,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     get mailpieces_path
 
     assert_response :success
-    assert_select ".blank-slate", text: "No mail recorded yet.", count: 0
+    assert_select ".blank-slate", text: /No mail yet/, count: 0
     assert_select "li##{dom_id mailpieces(:queued)}"
     assert_select ".status-filter__list a[href=?]", mailpieces_queued_path
   end

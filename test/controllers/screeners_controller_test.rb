@@ -77,6 +77,8 @@ class ScreenersControllerTest < ActionDispatch::IntegrationTest
     assert_select "h2", text: "Flagged by the spam check"
     assert_select "div:has(> h2) + ul.rows li.row##{dom_id(contacts(:pending))}"
     assert_select "li.row##{dom_id(contacts(:pending))} .status--warning", text: "flagged 12.0"
+    assert_select "form[action=?]", screener_flagged_denial_path
+    assert_select "form[action=?]", screener_denial_path, count: 0
   end
 
   test "show lists everyone waiting on one page" do

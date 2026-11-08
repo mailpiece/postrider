@@ -14,8 +14,10 @@
   <% if @contacts.any? %>
     <div class="flex align-center gap">
       <p class="txt-subtle margin-none flex-item-grow"><%= pluralize @contacts.size, "new sender" %>. Their mail is held until you say yes.</p>
-      <%= button_to "Screen out all…", screener_denial_path, class: "btn btn--plain txt-small txt-subtle font-weight-normal", form_class: "button_to flex-item-no-shrink",
-            form: { data: { turbo_confirm: "Move all #{pluralize @contacts.size, "waiting sender"} to Screened out? Their mail stays held, and you can still screen any of them in from their page." } } %>
+      <% if @waiting.any? %>
+        <%= button_to "Screen out all…", screener_denial_path, class: "btn btn--plain txt-small txt-subtle font-weight-normal", form_class: "button_to flex-item-no-shrink",
+              form: { data: { turbo_confirm: "Move all #{pluralize @contacts.size, "waiting sender"} to Screened out? Their mail stays held, and you can still screen any of them in from their page." } } %>
+      <% end %>
     </div>
 
     <div class="flex flex-column gap" data-controller="navigable-list" data-action="keydown->navigable-list#navigate turbo:before-visit@document->navigable-list#rememberSelection turbo:frame-load->navigable-list#forgetSelection"

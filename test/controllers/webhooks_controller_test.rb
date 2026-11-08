@@ -272,6 +272,30 @@ class WebhooksControllerTest < ActionDispatch::IntegrationTest
     assert_select ".trail__sentence", text: /Inbound mail received · Failed · HTTP 500/
   end
 
+  test "show pages through every delivery" do
+    webhook = webhooks(:active)
+    event = Event.create!(domain: domains(:example), action: "inbound_email_received", eventable: inbound_emails(:received))
+    25.times { webhook.deliveries.create!(event: event, state: :completed, response: { code: 200 }) }
+
+    get domain_webhook_path(domains(:example), webhook)
+
+    assert_select "[data-controller=pagination] .trail__entry", count: 15
+    assert_select "a#deliveries-pagination-link-2"
+
+    get domain_webhook_path(domains(:example), webhook, page: 2)
+
+    assert_select "#deliveries-pagination-contents-2 .trail__entry", count: 10
+    assert_select "a#deliveries-pagination-link-3", count: 0
+  end
+
+  test "show json carries no pagination" do
+    get domain_webhook_path(domains(:example), webhooks(:active)), as: :json
+
+    assert_response :success
+    assert_equal webhooks(:active).id, response.parsed_body["id"]
+    assert_nil response.headers["X-Total-Count"]
+  end
+
   test "index json" do
     get domain_webhooks_path(domains(:example)), as: :json
 

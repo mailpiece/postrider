@@ -1,7 +1,8 @@
 class Webhooks::TestsController < ApplicationController
-  include WebhookScoped
+  include DomainScoped
 
   before_action :ensure_admin
+  before_action :set_webhook
   before_action :ensure_webhook_is_testable
   # Each test makes an event, a delivery and a request to the endpoint.
   rate_limit to: 10, within: 1.minute, only: :create
@@ -16,12 +17,24 @@ class Webhooks::TestsController < ApplicationController
   end
 
   private
+    def set_webhook
+      @webhook = @domain.webhooks.find(params[:webhook_id])
+    end
+
     def ensure_webhook_is_testable
       unless @webhook.testable?
         respond_to do |format|
-          format.html { redirect_to @webhook, alert: helpers.untestable_webhook_reason(@webhook) }
+          format.html { redirect_to @webhook, alert: untestable_reason }
           format.json { head :forbidden }
         end
+      end
+    end
+
+    def untestable_reason
+      if @webhook.for_action_mailbox_relay?
+        "A relay webhook takes no test"
+      else
+        "This webhook takes no test while it is off"
       end
     end
 end

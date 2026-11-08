@@ -1,20 +1,4 @@
 module MailboxesHelper
-  def mailbox_saved_notice(mailbox, saved)
-    if mailbox.should_send_forward_confirmation?
-      "#{saved}. Confirmation sent to #{mailbox.forward_to}"
-    else
-      saved
-    end
-  end
-
-  def mailbox_unconfirmable_alert(mailbox)
-    if mailbox.domain.verified? && !mailbox.domain.sending?
-      "A confirmation can't be sent: turn sending on for this domain"
-    else
-      "A confirmation can't be sent: check the forwarding address, and verify this domain's DKIM"
-    end
-  end
-
   def mailbox_status_tag(mailbox)
     if mailbox.forwarding?
       tag.span "Forwarding on", class: "status status--success status--badge"

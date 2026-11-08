@@ -13,7 +13,7 @@ class DomainsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".filter__empty a[href=?]", search_path
     assert_select ".rows .row[data-quick-find-target=item]"
     assert_equal [ missing, domains(:unverified), domains(:example), domains(:private) ].map { |domain| dom_id(domain) }, css_select(".rows li.row").pluck("id")
-    assert_select "li##{dom_id(domains(:unverified))} .row__meta", text: /\ANot verified/
+    assert_select "li##{dom_id(domains(:unverified))} .row__end .status", text: "Not checked"
     assert_select "li##{dom_id(domains(:other_account))}", count: 0
     assert_select "[data-controller=pagination][data-pagination-paginate-on-intersection-value=true]"
   end
@@ -224,15 +224,48 @@ class DomainsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".project__description", text: "Its DNS records have not been checked yet."
   end
 
-  test "the unverified list renders DNS statuses as human-readable labels" do
+  test "a domain's row ends with when its DNS was checked and a word for where it stands" do
+    sign_in_as :leo
+    verified = domains(:example)
+    verified.update!(mx_status: :ok, dns_checked_at: 1.hour.ago)
+    troubled = domains(:private)
+    troubled.update!(mx_status: :ok, dmarc_status: :invalid, return_path_status: :missing, dns_checked_at: Time.current)
+    unverified = domains(:unverified)
+    unverified.update!(mx_status: :ok, dkim_status: :missing, dns_checked_at: Time.current)
+    unchecked = Current.account.domains.create!(name: "new.example", creator: users(:leo))
+
+    get domains_path
+
+    assert_select "li##{dom_id verified}" do
+      assert_select ".icon--globe"
+      assert_select ".row__title", text: "example.com"
+      assert_select ".row__meta", text: ""
+      assert_select ".row__end time[data-reader-time-target=timeordate][datetime=?]", verified.dns_checked_at.to_i.to_s
+      assert_select ".row__end .status.status--muted", text: "Verified"
+    end
+    assert_select "li##{dom_id troubled}" do
+      assert_select ".row__meta", text: "DMARC record is not valid · Return-Path record is missing"
+      assert_select ".row__end .status.status--warning", text: "DNS problems"
+    end
+    assert_select "li##{dom_id unverified}" do
+      assert_select ".row__meta", text: "DKIM record is missing"
+      assert_select ".row__end .status.status--warning", text: "Not verified"
+    end
+    assert_select "li##{dom_id unchecked}" do
+      assert_select ".row__end time", count: 0
+      assert_select ".row__end .status.status--muted", text: "Not checked"
+    end
+  end
+
+  test "the unverified list names each record that needs work" do
     sign_in_as :leo
     domain = domains(:unverified)
     domain.update!(mx_status: :ok, dkim_status: :missing, dmarc_status: :invalid, dns_checked_at: Time.current)
 
     get domains_unverified_path
     assert_response :success
-    assert_select ".row__meta", text: /Not verified · DNS problems · DKIM record is missing · DMARC record is not valid · checked/
-    assert_select ".row__meta .status", text: "DNS problems"
+    assert_select "li##{dom_id domain} .row__meta", text: "DKIM record is missing · DMARC record is not valid"
+    assert_select "li##{dom_id domain} .row__end .status.status--warning", text: "Not verified"
   end
 
   test "json renders DNS statuses as lowercase enum keys" do

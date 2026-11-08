@@ -1,12 +1,5 @@
 @layer components {
-  /* The domain list as the mail log: a globe where a contact's avatar stands, so the lists line up,
-     and at the row's end when its DNS was checked and where it stands. */
-  .icon.domain__icon {
-    --icon-size: 1.5rem;
-
-    inline-size: 2.25rem;
-  }
-
+  /* The row's end stacks when its DNS was checked over where it stands. */
   .domain__end {
     align-items: flex-end;
     flex-direction: column;

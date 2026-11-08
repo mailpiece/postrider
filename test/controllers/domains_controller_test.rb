@@ -240,7 +240,6 @@ class DomainsControllerTest < ActionDispatch::IntegrationTest
     get domains_path
 
     assert_select "li##{dom_id verified}" do
-      assert_select ".icon--globe"
       assert_select ".row__title", text: "example.com"
       assert_select ".row__meta", text: ""
       assert_select ".row__end time[data-reader-time-target=timeordate][datetime=?]", verified.dns_checked_at.to_i.to_s

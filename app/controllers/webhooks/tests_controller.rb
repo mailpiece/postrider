@@ -19,17 +19,9 @@ class Webhooks::TestsController < ApplicationController
     def ensure_webhook_is_testable
       unless @webhook.testable?
         respond_to do |format|
-          format.html { redirect_to @webhook, alert: untestable_reason }
+          format.html { redirect_to @webhook, alert: helpers.untestable_webhook_reason(@webhook) }
           format.json { head :forbidden }
         end
-      end
-    end
-
-    def untestable_reason
-      if @webhook.for_action_mailbox_relay?
-        "A relay webhook takes no test"
-      else
-        "This webhook takes no test while it is off"
       end
     end
 end

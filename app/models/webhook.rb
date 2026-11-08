@@ -55,7 +55,10 @@ class Webhook < ApplicationRecord
   def activate
     transaction do
       update! active: true
-      track_event "turned_on" if saved_change_to_active?
+      if saved_change_to_active?
+        delinquency_tracker.reset
+        track_event "turned_on"
+      end
     end
   end
 

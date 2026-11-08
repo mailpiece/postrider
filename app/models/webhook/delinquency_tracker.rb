@@ -17,11 +17,11 @@ class Webhook::DelinquencyTracker < ApplicationRecord
     end
   end
 
-  private
-    def reset
-      update_columns consecutive_failures_count: 0, first_failure_at: nil
-    end
+  def reset
+    update_columns consecutive_failures_count: 0, first_failure_at: nil
+  end
 
+  private
     def mark_first_failure_time
       update_columns first_failure_at: Time.current
     end

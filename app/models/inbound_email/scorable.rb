@@ -13,7 +13,9 @@ module InboundEmail::Scorable
   end
 
   def score_later
-    InboundEmail::ScoreJob.perform_later(self)
+    if Relay.mailscore?
+      InboundEmail::ScoreJob.perform_later(self)
+    end
   end
 
   def score_now

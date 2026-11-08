@@ -47,6 +47,43 @@ class InboundEmail::ScorableTest < ActiveSupport::TestCase
     assert email.delivered?
   end
 
+  test "discarded mail, never forwarded, is queued for scoring" do
+    stub_env MAILSCORE_URL: "http://mailscore.test:8080"
+    email = create_inbound_email(rcpt_to: "randomjunk@example.com")
+
+    assert_enqueued_with job: InboundEmail::ScoreJob, args: [ email ] do
+      email.discard
+    end
+  end
+
+  test "a bounce correlated to its delivery is queued for scoring once" do
+    stub_env MAILSCORE_URL: "http://mailscore.test:8080"
+    email = create_inbound_email(mail_from: "")
+    Delivery::ReturnPath.stubs(:find_delivery).returns(stub(record_async_bounce: true))
+
+    assert_enqueued_jobs 1, only: InboundEmail::ScoreJob do
+      email.correlate_bounce
+    end
+  end
+
+  test "a bounce that correlates to nothing is queued for scoring once, as a discard" do
+    stub_env MAILSCORE_URL: "http://mailscore.test:8080"
+    email = create_inbound_email(mail_from: "")
+    Delivery::ReturnPath.stubs(:find_delivery).returns(nil)
+
+    assert_enqueued_jobs 1, only: InboundEmail::ScoreJob do
+      email.correlate_bounce
+    end
+  end
+
+  test "nothing is queued for mail never forwarded without MAILSCORE_URL" do
+    stub_env MAILSCORE_URL: nil
+
+    assert_no_enqueued_jobs only: InboundEmail::ScoreJob do
+      create_inbound_email(rcpt_to: "randomjunk@example.com").discard
+    end
+  end
+
   test "nothing is scored, queued or recorded without MAILSCORE_URL" do
     stub_env MAILSCORE_URL: nil
     MailScore::Client.any_instance.expects(:check).never

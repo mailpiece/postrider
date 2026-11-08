@@ -42,6 +42,8 @@ module InboundEmail::Scorable
 
         track_event "scored", action: result.action.to_s, score: result.score, complete: result.complete?,
           symbols: result.symbols.map { |symbol| scored_symbol(symbol) }, headers: result.headers
+        # Touch so the Screener's etag moves when the verdict lands late.
+        touch
       end
     end
 

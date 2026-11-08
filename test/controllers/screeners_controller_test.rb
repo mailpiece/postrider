@@ -96,6 +96,24 @@ class ScreenersControllerTest < ActionDispatch::IntegrationTest
     assert_select "form[action=?]", screener_flagged_denial_path, count: 0
   end
 
+  test "show is fresh again once a late spam check lands" do
+    inbound_emails(:held).update!(raw: SIMPLE_RAW)
+
+    get screener_path
+    etag = response.headers["ETag"]
+
+    get screener_path, headers: { "If-None-Match" => etag }
+    assert_response :not_modified
+
+    MailScore::Client.any_instance.stubs(:check).returns(MailScore::Client::Result.new(action: :reject, score: 7.4,
+      complete: true, symbols: [], smtp_reply: nil, subject: nil, headers: []))
+    inbound_emails(:held).score_now
+
+    get screener_path, headers: { "If-None-Match" => etag }
+    assert_response :success
+    assert_select "li.row##{dom_id(contacts(:pending))} .status--warning", text: "flagged 7.4"
+  end
+
   test "show escapes a hostile name" do
     contacts(:pending).update!(name: "<script>alert(1)</script>")
 

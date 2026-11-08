@@ -214,7 +214,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
 
     get mailpiece_path(delivery.mailpiece)
 
-    assert_includes response.body, "Withheld mail to recipient@example.com because it contains the blocked phrase &quot;free money&quot;"
+    assert_includes response.body, "Blocked mail to recipient@example.com because it contains the blocked phrase &quot;free money&quot;"
 
     get mailpiece_path(delivery.mailpiece), as: :json
 
@@ -229,7 +229,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
 
     get mailpiece_path(delivery.mailpiece)
 
-    assert_includes response.body, "Withheld mail to recipient@example.com"
+    assert_includes response.body, "Blocked mail to recipient@example.com"
     assert_not_includes response.body, "s3cret phrase"
     assert_not_includes response.body, "blocked phrase"
 

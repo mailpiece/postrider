@@ -1,5 +1,5 @@
 class SendingToken < ApplicationRecord
-  include Refusable, Tracked
+  include Eventable, Refusable, Tracked
 
   SMTP_USERNAME = "postrider"
 

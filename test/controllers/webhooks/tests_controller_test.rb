@@ -61,7 +61,7 @@ class Webhooks::TestsControllerTest < ActionDispatch::IntegrationTest
     assert_no_difference -> { Webhook::Delivery.count } do
       post domain_webhook_test_path(webhook.domain, webhook)
     end
-    assert_response :unprocessable_entity
+    assert_response :forbidden
   end
 
   test "an Action Mailbox relay webhook takes no test" do
@@ -75,7 +75,7 @@ class Webhooks::TestsControllerTest < ActionDispatch::IntegrationTest
     assert_no_difference -> { Webhook::Delivery.count } do
       post domain_webhook_test_path(webhook.domain, webhook)
     end
-    assert_response :unprocessable_entity
+    assert_response :forbidden
   end
 
   test "a non-admin cannot send a test" do

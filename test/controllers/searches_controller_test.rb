@@ -60,6 +60,8 @@ class SearchesControllerTest < ActionDispatch::IntegrationTest
 
     assert_select ".rows__heading", text: "Domains"
     assert_select "li##{dom_id(domains(:example))}"
+    assert_select "li##{dom_id(domains(:example))} .row__title", text: "example.com"
+    assert_select "li##{dom_id(domains(:example))} .row__end .status", text: "Not checked"
   end
 
   test "show omits what is on a domain you cannot reach" do

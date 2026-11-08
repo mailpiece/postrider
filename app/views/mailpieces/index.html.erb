@@ -21,7 +21,7 @@
         </ul>
       </div>
     <% else %>
-      <%= render "mailpieces/blank_slate" %>
+      <%= render "mailpieces/blank_slate", domain: @domain %>
     <% end %>
   <% end %>
 </div>

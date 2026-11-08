@@ -11,8 +11,9 @@ module MailpiecesHelper
 
   RECEIVED_ACTIONS = %w[ inbound_email_received inbound_email_bounce_received ].freeze
 
-  # Statuses said in other words than their name. Withheld reads Blocked, after the setting that withholds.
-  STATUS_LABELS = { "withheld" => "Blocked", "exhausted" => "Retries ran out" }.freeze
+  # Statuses said in other words than their name. Withheld reads Blocked, after the setting that
+  # withholds, and inbound mail in flight reads Queued, where the status filter files it.
+  STATUS_LABELS = { "withheld" => "Blocked", "exhausted" => "Retries ran out", "pending" => "Queued", "processing" => "Queued" }.freeze
 
   # A good outcome stays quiet in a list; anything else takes its colour.
   QUIET_STATUSES = %w[ delivered forwarded accepted ].freeze

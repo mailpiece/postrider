@@ -111,6 +111,17 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_select "##{dom_id mailpieces(:held)} .row__end time[data-reader-time-target=timeordate]"
   end
 
+  test "inbound mail still in flight reads queued in the list, as the status filter files it" do
+    pending = create_inbound_email
+    processing = create_inbound_email(status: :processing)
+    sign_in_as :nonstaff
+
+    get mailpieces_path
+
+    assert_select "##{dom_id pending.mailpiece} .status", text: "Queued"
+    assert_select "##{dom_id processing.mailpiece} .status", text: "Queued"
+  end
+
   test "withheld reads blocked and exhausted reads retries ran out, in the list, on the envelope and on the status page" do
     withheld = create_delivery(status: :withheld)
     exhausted = create_delivery(status: :exhausted)

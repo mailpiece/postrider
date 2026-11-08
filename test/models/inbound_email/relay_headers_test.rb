@@ -29,6 +29,33 @@ class InboundEmail::RelayHeadersTest < ActiveSupport::TestCase
     assert_includes header_section(email.relayable_raw), "Authentication-Results: mx.example;  none"
   end
 
+  test "says what the spam check concluded, with no level below a point and no tests when none matched" do
+    email = create_email
+    email.track_event "scored", action: "no_action", score: -0.5, complete: true, symbols: []
+
+    assert_includes header_section(email.relayable_raw), "X-Spam-Flag: NO\r\nX-Spam-Score: -0.5\r\n" \
+      "X-Spam-Status: No, score=-0.5 tests=none\r\nX-Spam-Action: accept\r\n"
+  end
+
+  test "a reject is told as one, with its stars capped at fifty" do
+    email = create_email
+    email.track_event "scored", action: "reject", score: 72.04, complete: true, symbols: [ [ "BAYES_SPAM", 5.0, nil ] ]
+
+    headers = header_section(email.relayable_raw)
+
+    assert_includes headers, "X-Spam-Score: 72.0\r\nX-Spam-Level: #{"*" * 50}\r\n"
+    assert_includes headers, "X-Spam-Status: Yes, score=72.0 tests=BAYES_SPAM\r\nX-Spam-Action: reject\r\n"
+  end
+
+  test "every X-Spam- field the sender wrote is taken out, folded lines and all, leaving its body alone" do
+    email = create_inbound_email(raw: "x-spam-status: No,\r\n\tscore=-5.0\r\nFrom: a@test.com\r\nX-SPAM-Flag: NO\r\n" \
+      "Subject: Hello\r\n\r\nX-Spam-Flag: quoted\r\n")
+    email.track_event "scored", action: "reject", score: 16.0, complete: true, symbols: []
+
+    assert email.relayable_raw.end_with?("X-Spam-Action: reject\r\nFrom: a@test.com\r\nSubject: Hello\r\n\r\nX-Spam-Flag: quoted\r\n")
+    assert_equal 1, email.relayable_raw.scan(/^X-Spam-Status:/i).count
+  end
+
   test "leaves the original message untouched below its own headers" do
     email = create_email
 

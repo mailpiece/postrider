@@ -64,6 +64,13 @@ class InboundEmail::SpamCheckTest < ActiveSupport::TestCase
     assert_not spam_check("no_action", 1.0).flagged?
   end
 
+  test "names its symbols in the order mailscore gave them" do
+    check = spam_check "add_header", 6.5, [ "REVERSE_DNS_NONE", 2.0, nil ], [ "SPF_PASS", -0.2, "SPF passed", "example.com" ]
+
+    assert_equal %w[ REVERSE_DNS_NONE SPF_PASS ], check.symbol_names
+    assert_empty spam_check("no_action", 0.0).symbol_names
+  end
+
   private
     def spam_check(action, score, *symbols)
       InboundEmail::SpamCheck.new("action" => action, "score" => score, "complete" => true, "symbols" => symbols)

@@ -13,6 +13,6 @@ class InboundEmail::ForwardingHeaders < InboundEmail::Headers
         InboundEmail::Forwarding::TRACE_HEADER => @inbound_email.domain.name,
         "#{InboundEmail::Forwarding::TRACE_HEADER}-To" => @destination,
         "#{InboundEmail::Forwarding::TRACE_HEADER}-For" => "#{@inbound_email.rcpt_to} #{@destination}"
-      }
+      }.merge(super)
     end
 end

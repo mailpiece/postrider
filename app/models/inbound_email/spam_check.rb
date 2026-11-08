@@ -24,6 +24,10 @@ class InboundEmail::SpamCheck
     action != "no_action"
   end
 
+  def symbol_names
+    @symbols.pluck(:name)
+  end
+
   # Shadow mode: nothing acts on the verdict, so it says what would have happened.
   def outcome
     if flagged?

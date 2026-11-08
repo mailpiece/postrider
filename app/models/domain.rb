@@ -36,8 +36,8 @@ class Domain < ApplicationRecord
   scope :verified, -> { where(dkim_status: :ok) }
   # Never-checked (nil) domains are unverified too.
   scope :unverified, -> { where.not(dkim_status: :ok).or(where(dkim_status: nil)) }
-  # The domains still needing attention lead, never checked among them, then the verified ones, each set by name.
-  scope :unverified_first, -> { order(arel_table[:dkim_status].is_distinct_from("ok").desc, :name) }
+  # IS, not =, so a never-checked NULL sorts as not verified too.
+  scope :unverified_first, -> { ordered.prepend_order("domains.dkim_status IS 'ok'") }
 
   # The domain row is gone by now, so this takes its id.
   def self.purge_mail_now(domain_id)

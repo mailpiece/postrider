@@ -26,6 +26,7 @@ class Webhook < ApplicationRecord
 
   has_many :deliveries, class_name: "Webhook::Delivery", dependent: :delete_all
   has_one :delinquency_tracker, class_name: "Webhook::DelinquencyTracker", dependent: :delete
+  has_one :last_deactivation, -> { where(action: "webhook_deactivated").ordered }, as: :eventable, class_name: "Event"
 
   belongs_to :account, default: -> { domain.account }
   belongs_to :domain
@@ -57,6 +58,11 @@ class Webhook < ApplicationRecord
 
   def deactivate
     update! active: false
+  end
+
+  # An admin turning it off leaves no event, but touches the row after any the tracker left.
+  def deactivation
+    last_deactivation if !active? && last_deactivation&.created_at&.after?(updated_at)
   end
 
   def for_action_mailbox_relay?

@@ -15,7 +15,60 @@ class WebhooksControllerTest < ActionDispatch::IntegrationTest
     assert_select "li.row[data-quick-find-target=item]"
     assert_select "a.row__body .row__title", text: "Deliveries"
     assert_select "a.row__body .row__meta", text: "Active · https://hooks.example.com/postrider"
-    assert_select ".row__end", count: 0
+    assert_select "##{dom_id webhooks(:active)} .row__end", count: 0
+  end
+
+  test "index says a webhook an admin turned off is inactive and offers to activate it" do
+    get domain_webhooks_path(domains(:example))
+
+    assert_select "##{dom_id webhooks(:inactive)}" do
+      assert_select ".row__meta", text: "Inactive · https://hooks.example.com/receipts"
+      assert_select ".row__end form[action=?] button", domain_webhook_activation_path(domains(:example), webhooks(:inactive)), text: "Activate"
+    end
+  end
+
+  test "index says why the tracker deactivated a webhook" do
+    webhook = webhooks(:active)
+    webhook.delinquency_tracker.update!(consecutive_failures_count: 9, first_failure_at: 2.hours.ago)
+    webhook.delinquency_tracker.record_delivery_of(failed_delivery(webhook))
+
+    get domain_webhooks_path(domains(:example))
+
+    assert_select "##{dom_id webhook}" do
+      assert_select ".row__meta", text: "Deactivated webhook after 10 failed deliveries · https://hooks.example.com/postrider"
+      assert_select ".row__end form[action=?] button", domain_webhook_activation_path(domains(:example), webhook), text: "Activate"
+    end
+  end
+
+  test "index says a webhook turned back on and off again by hand is inactive" do
+    webhook = webhooks(:active)
+    webhook.delinquency_tracker.update!(consecutive_failures_count: 9, first_failure_at: 2.hours.ago)
+    webhook.delinquency_tracker.record_delivery_of(failed_delivery(webhook))
+    webhook.activate
+    webhook.deactivate
+
+    get domain_webhooks_path(domains(:example))
+
+    assert_select "##{dom_id webhook} .row__meta", text: "Inactive · https://hooks.example.com/postrider"
+  end
+
+  test "index reads every webhook's deactivation in one query" do
+    webhooks(:active).delinquency_tracker.update!(consecutive_failures_count: 9, first_failure_at: 2.hours.ago)
+    webhooks(:active).delinquency_tracker.record_delivery_of(failed_delivery(webhooks(:active)))
+    3.times { |n| domains(:example).webhooks.create!(name: "Hook #{n}", url: "https://example.com/#{n}", active: false) }
+
+    assert_queries_match(/FROM "events"/, count: 1) { get domain_webhooks_path(domains(:example)) }
+
+    assert_select ".row__end form button", text: "Activate", count: 5
+  end
+
+  test "activating a webhook from the list returns to it" do
+    webhook = webhooks(:inactive)
+
+    post domain_webhook_activation_path(domains(:example), webhook), headers: { "HTTP_REFERER" => domain_webhooks_url(domains(:example)) }
+
+    assert_redirected_to domain_webhooks_url(domains(:example))
+    assert webhook.reload.active?
   end
 
   test "new renders" do
@@ -219,4 +272,9 @@ class WebhooksControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :not_found
   end
+
+  private
+    def failed_delivery(webhook)
+      webhook.deliveries.create!(event: deliveries(:delivered).track_event("delivered"), state: :completed, response: { code: 500 })
+    end
 end

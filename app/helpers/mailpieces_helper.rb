@@ -57,6 +57,15 @@ module MailpiecesHelper
     avatar_tag name, address, class: "contact__avatar"
   end
 
+  # Which way the mail went, for a list that holds both.
+  def mailpiece_direction_tag(mailpiece)
+    if mailpiece.inbound_email?
+      direction_tag "arrow-left", "Received"
+    else
+      direction_tag "arrow-right", "Sent"
+    end
+  end
+
   # Who the row is about: the sender of inbound mail, the recipient of outbound.
   def mailpiece_party(mailpiece)
     name, address, _own = mailpiece_party_details(mailpiece)
@@ -172,6 +181,10 @@ module MailpiecesHelper
       else
         [ nil, postable.rcpt_to, postable.mail_from ]
       end
+    end
+
+    def direction_tag(icon, word)
+      icon_tag(icon, class: "mailpiece__direction txt-subtle") + tag.span(word, class: "for-screen-reader")
     end
 
     def phishing_tag(title)

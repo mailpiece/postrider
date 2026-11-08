@@ -67,7 +67,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
       assert_select "> a[href=?] .avatar", mailpiece_path(delivered)
       assert_select "> a[href=?] .row__body", mailpiece_path(delivered)
       assert_select "> a[href=?] .row__end", mailpiece_path(delivered)
-      assert_select ".mailpiece__party", text: "To recipient@example.com"
+      assert_select ".mailpiece__party", text: /\ASent\s+To recipient@example.com\z/
       assert_select ".mailpiece__own", text: "sender@example.com"
       assert_select ".mailpiece__subject", text: "Hello"
       assert_select ".row__end .status.status--muted", text: "Delivered"
@@ -86,12 +86,27 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
 
     assert_select "##{dom_id received}" do
       assert_select ".avatar", text: "FR"
-      assert_select ".mailpiece__party", text: "Friend"
+      assert_select ".mailpiece__party", text: /\AReceived\s+Friend\z/
       assert_select ".mailpiece__own", text: "friend@sender.example · inbox@example.com"
     end
     assert_select "##{dom_id nameless}" do
-      assert_select ".mailpiece__party", text: "billing@vendor.example"
+      assert_select ".mailpiece__party", text: /\AReceived\s+billing@vendor.example\z/
       assert_select ".mailpiece__own", text: "inbox@example.com"
+    end
+  end
+
+  test "a row marks which way the mail went, for the eye and for a screen reader" do
+    sign_in_as :nonstaff
+
+    get mailpieces_path
+
+    assert_select "##{dom_id mailpieces(:received)} .mailpiece__party" do
+      assert_select ".icon--arrow-left"
+      assert_select ".for-screen-reader", text: "Received"
+    end
+    assert_select "##{dom_id mailpieces(:delivered)} .mailpiece__party" do
+      assert_select ".icon--arrow-right"
+      assert_select ".for-screen-reader", text: "Sent"
     end
   end
 
@@ -101,7 +116,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
 
     get mailpieces_path
 
-    assert_select "##{dom_id inbound_email.mailpiece} .mailpiece__party", text: "No sender"
+    assert_select "##{dom_id inbound_email.mailpiece} .mailpiece__party", text: /\AReceived\s+No sender\z/
   end
 
   test "held mail reads as unread, while a good outcome stays quiet" do
@@ -356,8 +371,8 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_select ".envelope__phishing[title=?]", "Sent as receipts@str\u0456pe.com: its letters imitate another address, a common phishing trick"
 
     get mailpieces_path
-    assert_select "##{dom_id lookalike.mailpiece} .mailpiece__party", text: "Phishing? receipts@xn--strpe-p2e.com"
-    assert_select "##{dom_id normal.mailpiece} .mailpiece__party", text: "receipts@stripe.com"
+    assert_select "##{dom_id lookalike.mailpiece} .mailpiece__party", text: /\AReceived\s+Phishing\? receipts@xn--strpe-p2e.com\z/
+    assert_select "##{dom_id normal.mailpiece} .mailpiece__party", text: /\AReceived\s+receipts@stripe.com\z/
 
     get mailpiece_path(normal.mailpiece)
     assert_select ".envelope__phishing", count: 0

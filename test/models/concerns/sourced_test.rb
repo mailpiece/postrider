@@ -117,7 +117,7 @@ class SourcedTest < ActiveSupport::TestCase
 
   test "incinerate_all_due destroys a delivered email's extracted attachment blobs and their files, keeping the row" do
     email = InboundEmail.create!(domain: domains(:example), mail_from: "a@example.com", rcpt_to: "b@example.com", raw: raw_with_attachment)
-    email.forward(ip: "203.0.113.1", helo: "sender.example")
+    email.forward_now(ip: "203.0.113.1", helo: "sender.example")
     email.update!(forwarded_at: 31.days.ago)
     attachment_blob = email.attachments.blobs.sole
 

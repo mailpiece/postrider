@@ -16,7 +16,7 @@ class InboundEmail::ForwardingTest < ActiveSupport::TestCase
     email = inbound_to_mailbox(from: JANE)
 
     assert_no_difference -> { Message.count } do
-      email.forward(ip: "203.0.113.1", helo: "sender.example")
+      email.forward_now(ip: "203.0.113.1", helo: "sender.example")
     end
 
     assert email.reload.held?
@@ -33,7 +33,7 @@ class InboundEmail::ForwardingTest < ActiveSupport::TestCase
     email = inbound_to_mailbox(from: JANE)
 
     assert_no_difference [ -> { Message.count }, -> { Contact.count } ] do
-      email.forward(ip: "203.0.113.1", helo: "sender.example")
+      email.forward_now(ip: "203.0.113.1", helo: "sender.example")
     end
 
     assert email.reload.held?
@@ -46,7 +46,7 @@ class InboundEmail::ForwardingTest < ActiveSupport::TestCase
     email = inbound_to_mailbox
 
     assert_difference -> { Message.count }, 1 do
-      email.forward(ip: "203.0.113.1", helo: "sender.example")
+      email.forward_now(ip: "203.0.113.1", helo: "sender.example")
     end
 
     assert email.reload.delivered?
@@ -67,7 +67,7 @@ class InboundEmail::ForwardingTest < ActiveSupport::TestCase
 
   test "a forward carries an ARC set sealed with the relay's key, which verifies against the published record" do
     stub_verdicts(dmarc: "pass", from_aligned: true)
-    inbound_to_mailbox.forward(ip: "203.0.113.1", helo: "sender.example")
+    inbound_to_mailbox.forward_now(ip: "203.0.113.1", helo: "sender.example")
 
     result = verify_arc(Message.last.raw)
 
@@ -78,14 +78,14 @@ class InboundEmail::ForwardingTest < ActiveSupport::TestCase
 
   test "a forward of mail with bare CR and LF carries a seal that verifies over the bytes sent" do
     stub_verdicts(dmarc: "pass", from_aligned: true)
-    inbound_to_mailbox(raw: "From: #{FRIEND}\nSubject: Hi\r\n\rOne\rTwo\n").forward(ip: "203.0.113.1", helo: "sender.example")
+    inbound_to_mailbox(raw: "From: #{FRIEND}\nSubject: Hi\r\n\rOne\rTwo\n").forward_now(ip: "203.0.113.1", helo: "sender.example")
 
     assert_equal "pass", verify_arc(as_sent_over_smtp(Message.last.raw)).status
   end
 
   test "the seal states what this hop concluded at receipt rather than a verdict reached later" do
     stub_verdicts(dmarc: "pass", from_aligned: true, authentication_results: "mx.example; dmarc=pass header.from=remote.example")
-    inbound_to_mailbox.forward(ip: "203.0.113.1", helo: "sender.example")
+    inbound_to_mailbox.forward_now(ip: "203.0.113.1", helo: "sender.example")
 
     assert_includes Message.last.raw,
       "ARC-Authentication-Results: i=1; mx.example; dmarc=pass header.from=remote.example\r\n"
@@ -93,19 +93,19 @@ class InboundEmail::ForwardingTest < ActiveSupport::TestCase
 
   test "a chain that arrived broken is sealed cv=fail, and one that never existed cv=none" do
     stub_verdicts(dmarc: "pass", from_aligned: true, arc: "fail")
-    inbound_to_mailbox.forward(ip: "203.0.113.1", helo: "sender.example")
+    inbound_to_mailbox.forward_now(ip: "203.0.113.1", helo: "sender.example")
 
     assert_includes Message.last.raw, "cv=fail"
 
     stub_verdicts(dmarc: "pass", from_aligned: true, arc: nil)
-    inbound_to_mailbox(raw: raw_from(FRIEND).sub("Hi", "Hello")).forward(ip: "203.0.113.1", helo: "sender.example")
+    inbound_to_mailbox(raw: raw_from(FRIEND).sub("Hi", "Hello")).forward_now(ip: "203.0.113.1", helo: "sender.example")
 
     assert_includes Message.last.raw, "cv=none"
   end
 
   test "mail received before authentication results were stored still seals with an authserv-id" do
     stub_verdicts(dmarc: "pass", from_aligned: true, authentication_results: nil)
-    inbound_to_mailbox.forward(ip: "203.0.113.1", helo: "sender.example")
+    inbound_to_mailbox.forward_now(ip: "203.0.113.1", helo: "sender.example")
 
     assert_includes Message.last.raw, "ARC-Authentication-Results: i=1; mx.example;\r\n none\r\n"
   end
@@ -115,7 +115,7 @@ class InboundEmail::ForwardingTest < ActiveSupport::TestCase
     Relay::SealingKey.any_instance.stubs(:seal).raises(ArgumentError, "chain already carries 50 sets")
 
     assert_difference -> { Message.count }, 1 do
-      inbound_to_mailbox.forward(ip: "203.0.113.1", helo: "sender.example")
+      inbound_to_mailbox.forward_now(ip: "203.0.113.1", helo: "sender.example")
     end
 
     assert Message.last.raw.start_with?("#{InboundEmail::Forwarding::TRACE_HEADER}: example.com\r\n")
@@ -125,7 +125,7 @@ class InboundEmail::ForwardingTest < ActiveSupport::TestCase
     email = inbound_to_mailbox
 
     assert_no_difference -> { Message.count } do
-      email.forward(ip: "203.0.113.1", helo: "sender.example")
+      email.forward_now(ip: "203.0.113.1", helo: "sender.example")
     end
 
     assert email.reload.held?
@@ -138,7 +138,7 @@ class InboundEmail::ForwardingTest < ActiveSupport::TestCase
     email = inbound_to_mailbox(from: contacts(:denied).email)
 
     assert_no_difference -> { Message.count } do
-      email.forward(ip: "203.0.113.1", helo: "sender.example")
+      email.forward_now(ip: "203.0.113.1", helo: "sender.example")
     end
 
     assert email.reload.held?
@@ -150,7 +150,7 @@ class InboundEmail::ForwardingTest < ActiveSupport::TestCase
     email = inbound_to_mailbox(raw: looping_raw)
 
     assert_no_difference -> { Message.count } do
-      email.forward(ip: "203.0.113.1", helo: "sender.example")
+      email.forward_now(ip: "203.0.113.1", helo: "sender.example")
     end
 
     assert email.reload.held?
@@ -162,7 +162,7 @@ class InboundEmail::ForwardingTest < ActiveSupport::TestCase
     email = create_inbound_email(rcpt_to: "forwarding+news@example.com", mail_from: "friend@sender.example", raw: raw_from(FRIEND))
 
     assert_difference -> { Message.count }, 1 do
-      email.forward(ip: "203.0.113.1", helo: "sender.example")
+      email.forward_now(ip: "203.0.113.1", helo: "sender.example")
     end
 
     assert email.reload.forwarded?
@@ -175,7 +175,7 @@ class InboundEmail::ForwardingTest < ActiveSupport::TestCase
     email = create_inbound_email(rcpt_to: "forwarding+news@example.com", mail_from: "friend@sender.example", raw: raw_from(FRIEND))
 
     assert_no_difference -> { Message.count } do
-      email.forward(ip: "203.0.113.1", helo: "sender.example")
+      email.forward_now(ip: "203.0.113.1", helo: "sender.example")
     end
 
     assert_not email.reload.forwarded?
@@ -186,7 +186,7 @@ class InboundEmail::ForwardingTest < ActiveSupport::TestCase
     email = create_inbound_email(rcpt_to: mailboxes(:inbox).address, mail_from: "jane@remote.example", raw: raw_from(JANE))
 
     assert_no_difference [ -> { Message.count }, -> { Contact.count } ] do
-      email.forward(ip: "203.0.113.1", helo: "sender.example")
+      email.forward_now(ip: "203.0.113.1", helo: "sender.example")
     end
 
     assert email.reload.delivered?
@@ -224,14 +224,14 @@ class InboundEmail::ForwardingTest < ActiveSupport::TestCase
     Event.any_instance.stubs(:save!).raises(ActiveRecord::RecordInvalid)
 
     assert_no_difference [ -> { Message.count }, -> { Event.count } ] do
-      assert_raises(ActiveRecord::RecordInvalid) { email.forward(ip: "203.0.113.1", helo: "sender.example") }
+      assert_raises(ActiveRecord::RecordInvalid) { email.forward_now(ip: "203.0.113.1", helo: "sender.example") }
     end
     assert email.reload.processing?
 
     Event.any_instance.unstub(:save!)
 
     assert_difference -> { Message.count }, 1 do
-      email.forward(ip: "203.0.113.1", helo: "sender.example")
+      email.forward_now(ip: "203.0.113.1", helo: "sender.example")
     end
     assert email.reload.delivered?
     assert_equal 1, email.events.where(action: "inbound_email_received").count

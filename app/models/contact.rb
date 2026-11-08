@@ -66,7 +66,7 @@ class Contact < ApplicationRecord
     ForwardHeldJob.perform_later(self)
   end
 
-  def forward_held
+  def forward_held_now
     inbound_emails.held.find_each(&:forward_held)
   end
 

@@ -14,7 +14,7 @@ module Mailbox::ForwardConfirmable
   end
 
   # Null sender: a bounce would come back as a DSN quoting the link, into the tenant's mail log.
-  def send_forward_confirmation
+  def send_forward_confirmation_now
     if forward_confirmable?
       Message.submit_raw(domain:, mail_from: forward_confirmation_sender, envelope_from: "", raw: forward_confirmation_raw,
         tags: [], recipients: [ forward_to ], origin: :system)

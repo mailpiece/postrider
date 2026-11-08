@@ -8,6 +8,6 @@ class InboundEmail::ForwardJob < ApplicationJob
   discard_on ActiveJob::DeserializationError
 
   def perform(inbound_email, ip:, helo:)
-    inbound_email.forward(ip:, helo:)
+    inbound_email.forward_now(ip:, helo:)
   end
 end

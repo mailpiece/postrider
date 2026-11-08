@@ -70,7 +70,7 @@ class InboundEmail < ApplicationRecord
 
   # Authentication, attachments and the score come before the transaction: a slow zone
   # or scorer would hold the write lock, and Active Storage uploads on commit.
-  def forward(ip:, helo:)
+  def forward_now(ip:, helo:)
     processing!
     authenticate(ip:, helo:)
     extract_attachments

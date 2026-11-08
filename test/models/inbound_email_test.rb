@@ -32,7 +32,7 @@ class InboundEmailTest < ActiveSupport::TestCase
 
     assert_difference -> { Event.count }, 1 do
       assert_enqueued_jobs 1, only: Event::WebhookDispatchJob do
-        email.forward(ip: "203.0.113.1", helo: "sender.example")
+        email.forward_now(ip: "203.0.113.1", helo: "sender.example")
       end
     end
 
@@ -49,7 +49,7 @@ class InboundEmailTest < ActiveSupport::TestCase
       true
     end
 
-    email.forward(ip: "203.0.113.1", helo: "sender.example")
+    email.forward_now(ip: "203.0.113.1", helo: "sender.example")
 
     assert_equal "processing", status_while_tracking
     assert email.delivered?
@@ -58,7 +58,7 @@ class InboundEmailTest < ActiveSupport::TestCase
   test "forward delivers a message nested too deep to parse" do
     email = create_inbound_email(raw: deeply_nested_raw)
 
-    email.forward(ip: "203.0.113.1", helo: "sender.example")
+    email.forward_now(ip: "203.0.113.1", helo: "sender.example")
 
     assert email.delivered?
     assert_not email.attachments.attached?
@@ -101,7 +101,7 @@ class InboundEmailTest < ActiveSupport::TestCase
   test "forward tracks the receipt, kept out of the feed so ordinary mail cannot flood it" do
     email = create_inbound_email(rcpt_to: "list@example.com")
 
-    email.forward(ip: "203.0.113.1", helo: "sender.example")
+    email.forward_now(ip: "203.0.113.1", helo: "sender.example")
 
     event = email.events.last
     assert_equal "inbound_email_received", event.action
@@ -113,7 +113,7 @@ class InboundEmailTest < ActiveSupport::TestCase
     stub_mailauth(iprev: "pass", remote_host: "mail.sender.example")
     email = create_inbound_email
 
-    email.forward(ip: "203.0.113.1", helo: "sender.example")
+    email.forward_now(ip: "203.0.113.1", helo: "sender.example")
 
     event = email.events.last
     assert_equal "203.0.113.1", event.particulars["remote_ip"]
@@ -125,7 +125,7 @@ class InboundEmailTest < ActiveSupport::TestCase
     stub_mailauth(iprev: "fail")
     email = create_inbound_email
 
-    email.forward(ip: "203.0.113.1", helo: "sender.example")
+    email.forward_now(ip: "203.0.113.1", helo: "sender.example")
 
     event = email.events.last
     assert_equal "203.0.113.1", event.particulars["remote_ip"]
@@ -136,7 +136,7 @@ class InboundEmailTest < ActiveSupport::TestCase
     Current.account.setting.update!(bounce_address: "bounces@example.com")
     email = create_inbound_email(mail_from: "mailer-daemon@remote.com", rcpt_to: "bounces@example.com", raw: "Subject: DSN\r\n\r\nFailed")
 
-    email.forward(ip: "203.0.113.1", helo: "sender.example")
+    email.forward_now(ip: "203.0.113.1", helo: "sender.example")
 
     assert_equal "inbound_email_bounce_received", email.events.last.action
   end
@@ -333,7 +333,7 @@ class InboundEmailTest < ActiveSupport::TestCase
     big_raw = "Subject: Photos\r\n\r\n" + body
     email = create_inbound_email(raw: big_raw)
 
-    assert_nothing_raised { email.forward(ip: "203.0.113.1", helo: "sender.example") }
+    assert_nothing_raised { email.forward_now(ip: "203.0.113.1", helo: "sender.example") }
     assert email.reload.delivered?
 
     assert_includes email.webhook_payload("inbound_email_received")[:text], body
@@ -348,7 +348,7 @@ class InboundEmailTest < ActiveSupport::TestCase
       true
     end
 
-    email.forward(ip: "203.0.113.1", helo: "sender.example")
+    email.forward_now(ip: "203.0.113.1", helo: "sender.example")
 
     assert attached_when_tracked, "attachments must be extracted before the receipt event is tracked"
   end
@@ -356,7 +356,7 @@ class InboundEmailTest < ActiveSupport::TestCase
   test "the receipt event's webhook payload describes the extracted attachments" do
     email = create_inbound_email(raw: raw_with_attachment)
 
-    email.forward(ip: "203.0.113.1", helo: "sender.example")
+    email.forward_now(ip: "203.0.113.1", helo: "sender.example")
 
     payload = email.webhook_payload("inbound_email_received")
     assert_equal "photo.jpg", payload[:attachments].sole[:filename]

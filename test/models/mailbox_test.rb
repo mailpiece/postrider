@@ -149,7 +149,7 @@ class MailboxTest < ActiveSupport::TestCase
   end
 
   test "send forward confirmation from the domain with a null sender, out of the mail log" do
-    mailboxes(:unconfirmed_forwarding).send_forward_confirmation
+    mailboxes(:unconfirmed_forwarding).send_forward_confirmation_now
 
     message = domains(:example).messages.system.sole
     assert_equal "noreply@example.com", message.mail_from
@@ -165,16 +165,16 @@ class MailboxTest < ActiveSupport::TestCase
     domains(:example).suppressions.create!(address: mailbox.forward_to)
 
     assert_no_difference -> { Message.count } do
-      mailboxes(:inbox).send_forward_confirmation
-      unverified.send_forward_confirmation
-      mailbox.send_forward_confirmation
+      mailboxes(:inbox).send_forward_confirmation_now
+      unverified.send_forward_confirmation_now
+      mailbox.send_forward_confirmation_now
     end
 
     domains(:example).suppressions.delete_all
     mailbox.account.create_cancellation!(initiated_by: users(:leo))
 
     assert_no_difference -> { Message.count } do
-      mailbox.send_forward_confirmation
+      mailbox.send_forward_confirmation_now
     end
   end
 

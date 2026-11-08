@@ -67,6 +67,19 @@ class Webhook < ApplicationRecord
     url.match? SLACK_WEBHOOK_URL_REGEX
   end
 
+  # A relay expects raw mail, so a test envelope would only ever earn a 415.
+  def testable?
+    active? && !for_action_mailbox_relay?
+  end
+
+  def test
+    trigger track_event("tested", sent_at: Time.current, sent_by: Current.user.name)
+  end
+
+  def webhook_payload(action)
+    { webhook_id: id, domain_id: domain_id, domain: domain.name, name: name, url: url }
+  end
+
   private
     def validate_url
       uri = URI.parse(url.presence)

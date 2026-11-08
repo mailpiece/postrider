@@ -98,6 +98,16 @@ Admin-only, JSON only, newest first:
 
 `state` is one of `pending`, `in_progress`, `completed`, or `errored`. `request` and `response` are `null` until the attempt runs; the outgoing `X-Webhook-Signature` (and any `Authorization`) header is stripped from the logged `request`. `response` carries the endpoint's HTTP `code`, or an `error` string when no response came back (e.g. `connection_timeout`, `dns_lookup_failed`, `response_too_large`).
 
+## Testing a webhook
+
+An admin can send a test from the webhook's page, before any mail has moved, to see that the endpoint checks the signature and reads the envelope. The test goes the way every event does: signed with the webhook's secret, with the usual headers, and recorded among its deliveries with the response code or error. Only this webhook receives it, whatever the others subscribe to, and an Action Mailbox relay webhook takes no test, since it expects raw mail.
+
+```json
+{ "event": "webhook_tested", "payload": { "webhook_id": "…", "domain_id": "…", "domain": "yourdomain.com", "name": "Deliveries", "url": "https://your-app.example.com/hooks", "sent_at": "2026-07-15T18:00:00Z", "sent_by": "Leo" } }
+```
+
+A Slack webhook gets its one-line form, "Sent a test to webhook Deliveries". A test that fails never counts toward deactivating the webhook.
+
 ## Action Mailbox relay integration
 
 Name a webhook's URL the way Rails expects — ending in `/rails/action_mailbox/relay/inbound_emails` — and PostRider notices, then switches that webhook to Rails' built-in [Action Mailbox relay](https://guides.rubyonrails.org/action_mailbox_basics.html) format. Your Rails app takes the mail as-is, with no adapter code to write.

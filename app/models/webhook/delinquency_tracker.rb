@@ -5,7 +5,10 @@ class Webhook::DelinquencyTracker < ApplicationRecord
   belongs_to :account, default: -> { webhook.account }
   belongs_to :webhook
 
+  # A failed test is for the admin who sent it to read, not a reason to deactivate.
   def record_delivery_of(delivery)
+    return if delivery.test?
+
     if delivery.succeeded?
       reset
     else

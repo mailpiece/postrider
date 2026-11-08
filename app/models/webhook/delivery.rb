@@ -65,6 +65,10 @@ class Webhook::Delivery < ApplicationRecord
     completed? && response[:error].blank? && response[:code].between?(200, 299)
   end
 
+  def test?
+    event.action.webhook_tested?
+  end
+
   private
     def sanitize_headers(headers)
       headers.except("X-Webhook-Signature", "Authorization")

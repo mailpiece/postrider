@@ -11,7 +11,8 @@ module WebhooksHelper
     "recipient_domain_resumed" => "Recipient domain resumed",
     "sending_token_created" => "Sending token created",
     "sending_token_revoked" => "Sending token revoked",
-    "sending_token_refused" => "Sending token refused"
+    "sending_token_refused" => "Sending token refused",
+    "webhook_tested" => "Test"
   }.freeze
 
   def webhook_action_options(actions = Webhook::PERMITTED_ACTIONS)

@@ -38,6 +38,17 @@ class InboundEmail::RelayHeadersTest < ActiveSupport::TestCase
       "X-PostRider-Mailpiece-Id: #{email.mailpiece.id}\r\nX-Spam-Flag: NO\r\nX-Spam-Status: No, score=-0.5 Bcc: x@example.com\r\n")
   end
 
+  test "takes only X-Spam- fields from the scorer, so ours are never replaced or added to" do
+    email = create_email(rcpt_to: "support@example.com", authentication_results: "mx.test; spf=pass smtp.mailfrom=a@test.com")
+    email.track_event "scored", action: "no_action", score: 0.0, complete: true, symbols: [],
+      headers: [ [ "Authentication-Results", "mx.test; dkim=pass" ], [ "X-Spam-Flag", "NO" ], [ "Delivered-To", "elsewhere@example.com" ] ]
+
+    headers = header_section(email.relayable_raw)
+
+    assert_equal [ "Delivered-To: support@example.com", "Authentication-Results: mx.test; spf=pass smtp.mailfrom=a@test.com",
+      "X-PostRider-Mailpiece-Id: #{email.mailpiece.id}", "X-Spam-Flag: NO" ], headers.split("\r\n")
+  end
+
   test "a verdict recorded with no headers, as an older scorer gives, adds none" do
     email = create_email
     email.track_event "scored", action: "reject", score: 16.0, complete: true, symbols: []

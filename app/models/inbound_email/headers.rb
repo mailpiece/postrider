@@ -25,7 +25,7 @@ class InboundEmail::Headers
     # Every copy we hand on carries the scorer's verdict, and the receiving app decides.
     def fields
       if spam_check = @inbound_email.spam_check
-        spam_check.headers.to_h
+        spam_check.headers.to_h.select { |name, _| name.match?(SPAM_FIELD) }
       else
         {}
       end

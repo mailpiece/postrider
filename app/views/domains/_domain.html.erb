@@ -1,5 +1,4 @@
 <li id="<%= dom_id domain %>" class="row" data-quick-find-target="item" data-navigable-list-target="item" tabindex="-1">
-  <%= icon_tag "globe", class: "domain__icon" %>
   <%= link_to domain_path(domain), class: "row__body flex-item-grow" do %>
     <strong class="row__title"><%= domain.name %></strong>
     <span class="row__meta"><%= domain_dns_problems_line domain %></span>

@@ -443,6 +443,7 @@ Authenticate with a personal access token (`read` permission is sufficient): `Au
 | Endpoint              | Returns                                                                                |
 | --------------------- | -------------------------------------------------------------------------------------- |
 | `GET /mailpieces`     | Paged metadata for all mail, newest first, in either direction and whatever its status |
+| `GET /mailpieces/delivered` | Deliveries the recipient's server accepted, and inbound mail forwarded or accepted, in the index's format |
 | `GET /mailpieces/held` | Inbound mail held for a decision on its sender, in the index's format                 |
 | `GET /mailpieces/deferred` | Deliveries waiting on a retry, in the index's format                              |
 | `GET /mailpieces/queued` | Deliveries not yet attempted and inbound mail not yet processed, in the index's format |

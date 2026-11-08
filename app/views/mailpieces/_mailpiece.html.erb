@@ -12,7 +12,7 @@
   <%= link_to mailpiece_path(mailpiece), class: "row__body flex-item-grow" do %>
     <span class="row__title mailpiece__title">
       <strong class="mailpiece__party"><%= phishing_mark(postable) if mailpiece.inbound_email? %> <%= party %></strong>
-      <span class="row__meta mailpiece__own"><%= own %></span>
+      <span class="row__meta mailpiece__own"><%= safe_join [ (address if name.present?), own ].compact, " · " %></span>
     </span>
     <span class="row__meta">
       <span class="mailpiece__subject"><%= envelope_subject mailpiece %></span>

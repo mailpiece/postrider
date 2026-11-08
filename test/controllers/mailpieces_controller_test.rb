@@ -76,16 +76,19 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
   test "an inbound mailpiece's row leads with its sender, by name when known, then the mailbox it wrote to" do
     sign_in_as :nonstaff
     received = mailpieces(:received)
-    nameless = create_inbound_email(mail_from: "billing@vendor.example").mailpiece
+    nameless = create_inbound_email(mail_from: "billing@vendor.example", rcpt_to: "inbox@example.com").mailpiece
 
     get mailpieces_path
 
     assert_select "##{dom_id received}" do
       assert_select ".avatar", text: "FR"
       assert_select ".mailpiece__party", text: "Friend"
+      assert_select ".mailpiece__own", text: "friend@sender.example · inbox@example.com"
+    end
+    assert_select "##{dom_id nameless}" do
+      assert_select ".mailpiece__party", text: "billing@vendor.example"
       assert_select ".mailpiece__own", text: "inbox@example.com"
     end
-    assert_select "##{dom_id nameless} .mailpiece__party", text: "billing@vendor.example"
   end
 
   test "a listed mailpiece with no envelope sender says so" do

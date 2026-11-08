@@ -52,21 +52,6 @@ module DomainsHelper
     end
   end
 
-  def domain_state_sentence(domain)
-    if domain.dns_checked?
-      "#{domain_receiving_sentence(domain)} #{domain_sending_sentence(domain)}"
-    else
-      "Its DNS records have not been checked yet."
-    end
-  end
-
-  def domain_switches_sentence(domain)
-    if switched_off = domain_switched_off(domain)
-      settings = Current.user.admin? ? link_to("settings", domain_switches_path(domain)) : "settings"
-      safe_join [ "Not #{switched_off} mail: turned off in ", settings, "." ]
-    end
-  end
-
   # Newest first as [ time, sentence ]: the domain's own events, its last DNS check and who added it.
   def domain_trail(domain)
     lines = domain.events.where(eventable: domain).visible_to(Current.user).ordered.limit(5).map { |event| [ event.created_at, event.description ] }
@@ -109,16 +94,6 @@ module DomainsHelper
       end
     end
 
-    def domain_switched_off(domain)
-      if !domain.receiving? && !domain.sending?
-        "receiving or sending"
-      elsif !domain.receiving?
-        "receiving"
-      elsif !domain.sending?
-        "sending"
-      end
-    end
-
     def domain_dns_problems_status(problems)
       tag.span "DNS problem".pluralize(problems.size), class: "status status--warning"
     end
@@ -131,33 +106,6 @@ module DomainsHelper
         elsif domain.public_send("#{record}_error").present?
           "#{DNS_RECORD_NAMES.fetch(record)} record could not be looked up"
         end
-      end
-    end
-
-    def domain_receiving_sentence(domain)
-      if domain.mx_ok?
-        "Receives mail."
-      else
-        "Does not receive mail yet: the inbound record #{dns_record_problem(domain.mx_status, domain.mx_error)}."
-      end
-    end
-
-    def domain_sending_sentence(domain)
-      if domain.verified?
-        "Verified for sending."
-      else
-        "Not verified for sending yet: the DKIM record #{dns_record_problem(domain.dkim_status, domain.dkim_error)}."
-      end
-    end
-
-    # A lookup that failed leaves no status, only its error.
-    def dns_record_problem(status, error)
-      if problem = DNS_RECORD_PROBLEMS[status]
-        problem
-      elsif error.present?
-        "could not be looked up (#{error.delete_suffix(".")})"
-      else
-        "has not been checked"
       end
     end
 end

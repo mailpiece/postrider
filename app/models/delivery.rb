@@ -27,7 +27,7 @@ class Delivery < ApplicationRecord
   end
 
   def last_attempt
-    attempts.order(:created_at).last
+    attempts.last
   end
 
   # Events + SMTP attempts as one timeline.

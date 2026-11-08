@@ -128,7 +128,7 @@ class DomainsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".settings__rows a[href=?] .row__meta", domain_switches_path(domains(:example)), text: "Off"
   end
 
-  test "the domain page gives a member the state and the history, no rows and no removing" do
+  test "the domain page gives a member the history only, no rows and no removing" do
     domain = domains(:example)
     sign_in_as :nonstaff
 
@@ -136,7 +136,7 @@ class DomainsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".breadcrumbs strong", text: "example.com"
-    assert_select ".page > p", text: "Its DNS records have not been checked yet."
+    assert_select ".page h2", text: "History"
     assert_select ".settings__rows", count: 0
     assert_select ".filter-bar", count: 0
     assert_select ".trail__sentence", text: "#{users(:leo).name} added this domain"
@@ -212,7 +212,6 @@ class DomainsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".settings__rows a[href=?] .row__meta", domain_mailboxes_path(domain), text: "2 mailboxes"
     assert_select ".settings__rows a[href=?] .row__meta", domain_webhooks_path(domain), text: "None yet"
     assert_select ".settings__rows a[href=?] .row__meta", domain_sending_tokens_path(domain), text: "None yet"
-    assert_select ".page > p", text: "Its DNS records have not been checked yet."
     assert_select ".trail__sentence", text: "#{users(:leo).name} added this domain"
   end
 
@@ -223,26 +222,12 @@ class DomainsControllerTest < ActionDispatch::IntegrationTest
 
     get domain_path(domain)
 
-    assert_select ".page > p",
-      text: "Does not receive mail yet: the inbound record could not be looked up (DNS timeout). Verified for sending."
-  end
+    assert_select ".settings__rows a[href=?] .row__meta", domain_dns_records_path(domain), text: /\AVerified · checked/
+    assert_select ".trail__sentence", text: "DNS checked: DNS timeout"
 
-  test "the domain page says when receiving and sending are turned off" do
-    sign_in_as :leo
-    domains(:example).update!(receiving: false, sending: false)
+    get domain_dns_records_path(domain)
 
-    get domain_path(domains(:example))
-
-    assert_select ".page > p", text: "Its DNS records have not been checked yet. Not receiving or sending mail: turned off in settings."
-    assert_select ".page > p a[href=?]", domain_switches_path(domains(:example)), text: "settings"
-  end
-
-  test "the domain page says nothing of the switches while both are on" do
-    sign_in_as :leo
-
-    get domain_path(domains(:example))
-
-    assert_select ".page > p", text: "Its DNS records have not been checked yet."
+    assert_select ".dns-item__error", text: "DNS timeout"
   end
 
   test "the unverified list renders DNS statuses as human-readable labels" do

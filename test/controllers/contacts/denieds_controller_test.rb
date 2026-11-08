@@ -34,6 +34,17 @@ class Contacts::DeniedsControllerTest < ActionDispatch::IntegrationTest
       "Erase all 1 email from screened-out senders? This can't be undone. The senders stay screened out.", text: "Clear all…"
   end
 
+  test "show is fresh again once the mail from screened-out senders is erased" do
+    sign_in_as :leo
+
+    get contacts_denied_path
+    users(:leo).erase_screened_out_mail_now
+    get contacts_denied_path, headers: { "HTTP_IF_NONE_MATCH" => response.headers["ETag"] }
+
+    assert_response :success
+    assert_select "form[action=?]", contacts_denied_path, count: 0
+  end
+
   test "show offers no clearing to a member" do
     sign_in_as :nonstaff
 

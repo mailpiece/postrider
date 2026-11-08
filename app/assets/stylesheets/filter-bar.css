@@ -1,5 +1,5 @@
 @layer components {
-  /* One row under the header at every width: the filter box, then quick filters. */
+  /* One row under the header at every width: server filters at the start, the filter box at the end. */
   .filter-bar {
     align-items: center;
     display: flex;
@@ -21,7 +21,7 @@
 
   .filter-bar__terms:is(.input) {
     --input-background: var(--color-canvas);
-    --input-border-radius: 5em;
+    --input-border-radius: var(--radius-lg);
     --input-padding: 0.5em 1.3em;
 
     flex: 0 100 var(--filter-input-width, 15rem);
@@ -40,6 +40,7 @@
   /* The filter box. Its shrink factor dwarfs the filters', so it gives way first, down to its floor, and then the filters ellipsize. */
   .filter-box {
     flex: 0 100 var(--filter-input-width, 15rem);
+    margin-inline-start: auto;
     min-inline-size: 8rem;
     position: relative;
 

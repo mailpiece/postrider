@@ -72,8 +72,8 @@ class Webhook < ApplicationRecord
     active? && !for_action_mailbox_relay?
   end
 
-  def test
-    trigger track_event("tested", sent_at: Time.current, sent_by: Current.user.name)
+  def test(by: Current.user)
+    trigger track_event("tested", sent_at: Time.current, sent_by: by.name)
   end
 
   def webhook_payload(action)

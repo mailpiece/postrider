@@ -24,6 +24,6 @@ module NavigationHelper
     end
 
     def settings_paths
-      [ "#{request.script_name}/account/", users_path, suppressions_path, docs_path, my_passkeys_path, my_access_tokens_path ]
+      [ "#{request.script_name}/account/", users_path, suppressions_path, my_passkeys_path, my_access_tokens_path ]
     end
 end

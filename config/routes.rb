@@ -32,8 +32,6 @@ Rails.application.routes.draw do
 
   resources :events, only: :index
 
-  get "docs", to: "docs#show", as: :docs
-
   filter_path_parameters :id do
     resources :qr_codes
   end

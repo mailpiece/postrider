@@ -20,7 +20,7 @@ Every path below sits under the account's number, the one in the app's URLs once
 | **Personal access token** | **Personal access tokens** page    | `GET /mailpieces`; creating domains and sending tokens |
 
 
-A sending token is bound to a single verified domain.
+A sending token is bound to a single verified domain. Both kinds of token are stored as digests, so copy one the moment it appears: it is shown only once.
 
 ## Personal access token permissions
 
@@ -41,7 +41,7 @@ Content-Type: application/json
 { "sending_token": { "name": "billing-emails" } }
 ```
 
-Returns `201` with `{ "id", "name", "domain", "token" }`. The `token` value, which begins with `postrider_`, is shown only in this response.
+Returns `201` with `{ "id", "name", "domain", "token" }`. The `token` value, which begins with `postrider_`, is the SMTP password, pinned to the domain, and is shown only in this response.
 
 To manage tokens later: `GET /domains/:domain_id/sending_tokens` lists them, paged like the other lists; `DELETE /domains/:domain_id/sending_tokens/:id` revokes one.
 
@@ -91,7 +91,7 @@ Authorization: Bearer $SENDING_TOKEN
 Content-Type: application/json
 ```
 
-A sending token can only send `from` addresses in its own domain, and only after that domain's DKIM is verified.
+A sending token can only send `from` addresses in its own domain, and only after that domain's DKIM is verified. It is the same credential SMTP submission uses; a personal access token won't work here.
 
 ### Idempotency
 
@@ -106,22 +106,22 @@ Optionally set an `Idempotency-Key` header (max 255 characters, scoped per sendi
 ### Request body
 
 
-| Name                            | Type                                            | Notes                                                                                                                                                                                                                                                                    |
-| ------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `from`                          | string                                          | **Required.** Bare address or `"Name <address>"`                                                                                                                                                                                                                         |
-| `from_name`                     | string                                          | Display name; overrides one embedded in `from`                                                                                                                                                                                                                           |
-| `to`, `cc`, `bcc`               | array or comma-separated string                 | At least one recipient required across the three; 50 max combined. Entries may be `"Name <address>"`. `bcc` recipients are delivered to but never appear in the message                                                                                                  |
-| `subject`                       | string                                          | Optional                                                                                                                                                                                                                                                                 |
-| `text`, `html`                  | string                                          | At least one required                                                                                                                                                                                                                                                    |
-| `reply_to`, `reply_to_name`     | string                                          | Optional                                                                                                                                                                                                                                                                 |
-| `in_reply_to`                   | string                                          | `Message-ID` being replied to, e.g. `<parent@example.com>`                                                                                                                                                                                                               |
-| `references`                    | string                                          | Space-separated `Message-ID`s, e.g. `<a@x> <b@x>`                                                                                                                                                                                                                        |
-| `list_unsubscribe`              | string                                          | Sets the `List-Unsubscribe` header. An `https://` URL also enables RFC 8058 one-click unsubscribe                                                                                                                                                                        |
-| `envelope_from` / `return_path` | string                                          | SMTP `MAIL FROM` override (aliases). An **empty** `envelope_from` sends a null return path; an empty `return_path` alone falls back to the default                                                                                                                       |
-| `tags`                          | array or string                                 | 10 max. Not embedded in the message; included in `delivery_*` webhook payloads for filtering                                                                                                                                                                             |
-| `metadata`                      | object of string key/values                     | 10 entries max, values ≤ 1000 characters. Not embedded in the message; echoed in `delivery_*` webhook payloads for correlating with your records                                                                                                                         |
-| `headers`                       | object                                          | 50 max. Cannot override first-class headers (`From`, `To`, `Cc`, `Bcc`, `Subject`, `Reply-To`, `In-Reply-To`, `References`, `Message-ID`, `Date`, `Sender`, `Content-Type`, etc.)                                                                                        |
-| `attachments`                   | array of `{ name, content_type, content, cid }` | 20 max; `content` is base64. Allow-listed extensions only: `jpeg jpg png gif txt pdf docx xlsx pptx csv att ics ical html zip auf xml dwg`. Filenames may contain at most one period. Setting `cid` (e.g. `<logo.cid>`) makes it inline, referenced via `cid:` in `html` |
+| Name                            | Type                                            | Notes                                                                                                                                                                                                                                                                                                   |
+| ------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `from`                          | string                                          | **Required.** Bare address or `"Name <address>"`                                                                                                                                                                                                                                                        |
+| `from_name`                     | string                                          | Display name; overrides one embedded in `from`                                                                                                                                                                                                                                                          |
+| `to`, `cc`, `bcc`               | array or comma-separated string                 | At least one recipient required across the three; 50 max combined. Entries may be `"Name <address>"`. `bcc` recipients are delivered to but never appear in the message                                                                                                                                 |
+| `subject`                       | string                                          | Optional                                                                                                                                                                                                                                                                                                |
+| `text`, `html`                  | string                                          | At least one required; send both for a multipart message                                                                                                                                                                                                                                                |
+| `reply_to`, `reply_to_name`     | string                                          | Optional. `reply_to` may be `"Name <address>"`                                                                                                                                                                                                                                                          |
+| `in_reply_to`                   | string                                          | `Message-ID` being replied to, e.g. `<parent@example.com>`                                                                                                                                                                                                                                              |
+| `references`                    | string                                          | Space-separated `Message-ID`s, e.g. `<a@x> <b@x>`                                                                                                                                                                                                                                                       |
+| `list_unsubscribe`              | string                                          | Sets the `List-Unsubscribe` header. A lone URL is bracketed for you, per RFC 2369; pass several as `<https://…>, <mailto:…>`. An `https://` URL among them also enables RFC 8058 one-click unsubscribe (adds `List-Unsubscribe-Post`)                                                                   |
+| `envelope_from` / `return_path` | string                                          | SMTP `MAIL FROM` override (aliases). An **empty** `envelope_from` sends a null return path; an empty `return_path` alone falls back to the default                                                                                                                                                      |
+| `tags`                          | array or string                                 | 10 max. Not embedded in the message; included in `delivery_*` webhook payloads for filtering                                                                                                                                                                                                            |
+| `metadata`                      | object of string key/values                     | 10 entries max, values ≤ 1000 characters. Not embedded in the message; echoed in `delivery_*` webhook payloads for correlating with your records                                                                                                                                                        |
+| `headers`                       | object                                          | 50 max. Cannot override first-class headers (`From`, `To`, `Cc`, `Bcc`, `Subject`, `Reply-To`, `In-Reply-To`, `References`, `Message-ID`, `Date`, `Sender`, `Content-Type`, `DKIM-Signature`, etc.)                                                                                                     |
+| `attachments`                   | array of `{ name, content_type, content, cid }` | 20 max; `content` is base64. Allow-listed extensions only: `jpeg jpg png gif txt pdf docx xlsx pptx csv att ics ical html zip auf xml dwg`. Filenames may contain at most one period (`image.001.jpeg` is rejected). Setting `cid` (e.g. `<logo.cid>`) makes it inline, referenced via `cid:` in `html` |
 
 
 The complete message — headers, body, and attachments — must fit under `OUTBOUND_MAX_MESSAGE_SIZE` (see [Configuration](deployment.md#configuration-env)). For large files, host them elsewhere and link to them instead.
@@ -130,10 +130,13 @@ The complete message — headers, body, and attachments — must fit under `OUTB
 
 Success returns `201 Created` with `{ "id", "status": "queued", "message_id", "recipients", "submitted_at" }`:
 
-- `message_id` — the `Message-ID` stamped on the mail, echoed in webhooks so you can match them.
+- `id` — the message's PostRider id.
+- `status` — always `"queued"` here: delivery happens in the background.
+- `message_id` — the RFC 822 `Message-ID` stamped on the mail, echoed in webhook payloads so you can match them.
 - `recipients` — every address a delivery was created for, including `cc` and `bcc`.
+- `submitted_at` — when PostRider accepted the message.
 
-Delivery happens asynchronously; each step arrives as a `delivery_delivered`, `delivery_deferred`, `delivery_failed`, or `delivery_bounced` webhook.
+Each step of delivery then arrives as a `delivery_delivered`, `delivery_deferred`, `delivery_failed`, or `delivery_bounced` webhook.
 
 
 | Status | Cause                                                                                                                        |
@@ -168,7 +171,7 @@ curl https://postrider.example.com/123456789/messages \
 
 ## Sending via SMTP
 
-Point your SMTP client at the submission listener (see [Ports](deployment.md#ports)) with STARTTLS. Username: `postrider`. Password: your sending token.
+Point your SMTP client at the relay hostname (`SUBMISSION_HOSTNAME`, which defaults to `RELAY_HOSTNAME`) on port 587 with STARTTLS, the standard submission port (see [Ports](deployment.md#ports)). Authenticate with `AUTH PLAIN` or `LOGIN`: the password is your sending token, pinned to a single domain, and the username is ignored (many clients use `postrider`).
 
 When the domain has allowed IPs set, a client outside them, or one connecting over IPv6, is refused at `AUTH` with `535`.
 
@@ -449,7 +452,7 @@ Authenticate with a personal access token (`read` permission is sufficient): `Au
 | `GET /mailpieces/:id` | One piece: envelope, status, parsed content (while retained), `raw_url`, `attachments` |
 
 
-**Index** entries are metadata only (no bodies), so paging is fast. Each includes the SMTP envelope (`mail_from`, `rcpt_to`) and `status`; inbound pieces also carry `spf` / `dkim` / `dmarc` / `arc` verdicts and the sender domain's `dmarc_policy`. Fields are flat here, unlike the nested webhook payload — and note the webhook has no `mail_from`, only the parsed `From` header.
+**Index** entries are metadata only (no bodies), so paging is fast. Each includes the SMTP envelope (`mail_from`, `rcpt_to`), `status` and a `direction` of `inbound` or `outbound`; inbound pieces also carry `spf` / `dkim` / `dmarc` / `arc` verdicts and the sender domain's `dmarc_policy`. Fields are flat here, unlike the nested webhook payload — and note the webhook has no `mail_from`, only the parsed `From` header.
 
 **Single pieces** return the same parsed content as the inbound webhook payload — literally the same source, so one parser handles bodies, headers, and attachments for both push and pull. Authentication is the exception: the webhook nests those fields under an `authentication` object and omits the object entirely when nothing was recorded, while here they sit flat alongside the envelope and appear as `null` when unknown. The one exception is `from_aligned`, which is always a real boolean — `false` means not aligned, never not checked. The names match either way.
 
@@ -457,7 +460,9 @@ Single pieces also carry what the index leaves out to keep list responses small 
 
 **Attachments** match the webhook format: `filename`, `contentType`, `size`, `checksum`, `cid` / `contentId`, `related` (for inline images), plus a `url` that downloads that file's bytes (`Content-Disposition: attachment`). The download URL requires the same `Bearer` auth, and the token's user must have access to the domain.
 
-**Retention:** after `RETENTION_DAYS`, raw content and attachments are deleted; only the metadata row remains. Until then, fetch the complete original via `raw_url` with the same auth.
+**Raw message:** `raw_url` downloads the complete original as `message/rfc822`; it is never base64-inflated into the JSON. Like each attachment's `url`, it is an ordinary authenticated endpoint: follow it with the same `Authorization: Bearer` header (a `read` token is plenty) or from a signed-in browser session.
+
+**Retention:** after `RETENTION_DAYS`, raw content and attachments are deleted; only the metadata row remains.
 
 ### Example
 

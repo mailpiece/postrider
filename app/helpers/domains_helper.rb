@@ -22,10 +22,15 @@ module DomainsHelper
     CATCH_ALL_POLICY_SENTENCES.fetch(domain.catch_all_policy)
   end
 
-  def domain_settings_rows(domain)
+  def domain_rows(domain)
     [
-      { icon: "globe", title: "DNS records", hint: domain_state_sentence(domain), path: domain_dns_records_path(domain) },
-      { icon: "email", title: "Receiving and sending", hint: domain_switches_hint(domain), path: domain_switches_path(domain) },
+      { icon: "globe", title: "DNS records", hint: domain_dns_records_hint(domain), path: domain_dns_records_path(domain) },
+      { icon: "switch", title: "Receiving and sending", hint: domain_switches_hint(domain), path: domain_switches_path(domain) },
+      { icon: "email", title: "Mailboxes", hint: domain_count_hint(domain.mailboxes.count, "mailbox", none: "No mailboxes yet"), path: domain_mailboxes_path(domain) },
+      { icon: "password", title: "Sending tokens", hint: domain_count_hint(domain.sending_tokens.count, "sending token", none: "None yet"), path: domain_sending_tokens_path(domain) },
+      { icon: "bolt", title: "Webhooks", hint: domain_count_hint(domain.webhooks.count, "webhook", none: "None yet"), path: domain_webhooks_path(domain) },
+      { icon: "cancel", title: "Blocked phrases", hint: domain_count_hint(domain.blocked_phrase_list.size, "phrase", none: "None"), path: domain_blocked_phrases_path(domain) },
+      { icon: "lock", title: "Allowed IPs", hint: domain_count_hint(domain.allowed_ip_list.size, "IP", none: "Any IP can send"), path: domain_allowed_ips_path(domain) },
       { icon: "everyone", title: "People", hint: domain.all_access? ? "Everyone" : pluralize(domain.users.count, "person"), path: domain_people_path(domain) }
     ]
   end
@@ -34,17 +39,16 @@ module DomainsHelper
   def domain_meta(domain)
     if domain.dns_checked?
       problems = domain_dns_problems(domain)
-      checked = safe_join [ "checked", local_datetime_tag(domain.dns_checked_at, style: :timeordate) ], " "
 
       if problems.none?
-        safe_join [ domain.verified? ? "Verified" : "Not verified", "DNS OK", checked ], " · "
+        safe_join [ domain_verified_label(domain), "DNS OK", domain_dns_checked_label(domain) ], " · "
       elsif domain.verified?
-        safe_join [ domain_dns_problems_status(problems), *problems, "Verified", checked ], " · "
+        safe_join [ domain_dns_problems_status(problems), *problems, "Verified", domain_dns_checked_label(domain) ], " · "
       else
-        safe_join [ "Not verified", domain_dns_problems_status(problems), *problems, checked ], " · "
+        safe_join [ "Not verified", domain_dns_problems_status(problems), *problems, domain_dns_checked_label(domain) ], " · "
       end
     else
-      safe_join [ domain.verified? ? "Verified" : "Not verified", "DNS not checked yet" ], " · "
+      safe_join [ domain_verified_label(domain), "DNS not checked yet" ], " · "
     end
   end
 
@@ -73,14 +77,16 @@ module DomainsHelper
   end
 
   private
-    def domain_switched_off(domain)
-      if !domain.receiving? && !domain.sending?
-        "receiving or sending"
-      elsif !domain.receiving?
-        "receiving"
-      elsif !domain.sending?
-        "sending"
-      end
+    def domain_dns_records_hint(domain)
+      safe_join [ domain_verified_label(domain), domain.dns_checked? ? domain_dns_checked_label(domain) : "DNS not checked yet" ], " · "
+    end
+
+    def domain_verified_label(domain)
+      domain.verified? ? "Verified" : "Not verified"
+    end
+
+    def domain_dns_checked_label(domain)
+      safe_join [ "checked", local_datetime_tag(domain.dns_checked_at, style: :timeordate) ], " "
     end
 
     def domain_switches_hint(domain)
@@ -92,6 +98,24 @@ module DomainsHelper
         "Sending off"
       else
         "Off"
+      end
+    end
+
+    def domain_count_hint(count, noun, none:)
+      if count.zero?
+        none
+      else
+        pluralize(count, noun)
+      end
+    end
+
+    def domain_switched_off(domain)
+      if !domain.receiving? && !domain.sending?
+        "receiving or sending"
+      elsif !domain.receiving?
+        "receiving"
+      elsif !domain.sending?
+        "sending"
       end
     end
 

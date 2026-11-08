@@ -9,6 +9,12 @@ module ContactsHelper
     end
   end
 
+  def flagged_score_tag(contact)
+    if contact.flagged?
+      tag.span "flagged #{contact.newest_held_email.spam_check.formatted_score}", class: "status status--warning"
+    end
+  end
+
   def forward_confirmation(contact)
     held = contact.held_inbound_emails
 

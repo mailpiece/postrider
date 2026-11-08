@@ -186,13 +186,13 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_select ".blank-slate a[href=?]", new_domain_path, text: "Add a domain"
   end
 
-  test "index with no domain gives a member the sentence without the button" do
+  test "index with no domain tells a member to ask an admin, with no button" do
     sign_in_as :nonstaff
     users(:nonstaff).accesses.delete_all
 
     get mailpieces_path
 
-    assert_select ".blank-slate", text: /No mail yet\. Add a domain/
+    assert_select ".blank-slate", text: "No mail yet. Ask an admin to add a domain and give you access to it."
     assert_select ".blank-slate a[href=?]", new_domain_path, count: 0
   end
 

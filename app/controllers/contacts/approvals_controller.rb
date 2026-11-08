@@ -5,7 +5,6 @@ class Contacts::ApprovalsController < ApplicationController
     @contact.approve
 
     respond_to do |format|
-      format.turbo_stream { render turbo_stream: [ replaced_contact, turbo_stream_flash(notice: "Now forwarding mail from #{@contact.email}") ] }
       format.html { redirect_back_or_to contacts_path, notice: "Now forwarding mail from #{@contact.email}" }
       format.json { head :no_content }
     end
@@ -15,7 +14,6 @@ class Contacts::ApprovalsController < ApplicationController
     @contact.deny
 
     respond_to do |format|
-      format.turbo_stream { render turbo_stream: [ replaced_contact, turbo_stream_flash(notice: "Now holding mail from #{@contact.email}") ] }
       format.html { redirect_back_or_to contacts_path, notice: "Now holding mail from #{@contact.email}" }
       format.json { head :no_content }
     end
@@ -24,10 +22,5 @@ class Contacts::ApprovalsController < ApplicationController
   private
     def set_contact
       @contact = Current.user.accessible_contacts.find_by!(number: params[:contact_id])
-    end
-
-    def replaced_contact
-      turbo_stream.replace @contact, partial: "contacts/contact",
-        locals: { contact: @contact, email_counts: Contact.email_counts([ @contact ]) }
     end
 end

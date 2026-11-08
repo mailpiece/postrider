@@ -26,3 +26,11 @@ private:
   number: 3
   email: hidden@example.org
   decision: denied
+
+pending:
+  account: davids_account
+  domain: example
+  number: 4
+  email: newcomer@sender.example
+  name: Newcomer
+  decision: pending

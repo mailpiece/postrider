@@ -1,0 +1,28 @@
+<% @page_title = "The Screener" %>
+<% content_for :header do %>
+  <h1 class="header__title">
+    <span class="breadcrumbs">
+      <%= home_crumb %>
+      <%= up_crumb_to "Contacts", contacts_path %>
+      <strong><%= @page_title %></strong>
+    </span>
+  </h1>
+  <div class="header__actions header__actions--end"></div>
+<% end %>
+
+<div class="page flex flex-column gap">
+  <% if @page.used? %>
+    <% pending_count = Current.user.accessible_contacts.pending.count %>
+    <div class="flex align-center gap">
+      <p class="txt-subtle margin-none flex-item-grow"><%= pluralize pending_count, "new sender" %>. Their mail is held until you say yes.</p>
+      <%= button_to "Screen out all…", screener_denial_path, class: "btn btn--plain txt-small txt-subtle font-weight-normal", form_class: "button_to flex-item-no-shrink",
+            form: { data: { turbo_confirm: "Move all #{pluralize pending_count, "waiting sender"} to Screened out? Their mail stays held, and you can still screen any of them in from their page." } } %>
+    </div>
+
+    <%= with_automatic_pagination :contacts, @page do %>
+      <%= render partial: "screeners/contact", collection: @page.records %>
+    <% end %>
+  <% else %>
+    <div class="blank-slate fit-content center">Nobody is waiting. New senders land here, their mail held until you say yes.</div>
+  <% end %>
+</div>

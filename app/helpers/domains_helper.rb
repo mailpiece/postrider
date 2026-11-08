@@ -35,21 +35,15 @@ module DomainsHelper
     ]
   end
 
-  # Problems first, each naming its record; the check's own sentence stays on the domain's page.
-  def domain_meta(domain)
-    if domain.dns_checked?
-      problems = domain_dns_problems(domain)
+  # Where the domain stands, in a word at the row's end.
+  def domain_status_tag(domain)
+    word, semantic = domain_status(domain)
+    tag.span word, class: "status status--#{semantic}"
+  end
 
-      if problems.none?
-        safe_join [ domain_verified_label(domain), "DNS OK", domain_dns_checked_label(domain) ], " · "
-      elsif domain.verified?
-        safe_join [ domain_dns_problems_status(problems), *problems, "Verified", domain_dns_checked_label(domain) ], " · "
-      else
-        safe_join [ "Not verified", domain_dns_problems_status(problems), *problems, domain_dns_checked_label(domain) ], " · "
-      end
-    else
-      safe_join [ domain_verified_label(domain), "DNS not checked yet" ], " · "
-    end
+  # Under the name, only what needs doing; the check's own sentence stays on the domain's page.
+  def domain_dns_problems_line(domain)
+    domain_dns_problems(domain).join(" · ")
   end
 
   # Newest first as [ time, sentence ]: the domain's own events, its last DNS check and who added it.
@@ -94,8 +88,16 @@ module DomainsHelper
       end
     end
 
-    def domain_dns_problems_status(problems)
-      tag.span "DNS problem".pluralize(problems.size), class: "status status--warning"
+    def domain_status(domain)
+      if !domain.dns_checked?
+        [ "Not checked", "muted" ]
+      elsif !domain.verified?
+        [ "Not verified", "warning" ]
+      elsif domain_dns_problems(domain).any?
+        [ "DNS problems", "warning" ]
+      else
+        [ "Verified", "muted" ]
+      end
     end
 
     # A lookup that failed leaves its error beside whatever status the record had before.

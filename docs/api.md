@@ -195,7 +195,7 @@ Authenticate with a personal access token (`read` permission is sufficient): `Au
 
 | Endpoint                  | Returns                                                                      |
 | ------------------------- | ---------------------------------------------------------------------------- |
-| `GET /domains`            | Paged list of the verified domains this token's user can use, those whose DKIM record checked out, by name |
+| `GET /domains`            | Paged list of the domains this token's user can use, those not yet verified first, then by name |
 | `GET /domains/unverified` | Domains whose DKIM record is missing, wrong or not yet checked, in the index's format |
 
 

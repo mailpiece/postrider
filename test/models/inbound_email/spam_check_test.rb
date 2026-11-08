@@ -64,6 +64,13 @@ class InboundEmail::SpamCheckTest < ActiveSupport::TestCase
     assert_not spam_check("no_action", 1.0).flagged?
   end
 
+  test "gives the headers the scorer asked for, and none from a verdict recorded without them" do
+    check = InboundEmail::SpamCheck.new("action" => "no_action", "score" => 0.0, "headers" => [ [ "X-Spam-Flag", "NO" ] ])
+
+    assert_equal [ [ "X-Spam-Flag", "NO" ] ], check.headers
+    assert_empty spam_check("no_action", 0.0).headers
+  end
+
   private
     def spam_check(action, score, *symbols)
       InboundEmail::SpamCheck.new("action" => action, "score" => score, "complete" => true, "symbols" => symbols)

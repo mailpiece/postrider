@@ -6,13 +6,18 @@ class InboundEmail::Payload
 
   def to_h
     if @content.parsed?
-      compact @content.to_h.merge(identity).merge(authentication).merge(attachments).merge(dmarc_report)
+      compact with_spam_verdict(@content.to_h).merge(identity).merge(authentication).merge(attachments).merge(dmarc_report)
     else
       compact identity.merge(from: @inbound_email.mail_from)
     end
   end
 
   private
+    # As in the copies we hand on, our verdict leads and the sender's own X-Spam- fields go.
+    def with_spam_verdict(content)
+      content.merge(headers: InboundEmail::Headers.new(@inbound_email).lines + content[:headers].to_a.grep_v(InboundEmail::Headers::SPAM_FIELD))
+    end
+
     def identity
       { id: @inbound_email.mailpiece&.id, rcpt_to: @inbound_email.rcpt_to }
     end

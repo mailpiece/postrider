@@ -1,24 +1,99 @@
 require "test_helper"
 
 class InboundEmail::ScorableTest < ActiveSupport::TestCase
-  test "new mail is queued for scoring when MAILSCORE_URL is set" do
+  test "forwarding scores the mail within a few seconds, before it records the receipt" do
+    stub_env MAILSCORE_URL: "http://mailscore.test:8080"
+    email = create_inbound_email
+    MailScore::Client.expects(:new).with(read_timeout: 4, deadline: 5).returns(stub(check: verdict(score: 1.5)))
+
+    assert_no_enqueued_jobs only: InboundEmail::ScoreJob do
+      email.forward(ip: "203.0.113.1", helo: "sender.example")
+    end
+
+    assert email.delivered?
+    assert_equal %w[ inbound_email_scored inbound_email_received ], email.events.order(:id).pluck(:action)
+  end
+
+  test "new mail is not queued for scoring until it is forwarded" do
     stub_env MAILSCORE_URL: "http://mailscore.test:8080"
 
-    assert_enqueued_with job: InboundEmail::ScoreJob do
+    assert_no_enqueued_jobs only: InboundEmail::ScoreJob do
       create_inbound_email
     end
   end
 
-  test "nothing is queued or recorded without MAILSCORE_URL" do
+  test "a scorer that is unreachable or too slow leaves the mail to forward unscored and to score later" do
+    stub_env MAILSCORE_URL: "http://mailscore.test:8080"
+    email = create_inbound_email
+    MailScore::Client.any_instance.expects(:check).raises(MailScore::Client::Unreachable, "no answer within 5 seconds")
+
+    assert_enqueued_with job: InboundEmail::ScoreJob, args: [ email ] do
+      email.forward(ip: "203.0.113.1", helo: "sender.example")
+    end
+
+    assert email.delivered?
+    assert_not email.scored?
+  end
+
+  test "a scorer that refuses the mail leaves it to forward unscored and to score later" do
+    stub_env MAILSCORE_URL: "http://mailscore.test:8080"
+    email = create_inbound_email
+    MailScore::Client.any_instance.expects(:check).raises(MailScore::Client::Error.new("unavailable", status: 503))
+
+    assert_enqueued_with job: InboundEmail::ScoreJob, args: [ email ] do
+      email.forward(ip: "203.0.113.1", helo: "sender.example")
+    end
+
+    assert email.delivered?
+  end
+
+  test "discarded mail, never forwarded, is queued for scoring" do
+    stub_env MAILSCORE_URL: "http://mailscore.test:8080"
+    email = create_inbound_email(rcpt_to: "randomjunk@example.com")
+
+    assert_enqueued_with job: InboundEmail::ScoreJob, args: [ email ] do
+      email.discard
+    end
+  end
+
+  test "a bounce correlated to its delivery is queued for scoring once" do
+    stub_env MAILSCORE_URL: "http://mailscore.test:8080"
+    email = create_inbound_email(mail_from: "")
+    Delivery::ReturnPath.stubs(:find_delivery).returns(stub(record_async_bounce: true))
+
+    assert_enqueued_jobs 1, only: InboundEmail::ScoreJob do
+      email.correlate_bounce
+    end
+  end
+
+  test "a bounce that correlates to nothing is queued for scoring once, as a discard" do
+    stub_env MAILSCORE_URL: "http://mailscore.test:8080"
+    email = create_inbound_email(mail_from: "")
+    Delivery::ReturnPath.stubs(:find_delivery).returns(nil)
+
+    assert_enqueued_jobs 1, only: InboundEmail::ScoreJob do
+      email.correlate_bounce
+    end
+  end
+
+  test "nothing is queued for mail never forwarded without MAILSCORE_URL" do
+    stub_env MAILSCORE_URL: nil
+
+    assert_no_enqueued_jobs only: InboundEmail::ScoreJob do
+      create_inbound_email(rcpt_to: "randomjunk@example.com").discard
+    end
+  end
+
+  test "nothing is scored, queued or recorded without MAILSCORE_URL" do
     stub_env MAILSCORE_URL: nil
     MailScore::Client.any_instance.expects(:check).never
 
-    email = nil
+    email = create_inbound_email
     assert_no_enqueued_jobs only: InboundEmail::ScoreJob do
-      email = create_inbound_email
+      email.forward(ip: "203.0.113.1", helo: "sender.example")
     end
-    perform_enqueued_jobs
 
+    assert email.delivered?
     assert_not email.scored?
   end
 
@@ -33,7 +108,7 @@ class InboundEmail::ScorableTest < ActiveSupport::TestCase
         symbol("HOSTNAME_UNKNOWN", 2.5, "203.0.113.9", "Sending server has no verified host name"),
         symbol("REVERSE_DNS_NONE", 2.0, nil, "No reverse DNS for the sending server"),
         symbol("ATTACHMENT_RISKY_EXTENSION", 2.0, "#{"x" * 120}.exe", "Risky attachment type"),
-        symbol("CLIENT_LISTED", 1.0, nil, nil) ]))
+        symbol("CLIENT_LISTED", 1.0, nil, nil) ], headers: [ [ "X-Spam-Flag", "YES" ], [ "X-Spam-Action", "tag" ] ]))
 
     email.score_now
 
@@ -42,7 +117,7 @@ class InboundEmail::ScorableTest < ActiveSupport::TestCase
     assert_equal({ "action" => "add_header", "score" => 6.5, "complete" => true,
       "symbols" => [ [ "HOSTNAME_UNKNOWN", 2.5, "Sending server has no verified host name", "203.0.113.9" ],
         [ "REVERSE_DNS_NONE", 2.0, "No reverse DNS for the sending server" ], [ "ATTACHMENT_RISKY_EXTENSION", 2.0, "Risky attachment type" ],
-        [ "CLIENT_LISTED", 1.0, nil ] ] },
+        [ "CLIENT_LISTED", 1.0, nil ] ], "headers" => [ [ "X-Spam-Flag", "YES" ], [ "X-Spam-Action", "tag" ] ] },
       event.particulars)
   end
 
@@ -89,8 +164,8 @@ class InboundEmail::ScorableTest < ActiveSupport::TestCase
   end
 
   private
-    def verdict(action: :no_action, score: 0.0, complete: true, symbols: [])
-      MailScore::Client::Result.new(action:, score:, complete:, symbols:, smtp_reply: nil, subject: nil)
+    def verdict(action: :no_action, score: 0.0, complete: true, symbols: [], headers: [])
+      MailScore::Client::Result.new(action:, score:, complete:, symbols:, smtp_reply: nil, subject: nil, headers:)
     end
 
     def symbol(name, weight, detail, description)

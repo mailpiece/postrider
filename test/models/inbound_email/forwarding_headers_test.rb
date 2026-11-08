@@ -12,6 +12,21 @@ class InboundEmail::ForwardingHeadersTest < ActiveSupport::TestCase
     assert_includes headers, "#{InboundEmail::Forwarding::TRACE_HEADER}-For: list@example.com #{DESTINATION}"
   end
 
+  test "carries the headers the scorer asked for, in its order, below our own" do
+    email = create_email
+    email.track_event "scored", action: "add_header", score: 6.5, complete: true, symbols: [],
+      headers: [ [ "X-Spam-Flag", "YES" ], [ "X-Spam-Score", "6.5" ], [ "X-Spam-Action", "tag" ] ]
+
+    assert header_section(email).end_with?("-For: list@example.com #{DESTINATION}\r\n" \
+      "X-Spam-Flag: YES\r\nX-Spam-Score: 6.5\r\nX-Spam-Action: tag\r\n")
+  end
+
+  test "mail never scored carries no spam headers, not even the sender's own" do
+    email = create_inbound_email(raw: "X-Spam-Flag: NO\r\n#{RAW}")
+
+    assert_no_match(/^X-Spam-/, forwardable(email))
+  end
+
   test "leaves the original message untouched below its own headers" do
     email = create_email
 

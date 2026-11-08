@@ -8,12 +8,13 @@ class InboundEmail::SpamCheck
     "reject" => "reject"
   }.freeze
 
-  attr_reader :action, :score
+  attr_reader :action, :score, :headers
 
   def initialize(particulars)
     @action = particulars["action"]
     @score = particulars["score"]
     @symbols = particulars["symbols"].to_a.map { |name, weight, description, detail| { name:, weight:, description:, detail: } }
+    @headers = particulars["headers"].to_a
   end
 
   def sentence

@@ -68,12 +68,13 @@ class InboundEmail < ApplicationRecord
     ForwardJob.perform_later(self, ip:, helo:)
   end
 
-  # Authentication and attachments come before the transaction: a slow zone would
-  # hold the write lock, and Active Storage uploads on commit.
+  # Authentication, attachments and the score come before the transaction: a slow zone
+  # or scorer would hold the write lock, and Active Storage uploads on commit.
   def forward(ip:, helo:)
     processing!
     authenticate(ip:, helo:)
     extract_attachments
+    score
 
     transaction do
       track_event to_bounce_address? ? "bounce_received" : "received", **received_particulars(ip)
@@ -86,11 +87,14 @@ class InboundEmail < ApplicationRecord
     end
   end
 
+  # Mail that is never forwarded is scored in the background, so History still has a verdict.
   def discard(reason: "unregistered_recipient")
     transaction do
       update! status: :bounced, forwarded_at: Time.current
       track_event "discarded", rcpt_to: rcpt_to, reason: reason
     end
+
+    score_later
   end
 
   def fail_permanently(reason:)
@@ -110,6 +114,8 @@ class InboundEmail < ApplicationRecord
         delivery.record_async_bounce(dsn_raw: raw)
         update! status: :delivered, forwarded_at: Time.current
       end
+
+      score_later
     else
       discard(reason: "uncorrelated_bounce")
     end

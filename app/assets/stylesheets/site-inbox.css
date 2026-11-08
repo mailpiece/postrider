@@ -27,6 +27,11 @@
     text-overflow: ellipsis;
   }
 
+  /* The direction mark sits in the line like a letter. */
+  .mailpiece__direction {
+    vertical-align: -0.125em;
+  }
+
   .mailpiece__own {
     flex: none;
     max-inline-size: 50%;

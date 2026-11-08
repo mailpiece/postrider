@@ -1,0 +1,93 @@
+@layer components {
+  /* The mail log as an inbox: a row is who, then what they wrote, and at its end when and what became of it. */
+  .mailpiece__title {
+    align-items: baseline;
+    display: flex;
+    gap: 0.5em;
+  }
+
+  /* The other party gives way before the own address, which is cut only past half the line. */
+  .mailpiece__party {
+    font-weight: 600;
+    min-inline-size: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mailpiece__own {
+    flex: none;
+    max-inline-size: 50%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mailpiece__end {
+    align-items: flex-end;
+    flex-direction: column;
+    font-variant-numeric: tabular-nums;
+    gap: 0.2em;
+  }
+
+  /* Held mail waits to be read, so its row reads as unread. */
+  .row--unread :is(.mailpiece__party, .mailpiece__subject) {
+    color: var(--color-ink);
+    font-weight: 700;
+  }
+
+  /* The status filter: a button in the filter bar that drops a list of the status pages, each with its count. */
+  .status-filter {
+    position: relative;
+
+    .btn {
+      --icon-size: 0.9em;
+    }
+  }
+
+  .status-filter__dialog:is(.dialog) {
+    --panel-padding: var(--block-space-half) var(--block-space);
+    --panel-size: max-content;
+
+    inset: calc(100% + 0.25rem) auto auto 0;
+    margin: 0;
+    transform-origin: top left;
+    z-index: var(--z-popup);
+
+    &.orient-left {
+      inset-inline: auto 0;
+      transform-origin: top right;
+      translate: var(--orient-offset, 0px) 0;
+    }
+  }
+
+  .status-filter__list {
+    display: flex;
+    flex-direction: column;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+
+    a {
+      color: inherit;
+      display: flex;
+      gap: var(--inline-space-double);
+      justify-content: space-between;
+      padding-block: 0.3em;
+      text-decoration: none;
+
+      &[aria-current] {
+        font-weight: 700;
+      }
+
+      @media (any-hover: hover) {
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+    }
+  }
+
+  .status-filter__count {
+    color: var(--color-ink-dark);
+    font-variant-numeric: tabular-nums;
+  }
+}

@@ -11,6 +11,12 @@ module MailpiecesHelper
 
   RECEIVED_ACTIONS = %w[ inbound_email_received inbound_email_bounce_received ].freeze
 
+  # Statuses said in other words than their name. Withheld reads Blocked, after the setting that withholds.
+  STATUS_WORDS = { "withheld" => "Blocked", "exhausted" => "Retries ran out" }.freeze
+
+  # A good outcome stays quiet in a list; anything else takes its colour.
+  QUIET_STATUSES = %w[ delivered forwarded accepted ].freeze
+
   GENUINE_STAMP = { verdict: "Genuine", icon: "check", semantic: "success" }.freeze
   UNVERIFIED_STAMP = { verdict: "Not verified", icon: "close", semantic: "warning" }.freeze
   SIGNED_STAMP = { verdict: "Signed", icon: "lock", semantic: "info" }.freeze
@@ -49,25 +55,32 @@ module MailpiecesHelper
     mailpiece.inbound_email? ? inbound_status_word(mailpiece.postable) : mailpiece.postable.status
   end
 
+  def status_word(status)
+    STATUS_WORDS.fetch(status.to_s) { status.to_s.humanize }
+  end
+
+  def mailpiece_status_class(status)
+    status.to_s.in?(QUIET_STATUSES) ? "status--muted" : status_class(status)
+  end
+
+  # Each status page with a count of what it lists, in the order the filter offers them.
+  def mailpiece_status_filters
+    { "held" => mailpieces_held_path, "queued" => mailpieces_queued_path, "deferred" => mailpieces_deferred_path,
+      "failed" => mailpieces_failed_path, "withheld" => mailpieces_withheld_path, "discarded" => mailpieces_discarded_path }
+      .map { |status, path| [ status, path, Current.user.accessible_mailpieces.public_send(status).count ] }
+  end
+
   def envelope_subject(mailpiece)
     mailpiece.subject.presence || "(no subject)"
   end
 
   def inbound_envelope_status(inbound_email)
-    [ inbound_status_word(inbound_email).humanize, inbound_status_detail(inbound_email) ].compact.join(" · ")
+    [ status_word(inbound_status_word(inbound_email)), inbound_status_detail(inbound_email) ].compact.join(" · ")
   end
 
   def delivery_envelope_status(delivery)
     safe_join [ "Outbound", ("#{delivery.attempts.size.ordinalize} attempt" if delivery.attempts.any?),
       (safe_join [ "next retry ", local_datetime_tag(delivery.next_retry_at, style: :datetime) ] if delivery.next_retry_at) ].compact, " · "
-  end
-
-  def mailpiece_outcome_note(mailpiece)
-    if mailpiece.inbound_email?
-      inbound_outcome_note(mailpiece.postable)
-    elsif attempt = mailpiece.postable.attempts.last
-      smtp_reply_code(attempt)
-    end
   end
 
   def inbound_outcome_note(inbound_email)

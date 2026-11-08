@@ -20,23 +20,25 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".breadcrumbs strong", text: "Mailpieces"
-    assert_select ".rows__heading", text: "All mail"
     assert_select "input[placeholder=?]", "Filter mail…"
-    pieces.each { |mailpiece| assert_select "li##{dom_id(mailpiece)}" }
-    assert_select "##{dom_id mailpieces(:held)} .envelope__ink", text: /Held\s+not forwarded/
-    assert_select "##{dom_id discarded} .envelope__ink", text: /Discarded/
+    pieces.each { |mailpiece| assert_select "li.row##{dom_id(mailpiece)}" }
+    assert_select "##{dom_id mailpieces(:held)} .row__end .status", text: "Held"
+    assert_select "##{dom_id discarded} .row__end .status", text: "Discarded"
   end
 
-  test "a failed delivery in the list shows the reply it was refused with" do
+  test "the list keeps a failed delivery's reply code for its own page" do
     deliveries(:bounced).attempts.create!(code: "550", output: "550 5.1.1 no such user", mx_host: "mx.recipient.example")
     sign_in_as :nonstaff
 
     get mailpieces_path
+    assert_select "##{dom_id mailpieces(:bounced)} .status", text: "Bounced"
+    assert_select "##{dom_id mailpieces(:bounced)}", text: /550/, count: 0
 
-    assert_select "##{dom_id mailpieces(:bounced)} .envelope__ink span", text: "550 5.1.1"
+    get mailpiece_path(mailpieces(:bounced))
+    assert_select ".envelope__ink", text: /Bounced\s+550 5.1.1/
   end
 
-  test "index counts the mail in each other state, over the list" do
+  test "the status filter lists each status page with its count, All mail current on the index" do
     sign_in_as :nonstaff
     create_inbound_email(status: :failed)
     create_inbound_email(status: :bounced)
@@ -47,66 +49,81 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     get mailpieces_path
 
     assert_response :success
-    assert_equal [ mailpieces_held_path, mailpieces_failed_path, mailpieces_withheld_path, mailpieces_deferred_path, mailpieces_queued_path, mailpieces_discarded_path ],
-      css_select(".status-stamp a").pluck("href")
-    assert_equal [ "Held", "Failed", "Withheld", "Deferred", "Queued", "Discarded" ], css_select(".status-stamp__name").map(&:text)
-    assert_equal [ "1", "2", "1", "1", "2", "1" ], css_select(".status-stamp__count").map(&:text)
-    assert_select ".rows__heading", text: "All mail"
+    assert_select ".filter-bar .status-filter__button", text: "Status…"
+    assert_equal [ root_path, mailpieces_held_path, mailpieces_queued_path, mailpieces_deferred_path, mailpieces_failed_path, mailpieces_withheld_path, mailpieces_discarded_path ],
+      css_select(".status-filter__list a").pluck("href")
+    assert_equal [ "All mail", "Held 1", "Queued 2", "Deferred 1", "Failed 2", "Blocked 1", "Discarded 1" ], css_select(".status-filter__list a").map { |link| link.text.squish }
+    assert_select ".status-filter__list a[aria-current=page]", count: 1, text: "All mail"
   end
 
-  test "a mailpiece is listed as a slim envelope inked with its state" do
+  test "an outbound mailpiece's row leads with its recipient, then the sending address, the subject and the status" do
     sign_in_as :nonstaff
     delivered = mailpieces(:delivered)
     bounced = mailpieces(:bounced)
 
     get mailpieces_path
-    assert_select "li##{dom_id delivered}" do
-      assert_select ".envelope__tab .for-screen-reader", text: "Sent from"
-      assert_select ".envelope__tab .envelope__line", text: "sender@example.com"
-      assert_select ".envelope__subject", text: "Hello"
-      assert_select ".envelope__party", text: "recipient@example.com"
-      assert_select ".envelope__ink", text: /Delivered/
+    assert_select "li.row##{dom_id delivered}" do
+      assert_select ".mailpiece__party", text: "To recipient@example.com"
+      assert_select ".mailpiece__own", text: "sender@example.com"
+      assert_select ".mailpiece__subject", text: "Hello"
+      assert_select ".row__end .status.status--muted", text: "Delivered"
     end
 
     get mailpieces_failed_path
-    assert_select "li##{dom_id bounced} .envelope__ink", text: /Bounced/
+    assert_select "li##{dom_id bounced} .row__end .status.status--error", text: "Bounced"
   end
 
-  test "a listed envelope leads with the other party: the sender of inbound mail, the recipient of outbound" do
+  test "an inbound mailpiece's row leads with its sender, by name when known, then the mailbox it wrote to" do
     sign_in_as :nonstaff
     received = mailpieces(:received)
+    nameless = create_inbound_email(mail_from: "billing@vendor.example").mailpiece
 
     get mailpieces_path
 
     assert_select "##{dom_id received}" do
-      assert_select ".envelope__tab .for-screen-reader", text: "Received at"
-      assert_select ".envelope__tab .envelope__line", text: "inbox@example.com"
-      assert_select ".envelope__party", text: "friend@sender.example"
+      assert_select ".avatar", text: "FR"
+      assert_select ".mailpiece__party", text: "Friend"
+      assert_select ".mailpiece__own", text: "inbox@example.com"
     end
-    assert_select "##{dom_id mailpieces(:delivered)} .envelope__party", text: "recipient@example.com"
+    assert_select "##{dom_id nameless} .mailpiece__party", text: "billing@vendor.example"
   end
 
-  test "a listed envelope with no envelope sender says so" do
+  test "a listed mailpiece with no envelope sender says so" do
     inbound_email = create_inbound_email(mail_from: "", status: :delivered, forwarded_at: Time.current)
     sign_in_as :nonstaff
 
     get mailpieces_path
 
-    assert_select "##{dom_id inbound_email.mailpiece} .envelope__party", text: "No sender"
+    assert_select "##{dom_id inbound_email.mailpiece} .mailpiece__party", text: "No sender"
   end
 
-  test "a listed envelope's ink says how it went: the reply, or where it was forwarded" do
-    deliveries(:delivered).attempts.create!(code: "250", output: "250 2.0.0 OK queued", mx_host: "mx.recipient.example")
-    forwarded = inbound_emails(:received)
-    forwarded.track_event "forwarded", rcpt_to: forwarded.rcpt_to, forward_to: "team@example.net"
-    accepted = create_inbound_email(status: :delivered, forwarded_at: Time.current)
+  test "held mail reads as unread, while a good outcome stays quiet" do
     sign_in_as :nonstaff
 
     get mailpieces_path
 
-    assert_select "##{dom_id mailpieces(:delivered)} .envelope__ink span", text: "250 2.0.0"
-    assert_select "##{dom_id forwarded.mailpiece} .envelope__ink span", text: "to team@example.net"
-    assert_select "##{dom_id accepted.mailpiece} .envelope__ink span", text: "not forwarded"
+    assert_select "li.row--unread", count: 1
+    assert_select "li.row--unread##{dom_id mailpieces(:held)} .status.status--warning", text: "Held"
+    assert_select "##{dom_id mailpieces(:delivered)} .status.status--muted", text: "Delivered"
+    assert_select "##{dom_id mailpieces(:held)} .row__end time[data-reader-time-target=timeordate]"
+  end
+
+  test "withheld reads blocked and exhausted reads retries ran out, in the list, on the envelope and on the status page" do
+    withheld = create_delivery(status: :withheld)
+    exhausted = create_delivery(status: :exhausted)
+    sign_in_as :nonstaff
+
+    get mailpieces_path
+    assert_select "##{dom_id withheld.mailpiece} .status", text: "Blocked"
+    assert_select "##{dom_id exhausted.mailpiece} .status", text: "Retries ran out"
+
+    get mailpiece_path(withheld.mailpiece)
+    assert_select ".envelope__ink strong", text: "Blocked"
+
+    get mailpieces_withheld_path
+    assert_select ".breadcrumbs strong", text: "Blocked"
+    assert_select ".status-filter__button", text: "Blocked"
+    assert_select ".status-filter__list a[aria-current=page][href=?]", mailpieces_withheld_path, count: 1
   end
 
   test "index loads the rest of a long list on scroll" do
@@ -125,7 +142,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".blank-slate", text: "No mail recorded yet."
-    assert_equal [ "0" ] * 6, css_select(".status-stamp__count").map(&:text)
+    assert_equal [ "0" ] * 6, css_select(".status-filter__count").map(&:text)
   end
 
   test "index lists mail that was never delivered" do
@@ -137,7 +154,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select ".blank-slate", text: "No mail recorded yet.", count: 0
     assert_select "li##{dom_id mailpieces(:queued)}"
-    assert_select ".status-stamp a[href=?]", mailpieces_queued_path
+    assert_select ".status-filter__list a[href=?]", mailpieces_queued_path
   end
 
   test "index as JSON lists all the mail, leaving out a domain you cannot reach" do
@@ -153,7 +170,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "the HTML show renders a delivery-backed mailpiece" do
-    messages(:queued).raw = file_fixture("raw.eml").read
+    messages(:queued).update!(raw: file_fixture("raw.eml").read)
     sign_in_as :nonstaff
 
     get mailpiece_path(mailpieces(:queued))
@@ -295,7 +312,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_select ".envelope__subject", text: "RE: Invoice"
 
     get mailpieces_queued_path
-    assert_select "##{dom_id inbound_email.mailpiece} .envelope__subject", text: "RE: Invoice"
+    assert_select "##{dom_id inbound_email.mailpiece} .mailpiece__subject", text: "RE: Invoice"
   end
 
   test "the HTML show stamps inbound mail no check was recorded for as not checked" do
@@ -321,8 +338,8 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_select ".envelope__phishing[title=?]", "Sent as receipts@str\u0456pe.com: its letters imitate another address, a common phishing trick"
 
     get mailpieces_path
-    assert_select "##{dom_id lookalike.mailpiece} .envelope__party", text: "Phishing? receipts@xn--strpe-p2e.com"
-    assert_select "##{dom_id normal.mailpiece} .envelope__party", text: "receipts@stripe.com"
+    assert_select "##{dom_id lookalike.mailpiece} .mailpiece__party", text: "Phishing? receipts@xn--strpe-p2e.com"
+    assert_select "##{dom_id normal.mailpiece} .mailpiece__party", text: "receipts@stripe.com"
 
     get mailpiece_path(normal.mailpiece)
     assert_select ".envelope__phishing", count: 0
@@ -477,7 +494,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_select ".trail__sentence", text: "Received from 203.0.113.7."
 
     get mailpieces_path
-    assert_select "##{dom_id inbound_email.mailpiece} .envelope__ink", text: /Accepted/
+    assert_select "##{dom_id inbound_email.mailpiece} .status.status--muted", text: "Accepted"
   end
 
   test "the HTML show calls discarded mail discarded, since nothing is bounced to its sender" do
@@ -738,7 +755,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "the JSON show exposes the shared email content for an outbound mailpiece" do
-    messages(:queued).raw = file_fixture("raw.eml").read
+    messages(:queued).update!(raw: file_fixture("raw.eml").read)
 
     get mailpiece_path(mailpieces(:queued)), headers: api_token_env, as: :json
 

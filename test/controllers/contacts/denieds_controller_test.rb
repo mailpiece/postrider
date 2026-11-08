@@ -12,7 +12,7 @@ class Contacts::DeniedsControllerTest < ActionDispatch::IntegrationTest
     assert_select "[data-controller=pagination][data-pagination-paginate-on-intersection-value=true]"
     assert_select "#contact_#{contacts(:denied).id} a.row__body[href=?]", contact_path(contacts(:denied)), text: /stranger@sender\.example.*1 email held/m
     assert_select "#contact_#{contacts(:pending).id}", count: 0
-    assert_select ".envelope--strip, .screener-card__email", count: 0
+    assert_select ".mailpiece__subject, .screener-card__email", count: 0
   end
 
   test "show screens a sender back in, asking first" do

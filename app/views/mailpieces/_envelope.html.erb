@@ -68,7 +68,7 @@
     <div class="envelope__inks">
       <% if local_assigns.fetch(:outcome, true) %>
         <p class="envelope__ink envelope__ink--outcome">
-          <strong><%= status.humanize %></strong>
+          <strong><%= status_word status %></strong>
           <% if note = local_assigns[:note] %>
             <span><%= note %></span>
           <% end %>

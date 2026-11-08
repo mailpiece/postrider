@@ -8,7 +8,7 @@ class ActiveStorageBlobSweepUnattachedTest < ActiveSupport::TestCase
     fresh = ActiveStorage::Blob.create_and_upload!(io: StringIO.new("fresh"), filename: "fresh.eml", content_type: "message/rfc822")
 
     attached = messages(:queued)
-    attached.raw = file_fixture("raw.eml").read
+    attached.update!(raw: file_fixture("raw.eml").read)
     attached.raw_email.blob.update_column(:created_at, 3.days.ago)
 
     perform_enqueued_jobs only: ActiveStorage::PurgeJob do

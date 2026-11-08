@@ -17,7 +17,7 @@ class Contact < ApplicationRecord
   scope :ordered, -> { order(created_at: :desc) }
   scope :alphabetically, -> { order(Arel.sql("lower(coalesce(contacts.name, contacts.email))")) }
   scope :matching, ->(query) { where("email LIKE ?", "%#{query}%") }
-  scope :preloaded, -> { preload(held_inbound_emails: :events) }
+  scope :preloaded, -> { preload(held_inbound_emails: %i[ events domain ]) }
 
   # A look-alike address is kept as punycode, so it reads apart from the one it imitates.
   def self.normalize_email(email)

@@ -25,6 +25,28 @@ class Contacts::DeniedsControllerTest < ActionDispatch::IntegrationTest
     assert_select "form[action=?] button", contact_approval_path(contacts(:denied)), text: "No", count: 0
   end
 
+  test "show names the forwarding address behind a tagged recipient" do
+    sign_in_as :leo
+    inbound_emails(:held).update!(rcpt_to: "forwarding+quotes@example.com")
+
+    get contacts_denied_path
+
+    assert_select "form[action=?][data-turbo-confirm=?]", contact_approval_path(contacts(:denied)),
+      "Forward 1 held email from stranger@sender.example to forwarding@elsewhere.example?"
+  end
+
+  test "show counts and places a sender's held mail without a query per email" do
+    sign_in_as :leo
+    queries_for_one = count_queries { get contacts_denied_path }
+
+    5.times { create_inbound_email(status: :held, contact: contacts(:denied), rcpt_to: "forwarding@example.com") }
+
+    assert_equal queries_for_one, count_queries { get contacts_denied_path }
+    assert_select "#contact_#{contacts(:denied).id}", text: /6 emails held/
+    assert_select "form[action=?][data-turbo-confirm=?]", contact_approval_path(contacts(:denied)),
+      "Forward 6 held emails from stranger@sender.example to forwarding@elsewhere.example?"
+  end
+
   test "show asks an admin before clearing all" do
     sign_in_as :leo
 
@@ -71,4 +93,12 @@ class Contacts::DeniedsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.parsed_body.pluck("id"), contacts(:denied).id
     assert_not_includes response.parsed_body.pluck("id"), contacts(:private).id
   end
+
+  private
+    def count_queries(&block)
+      queries = []
+      counter = ->(event) { queries << event.payload[:sql] unless event.payload[:cached] || event.payload[:name] == "SCHEMA" }
+      ActiveSupport::Notifications.subscribed(counter, "sql.active_record", &block)
+      queries.size
+    end
 end

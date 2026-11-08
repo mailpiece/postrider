@@ -2,6 +2,7 @@ class Contact < ApplicationRecord
   belongs_to :account, default: -> { domain.account }
   belongs_to :domain
   has_many :inbound_emails, dependent: :nullify
+  has_many :held_inbound_emails, -> { held.ordered }, class_name: "InboundEmail"
   has_many :mailpieces, through: :inbound_emails
 
   enum :decision, %w[ pending approved denied ].index_by(&:itself), default: :pending
@@ -16,6 +17,7 @@ class Contact < ApplicationRecord
   scope :ordered, -> { order(created_at: :desc) }
   scope :alphabetically, -> { order(Arel.sql("lower(coalesce(contacts.name, contacts.email))")) }
   scope :matching, ->(query) { where("email LIKE ?", "%#{query}%") }
+  scope :preloaded, -> { preload(held_inbound_emails: :events) }
 
   # A look-alike address is kept as punycode, so it reads apart from the one it imitates.
   def self.normalize_email(email)
@@ -29,6 +31,11 @@ class Contact < ApplicationRecord
 
   def self.deny_all
     update_all decision: "denied", updated_at: Time.current
+  end
+
+  # Flagged is read off the mail, so the senders are picked in Ruby and denied in one statement.
+  def self.deny_flagged
+    where(id: preloaded.select(&:flagged?).map(&:id)).deny_all
   end
 
   def self.for_sender(domain, email, name: nil)
@@ -50,8 +57,13 @@ class Contact < ApplicationRecord
     name.presence || email
   end
 
-  def held_mailpieces
-    mailpieces.merge(InboundEmail.held).ordered.preload(:postable)
+  # A sender's newest held email speaks for them in the Screener.
+  def newest_held_email
+    held_inbound_emails.first
+  end
+
+  def flagged?
+    newest_held_email&.spam_check&.flagged?
   end
 
   def approve

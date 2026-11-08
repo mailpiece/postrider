@@ -53,6 +53,11 @@ module InboundEmail::Forwarding
     parsed_email.from_name
   end
 
+  # Where the mailbox it was sent to passes mail on, while it does.
+  def forward_to
+    forwarding_mailbox&.forward_to
+  end
+
   private
     def contact_belongs_to_domain
       if contact && contact.domain_id != domain_id

@@ -99,11 +99,38 @@ class ContactTest < ActiveSupport::TestCase
     end
   end
 
-  test "held_mailpieces lists held mail newest first" do
+  test "the newest held email speaks for a contact" do
     latest = create_inbound_email(status: :held, contact: contacts(:denied))
     create_inbound_email(status: :delivered, contact: contacts(:denied))
 
-    assert_equal [ latest.mailpiece, mailpieces(:held) ], contacts(:denied).held_mailpieces.to_a
+    assert_equal [ latest, inbound_emails(:held) ], contacts(:denied).held_inbound_emails.to_a
+    assert_equal latest, contacts(:denied).newest_held_email
+    assert_nil contacts(:approved).newest_held_email
+  end
+
+  test "a contact is flagged when the spam check flagged their newest held email" do
+    assert_not contacts(:denied).flagged?
+    assert_not contacts(:approved).flagged?
+
+    inbound_emails(:held).track_event "scored", action: "no_action", score: -1.8, complete: true, symbols: []
+    assert_not contacts(:denied).reload.flagged?
+
+    create_inbound_email(status: :held, contact: contacts(:denied))
+      .track_event "scored", action: "reject", score: 7.4, complete: true, symbols: []
+    assert contacts(:denied).reload.flagged?
+  end
+
+  test "deny_flagged denies the flagged contacts in the relation, and nobody else" do
+    inbound_emails(:held).update!(contact: contacts(:pending))
+    inbound_emails(:held).track_event "scored", action: "reject", score: 7.4, complete: true, symbols: []
+    bystander = domains(:example).contacts.create!(email: "quiet@sender.example", decision: :pending)
+    create_inbound_email(status: :held, contact: bystander)
+
+    domains(:example).contacts.pending.deny_flagged
+
+    assert contacts(:pending).reload.denied?
+    assert bystander.reload.pending?
+    assert contacts(:approved).reload.approved?
   end
 
   test "deny records the decision and forwards nothing" do

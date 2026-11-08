@@ -59,11 +59,10 @@ class Webhook < ApplicationRecord
     end
   end
 
-  # An admin turns it off; the tracker deactivates it, saying how many deliveries failed.
-  def deactivate(**particulars)
+  def deactivate(event_name: "turned_off", **particulars)
     transaction do
       update! active: false
-      track_event particulars.any? ? "deactivated" : "turned_off", **particulars if saved_change_to_active?
+      track_event event_name, **particulars if saved_change_to_active?
     end
   end
 

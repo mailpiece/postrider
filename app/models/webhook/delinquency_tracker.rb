@@ -43,6 +43,6 @@ class Webhook::DelinquencyTracker < ApplicationRecord
     end
 
     def deactivate_webhook(delivery)
-      webhook.deactivate consecutive_failures_count: consecutive_failures_count, **delivery.response_summary.to_h
+      webhook.deactivate event_name: "deactivated", consecutive_failures_count: consecutive_failures_count, **delivery.response_summary.to_h
     end
 end

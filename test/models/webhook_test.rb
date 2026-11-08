@@ -128,10 +128,10 @@ class WebhookTest < ActiveSupport::TestCase
     assert_nil webhook.deactivation
   end
 
-  test "deactivating with a failure count records the tracker's deactivation" do
+  test "deactivating as the tracker records its deactivation with the failure count" do
     webhook = webhooks(:active)
 
-    webhook.deactivate consecutive_failures_count: 10, code: 500
+    webhook.deactivate event_name: "deactivated", consecutive_failures_count: 10, code: 500
 
     assert_equal "webhook_deactivated", webhook.events.last.action
     assert_equal 10, webhook.events.last.particulars["consecutive_failures_count"]

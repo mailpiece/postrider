@@ -68,12 +68,13 @@ class InboundEmail < ApplicationRecord
     ForwardJob.perform_later(self, ip:, helo:)
   end
 
-  # Authentication and attachments come before the transaction: a slow zone would
-  # hold the write lock, and Active Storage uploads on commit.
+  # Authentication, attachments and the score come before the transaction: a slow zone
+  # or scorer would hold the write lock, and Active Storage uploads on commit.
   def forward(ip:, helo:)
     processing!
     authenticate(ip:, helo:)
     extract_attachments
+    score
 
     transaction do
       track_event to_bounce_address? ? "bounce_received" : "received", **received_particulars(ip)

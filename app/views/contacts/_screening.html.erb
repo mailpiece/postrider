@@ -7,7 +7,7 @@
       <% else %>
         Forward their mail?
       <% end %>
-      <span class="txt-subtle"><%= pluralize contact.inbound_emails.held.count, "email" %> held</span>
+      <span class="txt-subtle"><%= pluralize contact.held_inbound_emails.size, "email" %> held</span>
     </span>
     <%= render "contacts/yes_no", contact: contact %>
   <% elsif contact.denied? %>

@@ -196,6 +196,18 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_select ".blank-slate a[href=?]", new_domain_path, count: 0
   end
 
+  test "index is fresh again once a domain is added" do
+    sign_in_as :leo
+    users(:leo).accesses.delete_all
+
+    get mailpieces_path
+    users(:leo).account.domains.create!(name: "added.example", creator: users(:leo))
+    get mailpieces_path, headers: { "HTTP_IF_NONE_MATCH" => response.headers["ETag"] }
+
+    assert_response :success
+    assert_select ".blank-slate", text: "No mail yet. Publish the DNS records of added.example and send something."
+  end
+
   test "index lists mail that was never delivered" do
     sign_in_as :nonstaff
     Mailpiece.where.not(id: mailpieces(:queued).id).delete_all

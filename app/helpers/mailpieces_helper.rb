@@ -52,6 +52,28 @@ module MailpiecesHelper
     end
   end
 
+  def mailpiece_avatar_tag(mailpiece)
+    name, address, _own = mailpiece_party_details(mailpiece)
+    avatar_tag name, address, class: "contact__avatar"
+  end
+
+  # Who the row is about: the sender of inbound mail, the recipient of outbound.
+  def mailpiece_party(mailpiece)
+    name, address, _own = mailpiece_party_details(mailpiece)
+
+    if mailpiece.inbound_email?
+      name.presence || address.presence || "No sender"
+    else
+      "To #{address}"
+    end
+  end
+
+  # The party's address when the row shows them by name, then the address on our side.
+  def mailpiece_addresses(mailpiece)
+    name, address, own = mailpiece_party_details(mailpiece)
+    safe_join [ (address if name.present?), own ].compact, " · "
+  end
+
   def mailpiece_status(mailpiece)
     mailpiece.inbound_email? ? inbound_status_word(mailpiece.postable) : mailpiece.postable.status
   end
@@ -140,6 +162,17 @@ module MailpiecesHelper
   end
 
   private
+    # The party's name and address, and the address on our side.
+    def mailpiece_party_details(mailpiece)
+      postable = mailpiece.postable
+
+      if mailpiece.inbound_email?
+        [ postable.contact&.name, postable.sender_address, postable.rcpt_to ]
+      else
+        [ nil, postable.rcpt_to, postable.mail_from ]
+      end
+    end
+
     def phishing_tag(title)
       tag.span "Phishing?", class: "envelope__phishing", title: title
     end

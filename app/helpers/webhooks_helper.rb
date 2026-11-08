@@ -31,14 +31,6 @@ module WebhooksHelper
     end
   end
 
-  def untestable_webhook_reason(webhook)
-    if webhook.for_action_mailbox_relay?
-      "A relay webhook takes no test"
-    else
-      "This webhook takes no test while it is off"
-    end
-  end
-
   def webhook_state(webhook)
     if deactivation = webhook.deactivation
       deactivation.description

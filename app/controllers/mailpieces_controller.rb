@@ -4,6 +4,7 @@ class MailpiecesController < ApplicationController
 
   def index
     set_page_and_extract_portion_from Current.user.accessible_mailpieces.preloaded.ordered
+    @domain = Current.user.domains.unverified_first.first unless @page.used?
     fresh_when etag: [ @page.records, Current.user.accessible_mailpieces ]
   end
 

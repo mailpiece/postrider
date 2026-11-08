@@ -1,8 +1,10 @@
 <div class="blank-slate fit-content center flex flex-column align-center gap">
-  <% if domain = Current.user.domains.unverified_first.first %>
-    <p class="margin-none">No mail yet. Publish the DNS records of <%= link_to domain.name, domain_path(domain) %> and send something.</p>
-  <% else %>
+  <% if @domain.nil? %>
     <p class="margin-none">No mail yet. Add a domain, publish its DNS records, then create a sending token or set up a mailbox.</p>
     <%= link_to "Add a domain", new_domain_path, class: "btn" if Current.user.admin? %>
+  <% elsif @domain.verified? %>
+    <p class="margin-none">No mail yet for <%= link_to @domain.name, domain_path(@domain) %>. Send something from it, or set up a mailbox.</p>
+  <% else %>
+    <p class="margin-none">No mail yet. Publish the DNS records of <%= link_to @domain.name, domain_path(@domain) %> and send something.</p>
   <% end %>
 </div>

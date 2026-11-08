@@ -152,22 +152,28 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_select "[data-controller=pagination][data-pagination-paginate-on-intersection-value=true]"
   end
 
-  test "index with a domain but no mail says to publish its DNS records, an unverified domain first" do
+  test "index with a verified domain but no mail says to send something from it" do
     sign_in_as :nonstaff
     Mailpiece.delete_all
 
     get mailpieces_path
 
     assert_response :success
-    assert_select ".blank-slate", text: "No mail yet. Publish the DNS records of example.com and send something."
+    assert_select ".blank-slate", text: "No mail yet for example.com. Send something from it, or set up a mailbox."
     assert_select ".blank-slate a[href=?]", domain_path(domains(:example)), text: "example.com"
     assert_select ".blank-slate a[href=?]", new_domain_path, count: 0
+    assert_equal [ "0" ] * 7, css_select(".status-filter__count").map(&:text)
+  end
 
+  test "index with an unverified domain and no mail says to publish its DNS records, before any verified one" do
+    sign_in_as :nonstaff
+    Mailpiece.delete_all
     domains(:unverified).accesses.grant_to [ users(:nonstaff) ]
+
     get mailpieces_path
 
+    assert_select ".blank-slate", text: "No mail yet. Publish the DNS records of unverified.example and send something."
     assert_select ".blank-slate a[href=?]", domain_path(domains(:unverified)), text: "unverified.example"
-    assert_equal [ "0" ] * 7, css_select(".status-filter__count").map(&:text)
   end
 
   test "index with no domain tells an admin what to do and offers to add one" do

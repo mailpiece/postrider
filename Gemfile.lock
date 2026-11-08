@@ -68,7 +68,7 @@ GIT
 
 GIT
   remote: https://github.com/mailpiece/mailscore-ruby.git
-  revision: 5b447e4dd53c4add0de91f2ceecbaad65bd47b5f
+  revision: f84301ec177b21117a8d7bfeada39092542e8aae
   branch: main
   specs:
     mailscore-ruby (0.1.0)

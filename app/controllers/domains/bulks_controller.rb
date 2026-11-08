@@ -7,7 +7,7 @@ class Domains::BulksController < ApplicationController
     @domain.turn_bulk_on
 
     respond_to do |format|
-      format.html { redirect_back fallback_location: edit_domain_path(@domain), notice: "#{@domain.name} now sends bulk mail" }
+      format.html { redirect_back_or_to edit_domain_path(@domain), notice: "#{@domain.name} now sends bulk mail" }
       format.json { render "domains/show" }
     end
   end
@@ -16,7 +16,7 @@ class Domains::BulksController < ApplicationController
     @domain.turn_bulk_off
 
     respond_to do |format|
-      format.html { redirect_back fallback_location: edit_domain_path(@domain), notice: "#{@domain.name} no longer sends bulk mail" }
+      format.html { redirect_back_or_to edit_domain_path(@domain), notice: "#{@domain.name} no longer sends bulk mail" }
       format.json { render "domains/show" }
     end
   end

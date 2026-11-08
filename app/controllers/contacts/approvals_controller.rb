@@ -6,7 +6,7 @@ class Contacts::ApprovalsController < ApplicationController
 
     respond_to do |format|
       format.turbo_stream { render turbo_stream: [ replaced_contact, turbo_stream_flash(notice: "Now forwarding mail from #{@contact.email}") ] }
-      format.html { redirect_back fallback_location: contacts_path, notice: "Now forwarding mail from #{@contact.email}" }
+      format.html { redirect_back_or_to contacts_path, notice: "Now forwarding mail from #{@contact.email}" }
       format.json { head :no_content }
     end
   end
@@ -16,7 +16,7 @@ class Contacts::ApprovalsController < ApplicationController
 
     respond_to do |format|
       format.turbo_stream { render turbo_stream: [ replaced_contact, turbo_stream_flash(notice: "Now holding mail from #{@contact.email}") ] }
-      format.html { redirect_back fallback_location: contacts_path, notice: "Now holding mail from #{@contact.email}" }
+      format.html { redirect_back_or_to contacts_path, notice: "Now holding mail from #{@contact.email}" }
       format.json { head :no_content }
     end
   end

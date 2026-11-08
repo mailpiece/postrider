@@ -23,7 +23,7 @@ class MailboxesController < ApplicationController
 
     if @mailbox.save
       respond_to do |format|
-        format.html { redirect_to [ @domain, @mailbox ], notice: helpers.mailbox_saved_notice(@mailbox, "Mailbox added") }
+        format.html { redirect_to [ @domain, @mailbox ], notice: notice_for("Mailbox added") }
         format.json { render :create, status: :created }
       end
     else
@@ -40,7 +40,7 @@ class MailboxesController < ApplicationController
   def update
     if @mailbox.update(mailbox_params)
       respond_to do |format|
-        format.html { redirect_to [ @domain, @mailbox ], notice: helpers.mailbox_saved_notice(@mailbox, "Mailbox updated") }
+        format.html { redirect_to [ @domain, @mailbox ], notice: notice_for("Mailbox updated") }
         format.json { render :show }
       end
     else
@@ -80,5 +80,13 @@ class MailboxesController < ApplicationController
 
     def forwarding?
       params.dig(:mailbox, :forward_to).present?
+    end
+
+    def notice_for(saved)
+      if @mailbox.should_send_forward_confirmation?
+        "#{saved}. Confirmation sent to #{@mailbox.forward_to}"
+      else
+        saved
+      end
     end
 end

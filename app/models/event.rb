@@ -62,9 +62,10 @@ class Event < ApplicationRecord
   end
 
   private
-    # A sending token may be gone by the time its event is sent, so the event carries it.
+    # A sending token may be gone by the time its event is sent, and a webhook does not know who
+    # tested it, so those events carry what their payload needs.
     def webhook_payload
-      if action.start_with?("sending_token_")
+      if action.start_with?("sending_token_") || action.webhook_tested?
         eventable.webhook_payload(action).merge(particulars.symbolize_keys)
       else
         eventable.webhook_payload(action)

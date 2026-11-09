@@ -25,11 +25,16 @@
         <span>Sends to</span>
         <span class="record__byline-name"><%= @webhook.url %></span>
       </p>
-      <% if @webhook.active? %>
-        <%= button_to "Deactivate", domain_webhook_activation_path(@domain, @webhook), method: :delete, class: "btn txt-small" %>
-      <% else %>
-        <%= button_to "Activate", domain_webhook_activation_path(@domain, @webhook), class: "btn txt-small" %>
-      <% end %>
+      <div class="flex gap-half">
+        <% if @webhook.active? %>
+          <%= button_to "Deactivate", domain_webhook_activation_path(@domain, @webhook), method: :delete, class: "btn txt-small" %>
+        <% else %>
+          <%= button_to "Activate", domain_webhook_activation_path(@domain, @webhook), class: "btn txt-small" %>
+        <% end %>
+        <% if @webhook.testable? %>
+          <%= button_to "Send a test", domain_webhook_test_path(@domain, @webhook), class: "btn txt-small" %>
+        <% end %>
+      </div>
     </header>
 
     <div class="details details--columns details--lined">

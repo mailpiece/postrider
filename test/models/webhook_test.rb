@@ -134,4 +134,12 @@ class WebhookTest < ActiveSupport::TestCase
       webhooks(:active).trigger(event)
     end
   end
+
+  test "test records who sent it" do
+    webhooks(:active).test(by: users(:leo))
+
+    event = webhooks(:active).deliveries.last.event
+    assert_equal "webhook_tested", event.action
+    assert_equal "Leo", event.particulars["sent_by"]
+  end
 end

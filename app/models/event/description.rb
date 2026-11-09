@@ -27,16 +27,17 @@ class Event::Description
     when "inbound_email_failed"           then "Never forwarded inbound mail to #{recipient}"
     when "inbound_email_discarded"        then discarded_sentence
     when "webhook_deactivated"            then "Deactivated webhook after #{event.particulars["consecutive_failures_count"]} failed deliveries"
-    when "domain_verified"                then "DNS verified for #{domain_name}"
-    when "domain_verification_lost"       then "DNS verification lost for #{domain_name}: #{event.particulars["error"]}"
+    when "webhook_tested"                 then "Sent a test to webhook #{eventable_name}"
+    when "domain_verified"                then "DNS verified for #{eventable_name}"
+    when "domain_verification_lost"       then "DNS verification lost for #{eventable_name}: #{event.particulars["error"]}"
     when "domain_blocked_phrases_changed" then "Blocked phrases changed"
     when "domain_allowed_ips_changed"     then "Allowed IPs changed"
-    when "domain_receiving_turned_off"    then "Receiving turned off for #{domain_name}"
-    when "domain_receiving_turned_on"     then "Receiving turned on for #{domain_name}"
-    when "domain_sending_turned_off"      then "Sending turned off for #{domain_name}"
-    when "domain_sending_turned_on"       then "Sending turned on for #{domain_name}"
-    when "domain_bulk_turned_on"          then "Bulk mail turned on for #{domain_name}"
-    when "domain_bulk_turned_off"         then "Bulk mail turned off for #{domain_name}"
+    when "domain_receiving_turned_off"    then "Receiving turned off for #{eventable_name}"
+    when "domain_receiving_turned_on"     then "Receiving turned on for #{eventable_name}"
+    when "domain_sending_turned_off"      then "Sending turned off for #{eventable_name}"
+    when "domain_sending_turned_on"       then "Sending turned on for #{eventable_name}"
+    when "domain_bulk_turned_on"          then "Bulk mail turned on for #{eventable_name}"
+    when "domain_bulk_turned_off"         then "Bulk mail turned off for #{eventable_name}"
     when "recipient_domain_paused"        then "Paused sending to #{paused_mail} because its mail servers refuse this server's IP"
     when "recipient_domain_resumed"       then "Resumed sending to #{paused_mail}"
     when "sending_token_created"          then "Created sending token #{token_name}"
@@ -99,7 +100,7 @@ class Event::Description
       end
     end
 
-    def domain_name
+    def eventable_name
       event.eventable&.name
     end
 

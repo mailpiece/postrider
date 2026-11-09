@@ -382,6 +382,7 @@ A webhook tells your app about a domain's mail; [webhooks.md](webhooks.md) has t
 | `DELETE /domains/:domain_id/webhooks/:id`              | Deletes it and its deliveries; returns `204`                                  |
 | `POST /domains/:domain_id/webhooks/:id/activation`     | Turns it on; returns `201` with the webhook                                   |
 | `DELETE /domains/:domain_id/webhooks/:id/activation`   | Turns it off; returns `204`                                                   |
+| `POST /domains/:domain_id/webhooks/:id/test`           | Sends it a [test](webhooks.md#testing-a-webhook); returns `201` with the webhook |
 | `GET /domains/:domain_id/webhooks/:id/deliveries`      | Paged list of its deliveries, newest first                                    |
 
 Each delivery carries `id`, `state`, `request`, `response`, the `event` it carried (`id`, `action`, `created_at`), `created_at` and `updated_at`.
@@ -413,10 +414,10 @@ curl https://postrider.example.com/123456789/domains/$DOMAIN_ID/webhooks \
 | Status | Cause                                                                             |
 | ------ | ---------------------------------------------------------------------------------- |
 | `200`  | Success (listing, showing or updating a webhook, or listing its deliveries)       |
-| `201`  | Created or activated; returns the webhook                                         |
+| `201`  | Created, activated or sent a test; returns the webhook                            |
 | `204`  | Deleted or deactivated, no body                                                   |
 | `401`  | Missing or invalid personal access token, or a `read` token on a write            |
-| `403`  | Token's user is not an account admin, or the account/user is not active          |
+| `403`  | Token's user is not an account admin, the account/user is not active, or the webhook is off or a relay and takes no test |
 | `404`  | No such domain, or no such webhook, under this token's user                      |
 | `422`  | Not a valid webhook; returns `{ "field": [ ... ] }`                               |
 

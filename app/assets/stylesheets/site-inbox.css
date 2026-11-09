@@ -95,9 +95,7 @@
 
     a {
       color: inherit;
-      display: flex;
-      gap: var(--inline-space-double);
-      justify-content: space-between;
+      display: block;
       padding-block: 0.3em;
       text-decoration: none;
 
@@ -111,10 +109,5 @@
         }
       }
     }
-  }
-
-  .status-filter__count {
-    color: var(--color-ink-dark);
-    font-variant-numeric: tabular-nums;
   }
 }

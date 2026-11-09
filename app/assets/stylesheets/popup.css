@@ -1,0 +1,118 @@
+@layer components {
+  .popup {
+    --btn-background: transparent;
+    --panel-border-radius: 0.5em;
+    --panel-padding: var(--block-space);
+    --panel-size: auto;
+    --popup-item-padding-inline: 0.4rem;
+    --popup-display: flex;
+
+    inset: 0 auto auto 50%;
+    max-block-size: 70dvh;
+    max-inline-size: min(55ch, calc(100vw - (var(--panel-padding))));
+    min-inline-size: min(25ch, calc(100vw - (var(--panel-padding))));
+    overflow: auto;
+    position: absolute;
+    translate: -50%;
+    z-index: var(--z-popup);
+
+    &[open] {
+      display: var(--popup-display);
+    }
+
+    /* The .pop-up--align-<drection> classes are used for initial alignment.
+     * The orient JS helper layers on the .orient-<direction> to avoid running
+     * off the edge of the screen and will override .popup--align */
+    &:where(.popup--align-left),
+    &.orient-left {
+      inset-inline: auto 0;
+      translate: var(--orient-offset, 0px);
+    }
+
+    &:where(.popup--align-right),
+    &.orient-right {
+      inset-inline: 0 auto;
+      translate: var(--orient-offset, 0px);
+    }
+
+    form {
+      display: contents;
+    }
+  }
+
+  .popup__title {
+    font-weight: 800;
+    white-space: nowrap;
+
+    &[tabindex="-1"]:focus-visible {
+      outline: unset;
+    }
+  }
+
+  .popup__list {
+    display: flex;
+    flex-direction: column;
+    inline-size: 100%;
+    list-style: none;
+    margin: 0;
+    max-inline-size: 100%;
+    padding: 0;
+    row-gap: 1px;
+  }
+
+  .popup__item {
+    align-items: center;
+    background: transparent;
+    border-radius: 0.3em;
+    display: flex;
+    inline-size: 100%;
+    max-inline-size: 100%;
+
+    @media (any-hover: hover) {
+      &:hover {
+        background: var(--color-ink-lightest);
+      }
+    }
+
+    &:has(.popup__btn[disabled]) {
+      pointer-events: none;
+    }
+
+    .checked {
+      display: none;
+    }
+
+    &[aria-checked="true"] .checked {
+      display: block;
+    }
+
+    &[aria-selected] {
+      background-color: var(--color-selected);
+
+      @media (any-hover: hover) {
+        &:hover {
+          background-color: var(--color-selected);
+        }
+      }
+    }
+  }
+
+  /* The actionable thing with padding within popup__item */
+  .popup__btn {
+    --btn-border-radius: 0.3em;
+    --btn-border-size: 0;
+
+    flex: 1 1 auto;
+    font-weight: 500;
+    justify-content: start;
+    inline-size: 100%;
+    min-inline-size: 0;
+    max-inline-size: 100%;
+    padding: var(--inline-space-half) var(--popup-item-padding-inline);
+    text-align: start;
+
+    &:focus-visible {
+      z-index: 1;
+    }
+  }
+}

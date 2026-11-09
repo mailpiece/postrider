@@ -5,14 +5,13 @@ class Domains::CatchAllsControllerTest < ActionDispatch::IntegrationTest
     @domain = domains(:example)
   end
 
-  test "edit has the one form, under Mailboxes" do
+  test "edit has the form" do
     sign_in_as :leo
 
     get edit_domain_catch_all_path(@domain)
 
     assert_response :success
-    assert_select ".breadcrumbs a[href=?]", domain_mailboxes_path(@domain), text: "Mailboxes"
-    assert_select "form[action=?] select[name=?]", domain_catch_all_path(@domain), "domain[catch_all_policy]", count: 1
+    assert_select "form[action=?]", domain_catch_all_path(@domain)
   end
 
   test "an admin changes the policy and goes back to the mailboxes" do

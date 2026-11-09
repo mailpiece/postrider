@@ -45,9 +45,9 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".filter-bar .status-filter__button", text: "Status…"
-    assert_equal [ root_path, mailpieces_held_path, mailpieces_queued_path, mailpieces_deferred_path, mailpieces_failed_path, mailpieces_withheld_path, mailpieces_discarded_path ],
+    assert_equal [ root_path, mailpieces_delivered_path, mailpieces_held_path, mailpieces_queued_path, mailpieces_deferred_path, mailpieces_failed_path, mailpieces_withheld_path, mailpieces_discarded_path ],
       css_select(".status-filter__list a").pluck("href")
-    assert_equal [ "All mail", "Held", "Queued", "Deferred", "Failed", "Blocked", "Discarded" ], css_select(".status-filter__list a").map { |link| link.text.squish }
+    assert_equal [ "All mail", "Delivered", "Held", "Queued", "Deferred", "Failed", "Blocked", "Discarded" ], css_select(".status-filter__list a").map { |link| link.text.squish }
     assert_select ".status-filter__list a[aria-current=page]", count: 1, text: "All mail"
   end
 
@@ -58,6 +58,10 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
 
     get mailpieces_path
     assert_select "li.row##{dom_id delivered}" do
+      assert_select "a", count: 1
+      assert_select "> a.mailpiece__link[href=?] .avatar", mailpiece_path(delivered)
+      assert_select "> a.mailpiece__link[href=?] .row__title", mailpiece_path(delivered)
+      assert_select "> a.mailpiece__link[href=?] .row__end", mailpiece_path(delivered)
       assert_select ".mailpiece__party", text: /\ASent\s+To recipient@example.com\z/
       assert_select ".mailpiece__own", text: "sender@example.com"
       assert_select ".mailpiece__subject", text: "Hello"
@@ -165,7 +169,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".blank-slate", text: "No mail recorded yet."
-    assert_select ".status-filter__list a", count: 7
+    assert_select ".status-filter__list a", count: 8
   end
 
   test "index lists mail that was never delivered" do

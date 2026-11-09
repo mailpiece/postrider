@@ -135,6 +135,7 @@ Rails.application.routes.draw do
   resources :suppressions, only: %i[ index destroy ]
   resources :messages, only: :create
   namespace :mailpieces do
+    resource :delivered, only: :show
     resource :held, only: :show
     resource :discarded, only: :show
     resource :deferred, only: :show

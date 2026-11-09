@@ -17,8 +17,9 @@ class PaginationLinksTest < ActionDispatch::IntegrationTest
   end
 
   {
-    "held" => :mailpieces_held_path, "failed" => :mailpieces_failed_path, "withheld" => :mailpieces_withheld_path,
-    "deferred" => :mailpieces_deferred_path, "queued" => :mailpieces_queued_path, "discarded" => :mailpieces_discarded_path,
+    "delivered" => :mailpieces_delivered_path, "held" => :mailpieces_held_path, "failed" => :mailpieces_failed_path,
+    "withheld" => :mailpieces_withheld_path, "deferred" => :mailpieces_deferred_path, "queued" => :mailpieces_queued_path,
+    "discarded" => :mailpieces_discarded_path,
     "domains" => :domains_path, "not verified" => :domains_unverified_path,
     "contacts" => :contacts_path, "denied" => :contacts_denied_path,
     "suppressions" => :suppressions_path, "users" => :users_path, "events" => :events_path

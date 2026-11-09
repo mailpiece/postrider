@@ -97,8 +97,9 @@ module MailpiecesHelper
 
   # Each status page, in the order the filter offers them.
   def mailpiece_status_filters
-    { "held" => mailpieces_held_path, "queued" => mailpieces_queued_path, "deferred" => mailpieces_deferred_path,
-      "failed" => mailpieces_failed_path, "withheld" => mailpieces_withheld_path, "discarded" => mailpieces_discarded_path }
+    { "delivered" => mailpieces_delivered_path, "held" => mailpieces_held_path, "queued" => mailpieces_queued_path,
+      "deferred" => mailpieces_deferred_path, "failed" => mailpieces_failed_path, "withheld" => mailpieces_withheld_path,
+      "discarded" => mailpieces_discarded_path }
   end
 
   def envelope_subject(mailpiece)

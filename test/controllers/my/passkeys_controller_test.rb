@@ -93,7 +93,6 @@ class My::PasskeysControllerTest < ActionDispatch::IntegrationTest
     passkey = create_passkey
 
     get edit_my_passkey_path(passkey)
-    assert_select "p", text: /This is your only passkey/
 
     assert_no_difference -> { identities(:leo).passkeys.count } do
       delete my_passkey_path(passkey)

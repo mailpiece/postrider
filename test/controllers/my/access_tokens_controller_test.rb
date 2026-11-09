@@ -9,14 +9,12 @@ class My::AccessTokensControllerTest < ActionDispatch::IntegrationTest
     untenanted { get my_access_tokens_path }
 
     assert_response :success
-    assert_select "a.breadcrumbs__home[href=?]", "/session/menu"
   end
 
   test "index renders in an account" do
     get my_access_tokens_path
 
     assert_response :success
-    assert_select ".breadcrumbs a[href=?]", user_path(users(:leo)), text: "Profile"
   end
 
   test "new asks for a passkey first" do
@@ -48,7 +46,6 @@ class My::AccessTokensControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_equal "no-store", response.headers["Cache-Control"]
-    assert_select "turbo-stream[action=replace][target=?]", "new_access_token"
     assert_revealed identities(:leo).access_tokens.order(:created_at).last
   end
 

@@ -447,15 +447,22 @@ Authenticate with a personal access token (`read` permission is sufficient): `Au
 | Endpoint              | Returns                                                                                |
 | --------------------- | -------------------------------------------------------------------------------------- |
 | `GET /mailpieces`     | Paged metadata for all mail, newest first, in either direction and whatever its status |
-| `GET /mailpieces/delivered` | Deliveries the recipient's server accepted, and inbound mail forwarded or accepted, in the index's format |
-| `GET /mailpieces/held` | Inbound mail held for a decision on its sender, in the index's format                 |
-| `GET /mailpieces/deferred` | Deliveries waiting on a retry, in the index's format                              |
-| `GET /mailpieces/queued` | Deliveries not yet attempted and inbound mail not yet processed, in the index's format |
-| `GET /mailpieces/failed` | Deliveries that bounced, ran out of retries or were suppressed, and inbound mail that failed, in the index's format |
-| `GET /mailpieces/withheld` | Deliveries blocked for containing a blocked phrase, in the index's format |
-| `GET /mailpieces/discarded` | Inbound mail that was discarded: sent to an address nobody registered, or a bounce matching no delivery, in the index's format |
 | `GET /mailpieces/:id` | One piece: envelope, status, parsed content (while retained), `raw_url`, `attachments` |
 
+
+`GET /mailpieces?status=` narrows the index to one status, in the same format:
+
+| `status`    | Lists                                                                                   |
+| ----------- | --------------------------------------------------------------------------------------- |
+| `delivered` | Deliveries the recipient's server accepted, and inbound mail forwarded or accepted       |
+| `held`      | Inbound mail held for a decision on its sender                                          |
+| `queued`    | Deliveries not yet attempted and inbound mail not yet processed                         |
+| `deferred`  | Deliveries waiting on a retry                                                           |
+| `failed`    | Deliveries that bounced, ran out of retries or were suppressed, and inbound mail that failed |
+| `withheld`  | Deliveries blocked for containing a blocked phrase                                      |
+| `discarded` | Inbound mail that was discarded: sent to an address nobody registered, or a bounce matching no delivery |
+
+`all`, or any value not listed, lists all the mail.
 
 **Index** entries are metadata only (no bodies), so paging is fast. Each includes the SMTP envelope (`mail_from`, `rcpt_to`), `status` and a `direction` of `inbound` or `outbound`; inbound pieces also carry `spf` / `dkim` / `dmarc` / `arc` verdicts and the sender domain's `dmarc_policy`. Fields are flat here, unlike the nested webhook payload — and note the webhook has no `mail_from`, only the parsed `From` header.
 

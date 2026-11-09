@@ -17,9 +17,6 @@ class PaginationLinksTest < ActionDispatch::IntegrationTest
   end
 
   {
-    "delivered" => :mailpieces_delivered_path, "held" => :mailpieces_held_path, "failed" => :mailpieces_failed_path,
-    "withheld" => :mailpieces_withheld_path, "deferred" => :mailpieces_deferred_path, "queued" => :mailpieces_queued_path,
-    "discarded" => :mailpieces_discarded_path,
     "domains" => :domains_path, "not verified" => :domains_unverified_path,
     "contacts" => :contacts_path, "denied" => :contacts_denied_path,
     "suppressions" => :suppressions_path, "users" => :users_path, "events" => :events_path
@@ -57,6 +54,15 @@ class PaginationLinksTest < ActionDispatch::IntegrationTest
 
     [ {}, *QUERIES_NAMING_URL_FOR_OPTIONS ].each do |query|
       assert_next_page_stays_on root_path, **query
+    end
+  end
+
+  test "mail log's next-page link keeps the status it lists" do
+    paginate_every_page
+
+    [ {}, *QUERIES_NAMING_URL_FOR_OPTIONS ].each do |query|
+      assert_next_page_stays_on root_path, status: "held", **query
+      assert_equal "held", next_page_query["status"]
     end
   end
 

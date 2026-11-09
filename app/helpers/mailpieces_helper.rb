@@ -13,7 +13,7 @@ module MailpiecesHelper
 
   # Statuses said in other words than their name. Withheld reads Blocked, after the setting that
   # withholds, and inbound mail in flight reads Queued, where the status filter files it.
-  STATUS_LABELS = { "withheld" => "Blocked", "exhausted" => "Retries ran out", "pending" => "Queued", "processing" => "Queued" }.freeze
+  STATUS_LABELS = { "all" => "All mail", "withheld" => "Blocked", "exhausted" => "Retries ran out", "pending" => "Queued", "processing" => "Queued" }.freeze
 
   # A good outcome stays quiet in a list; anything else takes its colour.
   QUIET_STATUSES = %w[ delivered forwarded accepted ].freeze
@@ -93,13 +93,6 @@ module MailpiecesHelper
 
   def mailpiece_status_class(status)
     status.to_s.in?(QUIET_STATUSES) ? "status--muted" : status_class(status)
-  end
-
-  # Each status page, in the order the filter offers them.
-  def mailpiece_status_filters
-    { "delivered" => mailpieces_delivered_path, "held" => mailpieces_held_path, "queued" => mailpieces_queued_path,
-      "deferred" => mailpieces_deferred_path, "failed" => mailpieces_failed_path, "withheld" => mailpieces_withheld_path,
-      "discarded" => mailpieces_discarded_path }
   end
 
   def envelope_subject(mailpiece)

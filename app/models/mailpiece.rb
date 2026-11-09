@@ -1,4 +1,6 @@
 class Mailpiece < ApplicationRecord
+  STATUSES = %w[ all delivered held queued deferred failed withheld discarded ]
+
   belongs_to :account, default: -> { domain.account }
   belongs_to :domain
 
@@ -29,5 +31,17 @@ class Mailpiece < ApplicationRecord
   scope :failed, -> do
     outbound.where(postable_id: Delivery.failed.select(:id))
       .or(inbound.where(postable_id: InboundEmail.failed.select(:id)))
+  end
+  scope :indexed_by, ->(status) do
+    case status
+    when "delivered" then delivered
+    when "held" then held
+    when "queued" then queued
+    when "deferred" then deferred
+    when "failed" then failed
+    when "withheld" then withheld
+    when "discarded" then discarded
+    else all
+    end
   end
 end

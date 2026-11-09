@@ -87,7 +87,7 @@ Rails.application.routes.draw do
     resource :unverified, only: :show
   end
 
-  resources :domains, only: %i[ index show new edit create destroy ] do
+  resources :domains, only: %i[ index show new create destroy ] do
     scope module: :domains do
       resource :dns_check, only: :create
       resource :dns_records, only: :show

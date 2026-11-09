@@ -64,9 +64,9 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     get mailpieces_path
     assert_select "li.row##{dom_id delivered}" do
       assert_select "a", count: 1
-      assert_select "> a[href=?] .avatar", mailpiece_path(delivered)
-      assert_select "> a[href=?] .row__body", mailpiece_path(delivered)
-      assert_select "> a[href=?] .row__end", mailpiece_path(delivered)
+      assert_select "> a.mailpiece__link[href=?] .avatar", mailpiece_path(delivered)
+      assert_select "> a.mailpiece__link[href=?] .row__title", mailpiece_path(delivered)
+      assert_select "> a.mailpiece__link[href=?] .row__end", mailpiece_path(delivered)
       assert_select ".mailpiece__party", text: /\ASent\s+To recipient@example.com\z/
       assert_select ".mailpiece__own", text: "sender@example.com"
       assert_select ".mailpiece__subject", text: "Hello"

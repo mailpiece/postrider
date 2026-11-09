@@ -12,6 +12,10 @@ class WebhooksController < ApplicationController
   end
 
   def show
+    respond_to do |format|
+      format.html { set_page_and_extract_portion_from @webhook.deliveries.ordered.includes(:event) }
+      format.json
+    end
   end
 
   def new

@@ -60,14 +60,16 @@
   </article>
 
   <section class="project__activity page">
-    <h2 class="divider txt-medium txt-tight-lines margin-none-block-start margin-block-end">Recent deliveries</h2>
+    <h2 class="divider txt-medium txt-tight-lines margin-none-block-start margin-block-end">Deliveries</h2>
 
-    <% if @webhook.deliveries.empty? %>
-      <div class="blank-slate fit-content center"><strong>This webhook hasn't been triggered yet.</strong></div>
-    <% else %>
+    <% if @page.used? %>
       <div class="trail trail--events trail--whole">
-        <%= render partial: "webhooks/delivery", collection: @webhook.deliveries.ordered.includes(:event).limit(20), as: :delivery %>
+        <%= with_automatic_pagination :deliveries, @page do %>
+          <%= render partial: "webhooks/delivery", collection: @page.records, as: :delivery %>
+        <% end %>
       </div>
+    <% else %>
+      <div class="blank-slate fit-content center"><strong>This webhook hasn't been triggered yet.</strong></div>
     <% end %>
   </section>
 

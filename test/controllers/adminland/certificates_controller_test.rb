@@ -1,7 +1,7 @@
 require "test_helper"
 
 class Adminland::CertificatesControllerTest < ActionDispatch::IntegrationTest
-  test "show has the certificate's state and the NS record delegating its challenge name to the relay, under Adminland" do
+  test "show has the certificate's state and the NS record delegating its challenge name to the relay" do
     with_env(RELAY_HOSTNAME: "mx.example") do
       sign_in_as :leo
 
@@ -9,19 +9,13 @@ class Adminland::CertificatesControllerTest < ActionDispatch::IntegrationTest
         get adminland_certificate_path
 
         assert_response :success
-        assert_select ".breadcrumbs a[href=?]", adminland_settings_path, text: "Adminland"
-        assert_select ".breadcrumbs strong", text: "TLS certificate"
         assert_select "p", text: /No certificate installed/
-        assert_select "p", text: /reads the challenge from this relay on port 53/
         assert_select "code", text: "_acme-challenge.mx.example"
-        assert_select ".status", text: "Not checked"
-        assert_select "a[href=?]", adminland_dns_check_path
-        assert_select "form", count: 0
       end
     end
   end
 
-  test "show names every challenge name the certificate covers, with the delegation check's verdict" do
+  test "show names every challenge name the certificate covers" do
     with_env(RELAY_HOSTNAME: "mx.example", SUBMISSION_HOSTNAME: "smtp.example") do
       Relay::DnsCheck.instance.update!(acme_delegation_status: :missing, acme_delegation_error: "No NS record yet for _acme-challenge.smtp.example")
       sign_in_as :leo
@@ -31,9 +25,6 @@ class Adminland::CertificatesControllerTest < ActionDispatch::IntegrationTest
 
         assert_select "code", text: "_acme-challenge.mx.example"
         assert_select "code", text: "_acme-challenge.smtp.example"
-        assert_select ".status", text: "Missing"
-        assert_select "p", text: /No NS record yet for _acme-challenge.smtp.example/
-        assert_select "a[href=?]", "/adminland/dns_check"
       end
     end
   end

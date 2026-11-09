@@ -93,7 +93,7 @@ curl https://<your-app>/1/messages \
 
 The same token doubles as the password for SMTP submission (port 587, STARTTLS, username `postrider`). See [the API docs](api.md) for the full surface.
 
-Now watch it land: the message shows up under **Mailpieces** (`/1/mailpieces`, and `/1/mailpieces/queued` until it goes out), and delivery reports back as a `delivery_delivered` / `delivery_failed` / `delivery_bounced` webhook.
+Now watch it land: the message shows up under **Mailpieces** (`/1/mailpieces`, and `/1/mailpieces?status=queued` until it goes out), and delivery reports back as a `delivery_delivered` / `delivery_failed` / `delivery_bounced` webhook.
 
 ## 6. Receiving mail (optional)
 

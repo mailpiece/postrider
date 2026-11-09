@@ -82,6 +82,77 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_select "li##{dom_id mailpieces(:queued)}"
   end
 
+  test "index by status lists the mail of that status, in either direction" do
+    sign_in_as :nonstaff
+    withheld = create_delivery(status: :withheld).mailpiece
+    discarded = create_inbound_email(status: :bounced).mailpiece
+    queued = [ mailpieces(:queued), create_inbound_email.mailpiece, create_inbound_email(status: :processing).mailpiece ]
+    failed = [ mailpieces(:bounced), create_delivery(status: :exhausted).mailpiece, create_delivery(status: :suppressed).mailpiece,
+      create_inbound_email(status: :failed).mailpiece ]
+
+    {
+      "delivered" => [ mailpieces(:delivered), mailpieces(:received) ], "held" => [ mailpieces(:held) ], "queued" => queued,
+      "deferred" => [ mailpieces(:deferred) ], "failed" => failed, "withheld" => [ withheld ], "discarded" => [ discarded ]
+    }.each do |status, listed|
+      get mailpieces_path(status: status)
+
+      assert_response :success
+      listed.each { |mailpiece| assert_select "li##{dom_id(mailpiece)}" }
+      assert_select "li##{dom_id(mailpieces(:held))}", count: 0 unless status == "held"
+    end
+  end
+
+  test "index by a status nothing has says so, not how to get started" do
+    sign_in_as :nonstaff
+    Mailpiece.where.not(id: mailpieces(:delivered).id).delete_all
+
+    get mailpieces_path(status: "held")
+
+    assert_response :success
+    assert_select "li##{dom_id mailpieces(:delivered)}", count: 0
+    assert_select ".blank-slate"
+    assert_select ".blank-slate a[href=?]", domain_path(domains(:example)), count: 0
+  end
+
+  test "index by an unknown status lists all the mail" do
+    sign_in_as :nonstaff
+
+    get mailpieces_path(status: "nonsense")
+
+    assert_response :success
+    [ mailpieces(:delivered), mailpieces(:held), mailpieces(:queued) ].each { |mailpiece| assert_select "li##{dom_id(mailpiece)}" }
+  end
+
+  test "index by all lists all the mail" do
+    sign_in_as :nonstaff
+
+    get mailpieces_path(status: "all")
+
+    assert_response :success
+    [ mailpieces(:delivered), mailpieces(:held), mailpieces(:queued) ].each { |mailpiece| assert_select "li##{dom_id(mailpiece)}" }
+  end
+
+  test "index offers each status to choose from" do
+    sign_in_as :nonstaff
+
+    get mailpieces_path
+
+    assert_select "form[action=?] [role=checkbox]", root_path, count: Mailpiece::STATUSES.size
+  end
+
+  test "index by status as JSON lists that status, leaving out a domain you cannot reach" do
+    sign_in_as :nonstaff
+    hidden = create_inbound_email(domain: domains(:private), status: :held).mailpiece
+
+    get mailpieces_path(status: "held"), as: :json
+
+    assert_response :success
+    ids = response.parsed_body.pluck("id")
+    assert_includes ids, mailpieces(:held).id
+    assert_not_includes ids, mailpieces(:delivered).id
+    assert_not_includes ids, hidden.id
+  end
+
   test "index as JSON lists all the mail, leaving out a domain you cannot reach" do
     sign_in_as :nonstaff
     hidden = deliver_from(domains(:private), status: "delivered").mailpiece

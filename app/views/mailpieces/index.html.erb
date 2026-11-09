@@ -9,8 +9,10 @@
   <div class="header__actions header__actions--end"></div>
 <% end %>
 
+<% what = @status == "all" ? "mail" : "#{status_label(@status).downcase} mail" %>
+
 <div class="page flex flex-column gap">
-  <%= render layout: "shared/filter", locals: { what: "mail", search: search_path, quick_filters: render("mailpieces/status_filter") } do %>
+  <%= render layout: "shared/filter", locals: { frame: :mailpieces_results, what: what, search: search_path, quick_filters: render("mailpieces/status_filter", selected: @status) } do %>
     <% if @page.used? %>
       <div data-controller="navigable-list" data-action="keydown->navigable-list#navigate turbo:before-visit@document->navigable-list#rememberSelection turbo:frame-load->navigable-list#forgetSelection"
             data-navigable-list-actionable-items-value="true">
@@ -20,8 +22,10 @@
           <% end %>
         </ul>
       </div>
-    <% else %>
+    <% elsif @status == "all" %>
       <%= render "mailpieces/blank_slate", domain: @domain %>
+    <% else %>
+      <div class="blank-slate fit-content center"><strong>No <%= what %>.</strong></div>
     <% end %>
   <% end %>
 </div>

@@ -38,13 +38,8 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_select ".envelope__ink", text: /Bounced\s+550 5.1.1/
   end
 
-  test "the status filter lists each status page with its count, All mail current on the index" do
+  test "the status filter lists each status page, All mail current on the index" do
     sign_in_as :nonstaff
-    create_inbound_email(status: :failed)
-    create_inbound_email(status: :bounced)
-    create_inbound_email
-    create_delivery(status: :withheld)
-    deliver_from(domains(:private), status: "deferred")
 
     get mailpieces_path
 
@@ -52,7 +47,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_select ".filter-bar .status-filter__button", text: "Status…"
     assert_equal [ root_path, mailpieces_held_path, mailpieces_queued_path, mailpieces_deferred_path, mailpieces_failed_path, mailpieces_withheld_path, mailpieces_discarded_path ],
       css_select(".status-filter__list a").pluck("href")
-    assert_equal [ "All mail", "Held 1", "Queued 2", "Deferred 1", "Failed 2", "Blocked 1", "Discarded 1" ], css_select(".status-filter__list a").map { |link| link.text.squish }
+    assert_equal [ "All mail", "Held", "Queued", "Deferred", "Failed", "Blocked", "Discarded" ], css_select(".status-filter__list a").map { |link| link.text.squish }
     assert_select ".status-filter__list a[aria-current=page]", count: 1, text: "All mail"
   end
 
@@ -170,7 +165,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".blank-slate", text: "No mail recorded yet."
-    assert_equal [ "0" ] * 6, css_select(".status-filter__count").map(&:text)
+    assert_select ".status-filter__list a", count: 7
   end
 
   test "index lists mail that was never delivered" do

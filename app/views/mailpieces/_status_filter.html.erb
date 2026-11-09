@@ -9,13 +9,8 @@
     <p class="margin-none txt-small txt-subtle"><strong>Status</strong></p>
     <ul class="status-filter__list">
       <li><%= link_to "All mail", root_path, aria: { current: ("page" if current.nil?) } %></li>
-      <% mailpiece_status_filters.each do |status, path, count| %>
-        <li>
-          <%= link_to path, aria: { current: ("page" if status == current) } do %>
-            <span><%= status_label status %></span>
-            <span class="status-filter__count"><%= number_with_delimiter count %></span>
-          <% end %>
-        </li>
+      <% mailpiece_status_filters.each do |status, path| %>
+        <li><%= link_to status_label(status), path, aria: { current: ("page" if status == current) } %></li>
       <% end %>
     </ul>
   </dialog>

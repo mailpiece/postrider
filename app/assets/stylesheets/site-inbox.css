@@ -37,13 +37,16 @@
     font-weight: normal;
   }
 
-  /* The status filter: a button in the filter bar that drops a list of the status pages, each with its count. */
+  /* The status filter: a button in the filter bar that drops a list of the status pages. */
   .status-filter {
     position: relative;
+  }
 
-    .btn {
-      --icon-size: 0.9em;
-    }
+  /* The button reads at the filter box's size. */
+  .status-filter__button {
+    --btn-icon-size: 1em;
+
+    font-size: var(--text-x-small);
   }
 
   .status-filter__dialog:is(.dialog) {

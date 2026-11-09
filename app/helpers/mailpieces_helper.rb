@@ -11,6 +11,13 @@ module MailpiecesHelper
 
   RECEIVED_ACTIONS = %w[ inbound_email_received inbound_email_bounce_received ].freeze
 
+  # Statuses said in other words than their name. Withheld reads Blocked, after the setting that
+  # withholds, and inbound mail in flight reads Queued, where the status filter files it.
+  STATUS_LABELS = { "withheld" => "Blocked", "exhausted" => "Retries ran out", "pending" => "Queued", "processing" => "Queued" }.freeze
+
+  # A good outcome stays quiet in a list; anything else takes its colour.
+  QUIET_STATUSES = %w[ delivered forwarded accepted ].freeze
+
   GENUINE_STAMP = { verdict: "Genuine", icon: "check", semantic: "success" }.freeze
   UNVERIFIED_STAMP = { verdict: "Not verified", icon: "close", semantic: "warning" }.freeze
   SIGNED_STAMP = { verdict: "Signed", icon: "lock", semantic: "info" }.freeze
@@ -45,8 +52,53 @@ module MailpiecesHelper
     end
   end
 
+  def mailpiece_avatar_tag(mailpiece)
+    name, address, _own = mailpiece_party_details(mailpiece)
+    avatar_tag name, address, class: "contact__avatar"
+  end
+
+  # Which way the mail went, for a list that holds both.
+  def mailpiece_direction_tag(mailpiece)
+    if mailpiece.inbound_email?
+      direction_tag "arrow-left", "Received"
+    else
+      direction_tag "arrow-right", "Sent"
+    end
+  end
+
+  # Who the row is about: the sender of inbound mail, the recipient of outbound.
+  def mailpiece_party(mailpiece)
+    name, address, _own = mailpiece_party_details(mailpiece)
+
+    if mailpiece.inbound_email?
+      name.presence || address.presence || "No sender"
+    else
+      "To #{address}"
+    end
+  end
+
+  # The party's address when the row shows them by name, then the address on our side.
+  def mailpiece_addresses(mailpiece)
+    name, address, own = mailpiece_party_details(mailpiece)
+    safe_join [ (address if name.present?), own ].compact, " · "
+  end
+
   def mailpiece_status(mailpiece)
     mailpiece.inbound_email? ? inbound_status_word(mailpiece.postable) : mailpiece.postable.status
+  end
+
+  def status_label(status)
+    STATUS_LABELS.fetch(status.to_s) { status.to_s.humanize }
+  end
+
+  def mailpiece_status_class(status)
+    status.to_s.in?(QUIET_STATUSES) ? "status--muted" : status_class(status)
+  end
+
+  # Each status page, in the order the filter offers them.
+  def mailpiece_status_filters
+    { "held" => mailpieces_held_path, "queued" => mailpieces_queued_path, "deferred" => mailpieces_deferred_path,
+      "failed" => mailpieces_failed_path, "withheld" => mailpieces_withheld_path, "discarded" => mailpieces_discarded_path }
   end
 
   def envelope_subject(mailpiece)
@@ -54,20 +106,12 @@ module MailpiecesHelper
   end
 
   def inbound_envelope_status(inbound_email)
-    [ inbound_status_word(inbound_email).humanize, inbound_status_detail(inbound_email) ].compact.join(" · ")
+    [ status_label(inbound_status_word(inbound_email)), inbound_status_detail(inbound_email) ].compact.join(" · ")
   end
 
   def delivery_envelope_status(delivery)
     safe_join [ "Outbound", ("#{delivery.attempts.size.ordinalize} attempt" if delivery.attempts.any?),
       (safe_join [ "next retry ", local_datetime_tag(delivery.next_retry_at, style: :datetime) ] if delivery.next_retry_at) ].compact, " · "
-  end
-
-  def mailpiece_outcome_note(mailpiece)
-    if mailpiece.inbound_email?
-      inbound_outcome_note(mailpiece.postable)
-    elsif attempt = mailpiece.postable.attempts.last
-      smtp_reply_code(attempt)
-    end
   end
 
   def inbound_outcome_note(inbound_email)
@@ -126,6 +170,21 @@ module MailpiecesHelper
   end
 
   private
+    # The party's name and address, and the address on our side.
+    def mailpiece_party_details(mailpiece)
+      postable = mailpiece.postable
+
+      if mailpiece.inbound_email?
+        [ postable.contact&.name, postable.sender_address, postable.rcpt_to ]
+      else
+        [ nil, postable.rcpt_to, postable.mail_from ]
+      end
+    end
+
+    def direction_tag(icon, word)
+      icon_tag(icon, class: "mailpiece__direction txt-subtle") + tag.span(word, class: "for-screen-reader")
+    end
+
     def phishing_tag(title)
       tag.span "Phishing?", class: "envelope__phishing", title: title
     end

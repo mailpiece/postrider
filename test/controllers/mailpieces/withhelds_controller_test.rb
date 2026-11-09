@@ -15,7 +15,7 @@ class Mailpieces::WithheldsControllerTest < ActionDispatch::IntegrationTest
     get mailpieces_withheld_path
 
     assert_response :success
-    assert_select ".breadcrumbs strong", text: "Withheld"
+    assert_select ".breadcrumbs strong", text: "Blocked"
     assert_select ".breadcrumbs a[href=?]", root_path, text: "Mailpieces"
     assert_select "li##{dom_id(withheld)}"
     assert_select "li##{dom_id(suppressed)}", count: 0

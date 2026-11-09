@@ -63,8 +63,8 @@ class ContactsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "[data-controller=pagination][data-pagination-paginate-on-intersection-value=true]"
-    assert_select ".envelope__subject", text: "Held hello"
-    assert_select ".envelope__subject", text: "Forwarded hello"
+    assert_select ".mailpiece__subject", text: "Held hello"
+    assert_select ".mailpiece__subject", text: "Forwarded hello"
   end
 
   test "show offers to screen out an approved contact" do
@@ -107,7 +107,7 @@ class ContactsControllerTest < ActionDispatch::IntegrationTest
     get contact_path(contacts(:approved))
 
     assert_response :success
-    assert_select ".envelope__subject", text: /Not theirs/, count: 0
+    assert_select ".mailpiece__subject", text: /Not theirs/, count: 0
   end
 
   test "show is not found for a contact on a domain you cannot reach" do

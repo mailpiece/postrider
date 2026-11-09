@@ -31,6 +31,14 @@ module WebhooksHelper
     end
   end
 
+  def webhook_state(webhook)
+    if deactivation = webhook.deactivation
+      deactivation.description
+    else
+      active_tag webhook
+    end
+  end
+
   def webhook_delivery_status_tag(delivery)
     status_tag delivery.failed? ? "failed" : delivery.state
   end

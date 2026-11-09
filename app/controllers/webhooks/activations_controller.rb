@@ -8,7 +8,7 @@ class Webhooks::ActivationsController < ApplicationController
     @webhook.activate
 
     respond_to do |format|
-      format.html { redirect_to @webhook, notice: "Webhook activated" }
+      format.html { redirect_back_or_to @webhook, notice: "Webhook activated" }
       format.json { render "webhooks/show", status: :created }
     end
   end

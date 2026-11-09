@@ -1,3 +1,11 @@
 active:
   account: davids_account
   webhook: active
+
+inactive:
+  account: davids_account
+  webhook: inactive
+
+other_account:
+  account: other_account
+  webhook: other_account

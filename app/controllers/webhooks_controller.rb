@@ -8,7 +8,7 @@ class WebhooksController < ApplicationController
   before_action :set_webhook, only: %i[ show edit update destroy ]
 
   def index
-    set_page_and_extract_portion_from @domain.webhooks.ordered
+    set_page_and_extract_portion_from @domain.webhooks.ordered.includes(:last_deactivation)
   end
 
   def show

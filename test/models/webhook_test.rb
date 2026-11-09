@@ -110,6 +110,46 @@ class WebhookTest < ActiveSupport::TestCase
     assert_includes Webhook.triggered_by(deliveries(:delivered).track_event("delivered")), webhooks(:active)
   end
 
+  test "switching a webhook off and on by hand records each switch once" do
+    webhook = webhooks(:active)
+
+    assert_difference -> { webhook.events.count }, 1 do
+      webhook.deactivate
+      webhook.deactivate
+    end
+    assert_equal "webhook_turned_off", webhook.events.last.action
+    assert_equal webhook.events.last, webhook.reload.deactivation
+
+    assert_difference -> { webhook.events.count }, 1 do
+      webhook.activate
+      webhook.activate
+    end
+    assert_equal "webhook_turned_on", webhook.events.last.action
+    assert_nil webhook.deactivation
+  end
+
+  test "activating after the tracker deactivated the webhook starts its failures over" do
+    webhook = webhooks(:active)
+    webhook.delinquency_tracker.update!(consecutive_failures_count: 9, first_failure_at: 2.hours.ago)
+    webhook.delinquency_tracker.record_delivery_of(failed_delivery(webhook))
+    assert_not webhook.reload.active?
+
+    webhook.activate
+    webhook.delinquency_tracker.record_delivery_of(failed_delivery(webhook))
+
+    assert webhook.reload.active?
+    assert_equal 1, webhook.delinquency_tracker.reload.consecutive_failures_count
+  end
+
+  test "deactivating as the tracker records its deactivation with the failure count" do
+    webhook = webhooks(:active)
+
+    webhook.deactivate event_name: "deactivated", consecutive_failures_count: 10, code: 500
+
+    assert_equal "webhook_deactivated", webhook.events.last.action
+    assert_equal 10, webhook.events.last.particulars["consecutive_failures_count"]
+  end
+
   test "trigger creates a delivery" do
     event = deliveries(:delivered).track_event("delivered")
 
@@ -142,4 +182,9 @@ class WebhookTest < ActiveSupport::TestCase
     assert_equal "webhook_tested", event.action
     assert_equal "Leo", event.particulars["sent_by"]
   end
+
+  private
+    def failed_delivery(webhook)
+      webhook.deliveries.create!(event: deliveries(:delivered).track_event("delivered"), state: :completed, response: { code: 500 })
+    end
 end

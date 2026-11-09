@@ -17,11 +17,11 @@ class Webhook::DelinquencyTracker < ApplicationRecord
     end
   end
 
-  private
-    def reset
-      update_columns consecutive_failures_count: 0, first_failure_at: nil
-    end
+  def reset
+    update_columns consecutive_failures_count: 0, first_failure_at: nil
+  end
 
+  private
     def mark_first_failure_time
       update_columns first_failure_at: Time.current
     end
@@ -43,9 +43,6 @@ class Webhook::DelinquencyTracker < ApplicationRecord
     end
 
     def deactivate_webhook(delivery)
-      transaction do
-        webhook.deactivate
-        webhook.track_event "deactivated", consecutive_failures_count: consecutive_failures_count, **delivery.response_summary.to_h
-      end
+      webhook.deactivate event_name: "deactivated", consecutive_failures_count: consecutive_failures_count, **delivery.response_summary.to_h
     end
 end

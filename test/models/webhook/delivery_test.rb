@@ -226,10 +226,12 @@ class Webhook::DeliveryTest < ActiveSupport::TestCase
     assert_equal 500, event.particulars["code"]
   end
 
-  test "a webhook deactivated by hand is not tracked as a delinquency" do
-    assert_no_difference -> { Event.count } do
+  test "a webhook deactivated by hand is tracked as turned off, not as a delinquency" do
+    assert_difference -> { Event.count }, 1 do
       @webhook.deactivate
     end
+
+    assert_equal "webhook_turned_off", @webhook.events.last.action
   end
 
   test "deliver maps a timeout to connection_timeout and records a failure" do

@@ -55,6 +55,11 @@ class Event::DescriptionTest < ActiveSupport::TestCase
       describe("webhook_deactivated", consecutive_failures_count: 10, code: 500)
   end
 
+  test "a webhook switched by hand is named" do
+    assert_equal "Turned off webhook Deliveries", describe("webhook_turned_off", eventable: webhooks(:active))
+    assert_equal "Turned on webhook Deliveries", describe("webhook_turned_on", eventable: webhooks(:active))
+  end
+
   test "a tested webhook is named" do
     assert_equal "Sent a test to webhook Deliveries", describe("webhook_tested", eventable: webhooks(:active), sent_by: "Leo")
   end

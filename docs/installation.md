@@ -42,7 +42,7 @@ That first account arrives complete: an owner (you), a system user, an invite co
 
 In the SPF record, use the `a:<RELAY_MAIL_DOMAIN>` mechanism, not `mx` — that name is authorized by its own A record. The MX row does a different job entirely: it tells receivers where to *deliver* mail for that hostname (the bounce Return-Path), not how SPF authorizes sending.
 
-By the way: the home page is **Mailpieces**, the mail log — counts of held, failed, withheld, deferred, queued and discarded mail, then all the mail itself, newest first. It's not the DNS checker.
+By the way: the home page is **Mailpieces**, the mail log — all the mail, newest first, with a **Status** filter that counts what is held, queued, deferred, failed, blocked and discarded. It's not the DNS checker.
 
 ## 3. Add a domain
 

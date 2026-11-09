@@ -118,8 +118,14 @@ Rails.application.routes.draw do
       end
     end
   end
+  resource :screener, only: :show do
+    resource :denial, only: :create, module: :screeners
+    resource :flagged_denial, only: :create, module: :screeners
+  end
+
   namespace :contacts do
     resource :denied, only: :show
+    resource :screened_out_mail, only: :destroy
   end
 
   resources :contacts, only: %i[ index show ] do
@@ -130,6 +136,7 @@ Rails.application.routes.draw do
   resources :suppressions, only: %i[ index destroy ]
   resources :messages, only: :create
   namespace :mailpieces do
+    resource :delivered, only: :show
     resource :held, only: :show
     resource :discarded, only: :show
     resource :deferred, only: :show

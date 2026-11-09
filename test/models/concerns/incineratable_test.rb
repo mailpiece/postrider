@@ -3,7 +3,7 @@ require "test_helper"
 class IncineratableTest < ActiveSupport::TestCase
   test "incinerate destroys the raw content and its attachments while keeping the row and its metadata" do
     email = InboundEmail.create!(domain: domains(:example), mail_from: "a@example.com", rcpt_to: "b@example.com", raw: raw_with_attachment)
-    email.forward(ip: "203.0.113.1", helo: "sender.example")
+    email.forward_now(ip: "203.0.113.1", helo: "sender.example")
     assert email.attachments.attached?
 
     assert_difference -> { ActiveStorage::Blob.count } => -2 do

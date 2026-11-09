@@ -26,6 +26,15 @@ class EventTest < ActiveSupport::TestCase
     assert_includes @delivery.events, delivered
   end
 
+  test "visible_to keeps the admin-only actions from a member" do
+    domain = domains(:example)
+    refused = Event.create!(eventable: domain, domain: domain, action: "sending_token_refused", particulars: { token_name: "Production", ip: "181.110.44.220" })
+    verified = domain.track_event("verified")
+
+    assert_equal [ verified ], domain.events.visible_to(users(:nonstaff)).to_a
+    assert_includes domain.events.visible_to(users(:leo)), refused
+  end
+
   test "bounced covers both intakes and nothing else" do
     bounced = @delivery.track_event("bounced", rcpt_to: @delivery.rcpt_to)
     @delivery.track_event("delivered", rcpt_to: @delivery.rcpt_to)

@@ -11,7 +11,7 @@ if @mailpiece.inbound_email?
 else
   json.incinerated_at @postable.message.incinerated_at if @postable.message.incinerated?
 
-  json.attempts @postable.attempts.order(:created_at) do |attempt|
+  json.attempts @postable.attempts do |attempt|
     json.(attempt, :mx_host, :code, :output, :created_at)
   end
 

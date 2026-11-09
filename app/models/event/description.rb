@@ -1,4 +1,5 @@
 class Event::Description
+  # Past tense: a reason is what we concluded at the hold, and a contact may be approved since.
   HELD_REASONS = {
     "unidentified_sender" => "it had no readable From address",
     "denied_sender" => "its sender was not approved",

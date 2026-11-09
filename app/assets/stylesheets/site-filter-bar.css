@@ -1,0 +1,10 @@
+@layer components {
+  /* The filter box leads its row as a pill, with the quick filters after it. */
+  .filter-bar__terms:is(.input) {
+    --input-border-radius: 5em;
+  }
+
+  .filter-box {
+    margin-inline-start: 0;
+  }
+}

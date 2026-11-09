@@ -17,6 +17,6 @@ module SendingToken::Tracked
 
     # On the domain, so the trail keeps a token's events after it is deleted.
     def track_domain_event(action, **particulars)
-      Event.create!(eventable: domain, domain: domain, action: "sending_token_#{action}", particulars: { token_name: name, **particulars })
+      track_event action, eventable: domain, token_name: name, **particulars
     end
 end

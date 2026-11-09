@@ -70,7 +70,7 @@ class InboundEmail < ApplicationRecord
 
   # Authentication, attachments and the score come before the transaction: a slow zone
   # or scorer would hold the write lock, and Active Storage uploads on commit.
-  def forward(ip:, helo:)
+  def forward_now(ip:, helo:)
     processing!
     authenticate(ip:, helo:)
     extract_attachments
@@ -108,8 +108,13 @@ class InboundEmail < ApplicationRecord
     BounceCorrelationJob.perform_later(self)
   end
 
+  # The delivery whose bounce address this mail came to.
+  def matched_delivery
+    Delivery::ReturnPath.find_delivery(rcpt_to)
+  end
+
   def correlate_bounce
-    if delivery = Delivery::ReturnPath.find_delivery(rcpt_to)
+    if delivery = matched_delivery
       transaction do
         delivery.record_async_bounce(dsn_raw: raw)
         update! status: :delivered, forwarded_at: Time.current

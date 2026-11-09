@@ -7,7 +7,7 @@ class InboundEmail::ScorableTest < ActiveSupport::TestCase
     MailScore::Client.expects(:new).with(read_timeout: 4, deadline: 5).returns(stub(check: verdict(score: 1.5)))
 
     assert_no_enqueued_jobs only: InboundEmail::ScoreJob do
-      email.forward(ip: "203.0.113.1", helo: "sender.example")
+      email.forward_now(ip: "203.0.113.1", helo: "sender.example")
     end
 
     assert email.delivered?
@@ -28,7 +28,7 @@ class InboundEmail::ScorableTest < ActiveSupport::TestCase
     MailScore::Client.any_instance.expects(:check).raises(MailScore::Client::Unreachable, "no answer within 5 seconds")
 
     assert_enqueued_with job: InboundEmail::ScoreJob, args: [ email ] do
-      email.forward(ip: "203.0.113.1", helo: "sender.example")
+      email.forward_now(ip: "203.0.113.1", helo: "sender.example")
     end
 
     assert email.delivered?
@@ -41,7 +41,7 @@ class InboundEmail::ScorableTest < ActiveSupport::TestCase
     MailScore::Client.any_instance.expects(:check).raises(MailScore::Client::Error.new("unavailable", status: 503))
 
     assert_enqueued_with job: InboundEmail::ScoreJob, args: [ email ] do
-      email.forward(ip: "203.0.113.1", helo: "sender.example")
+      email.forward_now(ip: "203.0.113.1", helo: "sender.example")
     end
 
     assert email.delivered?
@@ -90,7 +90,7 @@ class InboundEmail::ScorableTest < ActiveSupport::TestCase
 
     email = create_inbound_email
     assert_no_enqueued_jobs only: InboundEmail::ScoreJob do
-      email.forward(ip: "203.0.113.1", helo: "sender.example")
+      email.forward_now(ip: "203.0.113.1", helo: "sender.example")
     end
 
     assert email.delivered?

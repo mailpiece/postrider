@@ -1,14 +1,4 @@
 module MailpiecesHelper
-  # Plain answers to "why is this here and what do I do about it", since the protocol
-  # words below mean nothing to someone deciding whether to release a message.
-  # Past tense: a reason is what we concluded at the hold, and a contact may be approved since.
-  HOLD_EXPLANATIONS = {
-    "denied_sender" => "Held because this sender was not approved.",
-    "unidentified_sender" => "Held because we couldn't read a From address on it.",
-    "unauthenticated_sender" => "Held because we couldn't confirm the sender is genuine.",
-    "forwarding_loop" => "Held because it looked like a forwarding loop."
-  }.freeze
-
   VERDICT_SEMANTICS = {
     "pass" => "success",
     "softfail" => "warning", "neutral" => "warning",
@@ -199,9 +189,9 @@ module MailpiecesHelper
     end
 
     def matched_bounce_sentence(inbound_email)
-      delivery = Delivery::ReturnPath.find_delivery(inbound_email.rcpt_to)
+      mailpiece = inbound_email.matched_delivery&.mailpiece
 
-      if delivery && mailpiece = Current.user.accessible_mailpieces.find_by(postable: delivery)
+      if mailpiece && Current.user.accessible_mailpieces.include?(mailpiece)
         safe_join [ "Matched to ", link_to("the delivery it bounced", mailpiece_path(mailpiece)), "." ]
       else
         "Matched to the delivery it bounced."
@@ -209,7 +199,11 @@ module MailpiecesHelper
     end
 
     def held_explanation(reason)
-      HOLD_EXPLANATIONS.fetch(reason, "Held.")
+      if reason = Event::Description::HELD_REASONS[reason]
+        "Held because #{reason}."
+      else
+        "Held."
+      end
     end
 
     def authentication_verdicts(inbound_email)

@@ -5,6 +5,9 @@ class Event < ApplicationRecord
 
   BOUNCE_ACTIONS = %w[ delivery_bounced inbound_email_bounce_received ].freeze
 
+  # That a domain blocks phrases or limits IPs at all is the admins' to know.
+  ADMIN_ONLY_ACTIONS = %w[ domain_blocked_phrases_changed domain_allowed_ips_changed sending_token_refused ].freeze
+
   belongs_to :account, default: -> { domain.account }
   belongs_to :domain
   belongs_to :eventable, polymorphic: true
@@ -15,6 +18,7 @@ class Event < ApplicationRecord
   scope :notable, -> { where(action: NOTABLE_ACTIONS) }
   scope :bounced, -> { where(action: BOUNCE_ACTIONS) }
   scope :preloaded, -> { includes(eventable: :mailpiece) }
+  scope :visible_to, ->(user) { user.admin? ? all : where.not(action: ADMIN_ONLY_ACTIONS) }
 
   after_create_commit :dispatch_webhooks_later
 

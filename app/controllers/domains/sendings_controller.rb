@@ -7,7 +7,7 @@ class Domains::SendingsController < ApplicationController
     @domain.turn_sending_on
 
     respond_to do |format|
-      format.html { redirect_back fallback_location: edit_domain_path(@domain), notice: "Sending turned on for #{@domain.name}" }
+      format.html { redirect_back_or_to edit_domain_path(@domain), notice: "Sending turned on for #{@domain.name}" }
       format.json { render "domains/show" }
     end
   end
@@ -16,7 +16,7 @@ class Domains::SendingsController < ApplicationController
     @domain.turn_sending_off
 
     respond_to do |format|
-      format.html { redirect_back fallback_location: edit_domain_path(@domain), notice: "Sending turned off for #{@domain.name}" }
+      format.html { redirect_back_or_to edit_domain_path(@domain), notice: "Sending turned off for #{@domain.name}" }
       format.json { render "domains/show" }
     end
   end

@@ -65,7 +65,7 @@ module DomainsHelper
 
   # Newest first as [ time, sentence ]: the domain's own events, its last DNS check and who added it.
   def domain_trail(domain)
-    lines = domain_trail_events(domain).ordered.limit(5).map { |event| [ event.created_at, event.description ] }
+    lines = domain.events.where(eventable: domain).visible_to(Current.user).ordered.limit(5).map { |event| [ event.created_at, event.description ] }
     lines << [ domain.dns_checked_at, "DNS checked: #{domain.dns_error || "every record was found"}" ] if domain.dns_checked?
     lines << [ domain.created_at, "#{domain.creator.name} added this domain" ]
 
@@ -107,15 +107,6 @@ module DomainsHelper
         elsif domain.public_send("#{record}_error").present?
           "#{DNS_RECORD_NAMES.fetch(record)} record could not be looked up"
         end
-      end
-    end
-
-    # That a domain blocks phrases or limits IPs at all is the admins' to know.
-    def domain_trail_events(domain)
-      if Current.user.admin?
-        domain.events.where(eventable: domain)
-      else
-        domain.events.where(eventable: domain).where.not(action: %w[ domain_blocked_phrases_changed domain_allowed_ips_changed sending_token_refused ])
       end
     end
 

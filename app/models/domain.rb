@@ -1,10 +1,7 @@
 class Domain < ApplicationRecord
-  include Accessible
-  include DnsRecords
-  include DnsChecks
-  include BlockedPhrases
-  include AllowedIps
-  include Switches
+  include Accessible, DnsRecords, DnsChecks, BlockedPhrases, AllowedIps, Switches
+
+  RESERVED_LOCAL_PARTS = %w[ postmaster dmarc-reports ].freeze
 
   belongs_to :creator, class_name: "User", default: -> { Current.user }
   belongs_to :account, default: -> { creator.account }
@@ -33,8 +30,6 @@ class Domain < ApplicationRecord
 
   after_create :seed_reserved_mailboxes
   after_destroy_commit :purge_mail_later
-
-  RESERVED_LOCAL_PARTS = %w[ postmaster dmarc-reports ].freeze
 
   scope :ordered, -> { order(:name) }
   scope :matching, ->(query) { where("name LIKE ?", "%#{query}%") }

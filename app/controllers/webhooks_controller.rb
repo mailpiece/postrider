@@ -66,6 +66,6 @@ class WebhooksController < ApplicationController
     end
 
     def webhook_params
-      params.expect(webhook: [ :name, :url, :signing_secret, subscribed_actions: [] ]).merge(domain_id: @domain.id)
+      params.expect(webhook: [ :name, :url, :signing_secret, subscribed_actions: [] ])
     end
 end

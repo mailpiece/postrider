@@ -7,7 +7,7 @@ class Domains::ReceivingsController < ApplicationController
     @domain.turn_receiving_on
 
     respond_to do |format|
-      format.html { redirect_back fallback_location: edit_domain_path(@domain), notice: "Receiving turned on for #{@domain.name}" }
+      format.html { redirect_back_or_to edit_domain_path(@domain), notice: "Receiving turned on for #{@domain.name}" }
       format.json { render "domains/show" }
     end
   end
@@ -16,7 +16,7 @@ class Domains::ReceivingsController < ApplicationController
     @domain.turn_receiving_off
 
     respond_to do |format|
-      format.html { redirect_back fallback_location: edit_domain_path(@domain), notice: "Receiving turned off for #{@domain.name}" }
+      format.html { redirect_back_or_to edit_domain_path(@domain), notice: "Receiving turned off for #{@domain.name}" }
       format.json { render "domains/show" }
     end
   end

@@ -29,9 +29,9 @@ class SearchesControllerTest < ActionDispatch::IntegrationTest
 
     get search_path(q: "BILLING")
 
-    assert_select "li##{dom_id(received)} .envelope__party", text: "billing@vendor.example"
-    assert_select "li##{dom_id(sent)} .envelope__party", text: "recipient@example.com"
-    assert_select "li##{dom_id(sent)} .envelope__tab .envelope__line", text: "billing@example.com"
+    assert_select "li##{dom_id(received)} .mailpiece__party", text: /\AReceived\s+billing@vendor.example\z/
+    assert_select "li##{dom_id(sent)} .mailpiece__party", text: /\ASent\s+To recipient@example.com\z/
+    assert_select "li##{dom_id(sent)} .mailpiece__own", text: "billing@example.com"
     assert_select "li##{dom_id(other)}", count: 0
   end
 
@@ -70,10 +70,10 @@ class SearchesControllerTest < ActionDispatch::IntegrationTest
     create_inbound_email(domain: domains(:private), raw: "Subject: Hidden private\r\n\r\nBody")
 
     get search_path(q: "hidden")
-    assert_select "li.envelope, li.row", count: 0
+    assert_select "li.row", count: 0
 
     get search_path(q: "private")
-    assert_select "li.envelope, li.row", count: 0
+    assert_select "li.row", count: 0
     assert_select ".blank-slate", text: "No matches"
   end
 
@@ -85,13 +85,13 @@ class SearchesControllerTest < ActionDispatch::IntegrationTest
 
     assert_select "[data-controller=pagination][data-pagination-paginate-on-intersection-value=true]"
     assert_equal %w[ Contacts Mailpieces ], css_select(".rows__heading").map(&:text)
-    assert_select ".mailpieces li.envelope", count: 15
-    assert_select "li.row", count: 21
+    assert_select ".mailpieces li.row", count: 15
+    assert_select "li.row", count: 36
     assert_select "a.pagination-link[href=?]", search_path(q: "paged", page: 2)
 
     get search_path(q: "paged", page: 2)
 
-    assert_select ".mailpieces li.envelope", count: 1
+    assert_select ".mailpieces li.row", count: 1
   end
 
   test "show with nothing matching says so" do

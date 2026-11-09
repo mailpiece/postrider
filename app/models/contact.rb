@@ -2,19 +2,22 @@ class Contact < ApplicationRecord
   belongs_to :account, default: -> { domain.account }
   belongs_to :domain
   has_many :inbound_emails, dependent: :nullify
+  has_many :held_inbound_emails, -> { held.ordered }, class_name: "InboundEmail"
   has_many :mailpieces, through: :inbound_emails
 
-  enum :decision, %w[ approved denied ].index_by(&:itself), default: :denied
+  enum :decision, %w[ pending approved denied ].index_by(&:itself), default: :pending
 
   normalizes :email, with: ->(email) { normalize_email(email) }
-  normalizes :name, with: ->(name) { HomographicSpoofing.sanitize_email_name(scrubbed(name)) }
+  normalizes :name, with: ->(name) { HomographicSpoofing.sanitize_email_name(scrubbed(name)).presence }
 
   validates :email, presence: true, uniqueness: { scope: :domain_id }
 
   before_create :assign_number
 
   scope :ordered, -> { order(created_at: :desc) }
+  scope :alphabetically, -> { order(Arel.sql("lower(coalesce(contacts.name, contacts.email))")) }
   scope :matching, ->(query) { where("email LIKE ?", "%#{query}%") }
+  scope :preloaded, -> { preload(held_inbound_emails: %i[ events domain ]) }
 
   # A look-alike address is kept as punycode, so it reads apart from the one it imitates.
   def self.normalize_email(email)
@@ -26,8 +29,13 @@ class Contact < ApplicationRecord
     string.dup.force_encoding(Encoding::UTF_8).scrub
   end
 
-  def self.email_counts(contacts)
-    Hash.new(0).merge InboundEmail.where(contact: contacts).group(:contact_id).count
+  def self.deny_all
+    update_all decision: "denied", updated_at: Time.current
+  end
+
+  # Flagged is read off the mail, so the senders are picked in Ruby and denied in one statement.
+  def self.deny_flagged
+    where(id: preloaded.select(&:flagged?).map(&:id)).deny_all
   end
 
   def self.for_sender(domain, email, name: nil)
@@ -49,8 +57,13 @@ class Contact < ApplicationRecord
     name.presence || email
   end
 
-  def mail_state
-    denied? ? "held" : "forwarded"
+  # A sender's newest held email speaks for them in the Screener.
+  def newest_held_email
+    held_inbound_emails.first
+  end
+
+  def flagged?
+    newest_held_email&.spam_check&.flagged?
   end
 
   def approve

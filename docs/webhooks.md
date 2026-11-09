@@ -3,8 +3,8 @@
 Webhooks are how PostRider tells your app what's happening to your mail — the moment a message arrives, lands, or bounces. Point one or more HTTPS endpoints at your app, one domain at a time, from each domain's **Webhooks** page in the admin UI, or [through the API](api.md#managing-webhooks). A webhook only ever hears about its own domain's events. Each webhook has:
 
 - Subscribed event types (see below)
-- A per-webhook **signing secret** (HMAC-SHA256 in `X-Webhook-Signature` over the JSON body), generated when the webhook is created unless you give one, and changeable later; a secret you give is at least 16 characters
-- Safe, dependable delivery — sent in the background, never to an internal address, and paused automatically if your endpoint keeps failing
+- A per-webhook **signing secret** (HMAC-SHA256 in `X-Webhook-Signature` over the JSON body, see [Verifying a request](#verifying-a-request)), generated when the webhook is created unless you give one, and changeable later; a secret you give is at least 16 characters
+- Safe, dependable delivery — sent in the background, never to an internal address, and deactivated automatically if your endpoint keeps failing (see [Failures](#failures))
 
 ## Event types
 
@@ -34,6 +34,8 @@ PostRider records other events too. An inbound email held, failed, discarded, or
 
 Every webhook subscribed to an event gets the same body for it, with two exceptions PostRider detects from the URL alone: an Action Mailbox relay ingress receives the raw message, and a Slack incoming webhook receives a one-line notification rather than a payload. Both are described below.
 
+One endpoint carries every action, so each POST body is an event envelope, `{"event": "<action>", "payload": {…}}`, not the payload alone. Switch on `event` to tell an inbound email from a delivery report, then read `payload`.
+
 Payload shape:
 
 ```json
@@ -49,6 +51,20 @@ So each attachment comes with a `url` instead: a link that downloads just that o
 Inline images set `related: true` and a `cid` you can match to the `cid:` references in `html`. Want the whole message instead? Use an Action Mailbox relay webhook (below), which POSTs it as `message/rfc822`, or fetch the mailpiece's `raw_url` from `GET /mailpieces/:id` (also a bearer-token download).
 
 One webhook serves every mailbox on its domain, so `rcpt_to` is the envelope recipient that tells them apart — the `To` header won't, since a Bcc'd or plus-addressed message never names it. `id` is the mailpiece id: pass it to `GET /mailpieces/:id` for anything the payload leaves out.
+
+`inbound_email_received`, `inbound_email_bounce_received` and `inbound_email_forwarded` hand you the parsed email:
+
+| Field                                                       | Notes                                                                                                                                                                   |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`, `rcpt_to`                                             | Always present; the mailpiece id and the envelope recipient                                                                                                              |
+| `from`                                                      | Always present; a single address string                                                                                                                                 |
+| `headers`                                                   | Always present; the message's headers as an array of `"Name: value"` strings, led by the [spam verdict](#spam-verdict) when the server scored the mail                 |
+| `to`, `cc`, `bcc`, `reply_to`                               | Each an array of address strings; present when the message has them                                                                                                     |
+| `subject`, `in_reply_to`, `message_id`, `html`, `text`      | Present when the message has them; `message_id` is the inbound message's own `Message-ID`, dropped when the original had none                                            |
+| `authentication`                                            | The verdicts described below; omitted when none was recorded                                                                                                            |
+| `attachments`                                               | Metadata only: an array of `{ type, contentType, contentDisposition, filename, headers, size, checksum, contentId, cid, related, url }`, optional keys omitted          |
+
+`headers` is a parsed convenience view. The mail parser can reorder fields and rewrite folding whitespace, so it won't be byte-for-byte identical to what came off the wire.
 
 The `authentication` object carries the SPF, DKIM, DMARC, and ARC verdicts and is omitted only when none was recorded. `dmarc` says whether the check failed; `dmarc_policy` says what the sender's domain asked receivers to do about a failure — `none`, `quarantine`, or `reject` — and is absent when the domain publishes no DMARC record. A `fail` under `p=reject` is a message the domain owner disowns; a `fail` under `p=none` is routine for mailing lists. `arc` reports the chain itself — `pass` means intact, `fail` broken, `none` absent, with `arc_sealer` naming who sealed it when there is a chain. An intact chain tells you who sealed it, not whether to believe them: anyone can seal a chain over a message of their own, so do not treat `arc=pass` as overriding `dmarc`.
 
@@ -71,6 +87,34 @@ When the server scores inbound mail, it says what it concluded and leaves the de
 | `X-Spam-Action` | What the scorer would do: `no action`, `add header`, `rewrite subject`, `soft reject` or `reject` |
 
 The same lines are prepended to the message an Action Mailbox relay receives and to a forwarded copy. Any `X-Spam-` header the sender wrote is removed from all three, so every one you see is ours. Mail the server did not score before handing it on carries none of them, so treat absent as unknown, not as `NO`.
+
+### Delivery payload
+
+Delivery events carry the delivery and its last SMTP result instead of a message:
+
+| Field                                                                                            | Notes                                                                                                                                                                                                   |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `delivery_id`, `status`, `rcpt_to`, `mail_from`                                                  | The delivery, its [status](lifecycle.md) and its envelope                                                                                                                                              |
+| `message_id`                                                                                     | The `Message-ID` stamped on the mail, the one `POST /messages` returned, so you can match them up                                                                                                       |
+| `tags`, `metadata`                                                                               | What the message was submitted with, for filtering and correlating with your records                                                                                                                   |
+| `smtp_code`, `smtp_output`, `mx_host`                                                            | The last SMTP attempt; `null` before the first                                                                                                                                                         |
+| `raw`                                                                                            | On `delivery_bounced` only: the DSN                                                                                                                                                                     |
+| `category`                                                                                       | On `delivery_bounced` only, and always present: `invalid`, `full`, `oversized`, `blocked` or `unknown`, or `null` when the report could not be read. `invalid` is the only value that means the address itself is bad |
+| `reason`                                                                                         | On `delivery_failed`: `suppressed` or `exhausted`. On `delivery_deferred`, only when sending to the domain is paused: `recipient_domain_paused`                                                          |
+| `recipient_domain`                                                                               | On `recipient_domain_paused` and `recipient_domain_resumed` only: the domain sending paused or resumed for                                                                                              |
+| `provider`                                                                                       | On `recipient_domain_paused` and `recipient_domain_resumed` only: what the pause covers, `outlook`, `yahoo` or `gmail` for every domain they host, or the domain itself                                 |
+
+### Sending token payload
+
+Sending token events carry `domain_id`, `domain` and the token's `token_name`, never the token itself. `sending_token_refused` adds the refused `ip`.
+
+## Verifying a request
+
+Every request carries `X-Webhook-Signature`, the HMAC-SHA256 of the exact request body, keyed with the webhook's signing secret (shown on the webhook's page in the admin UI, and as `signing_secret` in the API). To confirm a request really came from PostRider, recompute the signature over the raw body and compare. Each request also carries `X-Webhook-Timestamp`, the event's creation time in ISO 8601: check that it is recent to guard against replayed requests. An [Action Mailbox relay](#action-mailbox-relay-integration) is the exception, authenticating with `Authorization: Basic` instead.
+
+## Failures
+
+Each webhook delivery is tried once. Anything other than a `2xx` counts as a failure, and it is not sent again. A webhook that fails ten times in a row over more than an hour is deactivated; turn it back on from its page in the admin UI, or [through the API](api.md#managing-webhooks).
 
 ## Delivery log
 

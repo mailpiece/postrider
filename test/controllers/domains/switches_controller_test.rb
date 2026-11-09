@@ -5,13 +5,13 @@ class Domains::SwitchesControllerTest < ActionDispatch::IntegrationTest
     @domain = domains(:example)
   end
 
-  test "show has a switch for receiving and one for sending, under Settings" do
+  test "show has a switch for receiving and one for sending, under the domain" do
     sign_in_as :leo
 
     get domain_switches_path(@domain)
 
     assert_response :success
-    assert_select ".breadcrumbs a[href=?]", edit_domain_path(@domain), text: "Settings"
+    assert_select ".breadcrumbs a[href=?]", domain_path(@domain), text: @domain.name
     assert_select "form[action=?] input.switch__input[checked]", domain_receiving_path(@domain)
     assert_select "form[action=?] input.switch__input[checked]", domain_sending_path(@domain)
   end

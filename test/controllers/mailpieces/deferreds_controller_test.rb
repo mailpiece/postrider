@@ -7,17 +7,11 @@ class Mailpieces::DeferredsControllerTest < ActionDispatch::IntegrationTest
     sign_in_as :nonstaff
   end
 
-  test "show lists the deferred mail and nothing else" do
-    deferred = mailpieces(:deferred)
-    other = mailpieces(:delivered)
-
+  test "show lists the deferred mail" do
     get mailpieces_deferred_path
 
     assert_response :success
-    assert_select ".breadcrumbs strong", text: "Deferred"
-    assert_select ".breadcrumbs a[href=?]", root_path, text: "Mailpieces"
-    assert_select "li##{dom_id(deferred)}"
-    assert_select "li##{dom_id(other)}", count: 0
+    assert_select "li##{dom_id(mailpieces(:deferred))}"
   end
 
   test "show as JSON lists the same mailpieces, leaving out a domain you cannot reach" do

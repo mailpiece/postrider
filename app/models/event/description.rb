@@ -2,6 +2,7 @@ class Event::Description
   # Past tense: a reason is what we concluded at the hold, and a contact may be approved since.
   HELD_REASONS = {
     "unidentified_sender" => "it had no readable From address",
+    "pending_sender" => "its sender was waiting in the Screener",
     "denied_sender" => "its sender was not approved",
     "unauthenticated_sender" => "nothing vouches for its From address",
     "forwarding_loop" => "it was going in circles"
@@ -74,9 +75,9 @@ class Event::Description
 
     def withheld_sentence
       if phrase = event.particulars_for(user)["phrase"]
-        %(Withheld mail to #{recipient} because it contains the blocked phrase "#{phrase}")
+        %(Blocked mail to #{recipient} because it contains the blocked phrase "#{phrase}")
       else
-        "Withheld mail to #{recipient}"
+        "Blocked mail to #{recipient}"
       end
     end
 

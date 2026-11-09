@@ -104,7 +104,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_11_06_120000) do
     t.bigint "number", null: false
     t.string "email", limit: 255, null: false
     t.string "name", limit: 255
-    t.string "decision", limit: 255, default: "denied", null: false
+    t.string "decision", limit: 255, default: "pending", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.boolean "lookalike", default: false, null: false

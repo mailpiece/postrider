@@ -1,0 +1,6 @@
+<div class="screener-decision">
+  <%= button_to "Yes", contact_approval_path(contact), class: "btn btn--positive", form_class: "button_to",
+        aria: { label: "Yes, forward mail from #{contact.title}" } %>
+  <%= button_to "No", contact_approval_path(contact), method: :delete, class: "btn", form_class: "button_to",
+        aria: { label: "No, hold mail from #{contact.title}" } %>
+</div>

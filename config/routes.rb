@@ -118,8 +118,13 @@ Rails.application.routes.draw do
       end
     end
   end
+  resource :screener, only: :show do
+    resource :denial, only: :create, module: :screeners
+  end
+
   namespace :contacts do
     resource :denied, only: :show
+    resource :screened_out_mail, only: :destroy
   end
 
   resources :contacts, only: %i[ index show ] do

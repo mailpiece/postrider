@@ -1,16 +1,56 @@
 require "test_helper"
 
 class Contacts::DeniedsControllerTest < ActionDispatch::IntegrationTest
-  test "show lists the denied contacts on domains you can reach" do
+  test "show lists the screened-out senders, each linking to their page" do
     sign_in_as :leo
 
     get contacts_denied_path
 
     assert_response :success
-    assert_select "[data-controller=pagination][data-pagination-paginate-on-intersection-value=true]"
     assert_select ".breadcrumbs a[href=?]", contacts_path, text: "Contacts"
-    assert_select ".row__title", text: /stranger@sender\.example/
-    assert_select ".row__title", text: /friend@sender\.example/, count: 0
+    assert_select ".breadcrumbs strong", text: "Screened out"
+    assert_select "[data-controller=pagination][data-pagination-paginate-on-intersection-value=true]"
+    assert_select "#contact_#{contacts(:denied).id} a.row__body[href=?]", contact_path(contacts(:denied)), text: /stranger@sender\.example.*1 email held/m
+    assert_select "#contact_#{contacts(:pending).id}", count: 0
+    assert_select ".envelope--strip, .screener-card__email", count: 0
+  end
+
+  test "show screens a sender back in, asking first" do
+    sign_in_as :leo
+
+    get contacts_denied_path
+
+    assert_select "form[action=?][data-turbo-confirm=?] button", contact_approval_path(contacts(:denied)),
+      "Forward 1 held email from stranger@sender.example to forwarding@elsewhere.example?", text: "Screen them in"
+    assert_select "form[action=?] button", contact_approval_path(contacts(:denied)), text: "No", count: 0
+  end
+
+  test "show asks an admin before clearing all" do
+    sign_in_as :leo
+
+    get contacts_denied_path
+
+    assert_select "form[action=?][data-turbo-confirm=?] button", contacts_screened_out_mail_path,
+      "Erase all 1 email from screened-out senders? This can't be undone. The senders stay screened out.", text: "Clear all…"
+  end
+
+  test "show is fresh again once the mail from screened-out senders is erased" do
+    sign_in_as :leo
+
+    get contacts_denied_path
+    users(:leo).erase_screened_out_mail_now
+    get contacts_denied_path, headers: { "HTTP_IF_NONE_MATCH" => response.headers["ETag"] }
+
+    assert_response :success
+    assert_select "form[action=?]", contacts_screened_out_mail_path, count: 0
+  end
+
+  test "show offers no clearing to a member" do
+    sign_in_as :nonstaff
+
+    get contacts_denied_path
+
+    assert_select "form[action=?]", contacts_screened_out_mail_path, count: 0
   end
 
   test "show renders json" do
@@ -20,16 +60,15 @@ class Contacts::DeniedsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_equal [ "denied" ], response.parsed_body.pluck("decision").uniq
-    assert_includes response.parsed_body.pluck("email"), "stranger@sender.example"
+    assert_equal 1, response.parsed_body.find { it["id"] == contacts(:denied).id }["held_count"]
   end
 
-  test "show omits contacts on a domain you cannot reach" do
+  test "show omits senders on a domain you cannot reach" do
     sign_in_as :nonstaff
 
     get contacts_denied_path, as: :json
 
-    assert_response :success
-    assert_includes response.parsed_body.pluck("email"), "stranger@sender.example"
-    assert_not_includes response.parsed_body.pluck("email"), contacts(:private).email
+    assert_includes response.parsed_body.pluck("id"), contacts(:denied).id
+    assert_not_includes response.parsed_body.pluck("id"), contacts(:private).id
   end
 end

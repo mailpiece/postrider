@@ -35,7 +35,13 @@ module MailpiecesHelper
 
   def phishing_mark(inbound_email)
     if inbound_email.lookalike_sender?
-      tag.span("Phishing?", class: "envelope__phishing", title: "Sent as #{inbound_email.mail_from}: its letters imitate another address, a common phishing trick")
+      phishing_tag "Sent as #{inbound_email.mail_from}: its letters imitate another address, a common phishing trick"
+    end
+  end
+
+  def contact_phishing_mark(contact)
+    if contact.lookalike?
+      phishing_tag "Its letters imitate another address, a common phishing trick"
     end
   end
 
@@ -120,6 +126,10 @@ module MailpiecesHelper
   end
 
   private
+    def phishing_tag(title)
+      tag.span "Phishing?", class: "envelope__phishing", title: title
+    end
+
     def verdict_semantic(verdict)
       VERDICT_SEMANTICS.fetch(verdict, "neutral")
     end

@@ -41,6 +41,8 @@ class Event::DescriptionTest < ActiveSupport::TestCase
       describe("inbound_email_held", rcpt_to: "list@example.com", reason: "unauthenticated_sender")
     assert_equal "Held inbound mail for list@example.com because its sender was not approved",
       describe("inbound_email_held", rcpt_to: "list@example.com", reason: "denied_sender")
+    assert_equal "Held inbound mail for list@example.com because its sender was waiting in the Screener",
+      describe("inbound_email_held", rcpt_to: "list@example.com", reason: "pending_sender")
   end
 
   test "a hold for an unrecognised reason still reads as a sentence" do

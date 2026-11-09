@@ -4,16 +4,17 @@ class Contact < ApplicationRecord
   has_many :inbound_emails, dependent: :nullify
   has_many :mailpieces, through: :inbound_emails
 
-  enum :decision, %w[ approved denied ].index_by(&:itself), default: :denied
+  enum :decision, %w[ pending approved denied ].index_by(&:itself), default: :pending
 
   normalizes :email, with: ->(email) { normalize_email(email) }
-  normalizes :name, with: ->(name) { HomographicSpoofing.sanitize_email_name(scrubbed(name)) }
+  normalizes :name, with: ->(name) { HomographicSpoofing.sanitize_email_name(scrubbed(name)).presence }
 
   validates :email, presence: true, uniqueness: { scope: :domain_id }
 
   before_create :assign_number
 
   scope :ordered, -> { order(created_at: :desc) }
+  scope :alphabetically, -> { order(Arel.sql("lower(coalesce(contacts.name, contacts.email))")) }
   scope :matching, ->(query) { where("email LIKE ?", "%#{query}%") }
 
   # A look-alike address is kept as punycode, so it reads apart from the one it imitates.
@@ -26,8 +27,8 @@ class Contact < ApplicationRecord
     string.dup.force_encoding(Encoding::UTF_8).scrub
   end
 
-  def self.email_counts(contacts)
-    Hash.new(0).merge InboundEmail.where(contact: contacts).group(:contact_id).count
+  def self.deny_all
+    update_all decision: "denied", updated_at: Time.current
   end
 
   def self.for_sender(domain, email, name: nil)
@@ -49,8 +50,8 @@ class Contact < ApplicationRecord
     name.presence || email
   end
 
-  def mail_state
-    denied? ? "held" : "forwarded"
+  def held_mailpieces
+    mailpieces.merge(InboundEmail.held).ordered.preload(:postable)
   end
 
   def approve

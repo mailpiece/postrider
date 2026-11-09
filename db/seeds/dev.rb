@@ -257,8 +257,8 @@ Current.with_account(account) do
   end
 
   # Screening: every sender a domain hears from lands in its contact ledger. Approved
-  # contacts have their mail forwarded, denied ones have it held — which is what
-  # /contacts and /contacts/denied each list.
+  # contacts have their mail forwarded and are what /contacts lists; pending ones wait
+  # in /screener and denied ones have their mail listed in /contacts/denied, both held.
   [ [ "alice@customer.com", "Alice Nguyen" ], [ "bob@bigcorp.io", "Bob Iyer" ],
     [ "carol@example.org", "Carol Diaz" ], [ "eve@partner.co", "Eve Okafor" ] ].each do |email, name|
     dev_domain.contacts.create!(email:, name:, decision: :approved)
@@ -282,8 +282,10 @@ Current.with_account(account) do
     ]
   }
 
+  screened_out = %w[ deals@shopping.example no-reply@social.example ]
+
   held_mail.each do |(email, name), mail|
-    contact = dev_domain.contacts.create!(email:, name:)
+    contact = dev_domain.contacts.create!(email:, name:, decision: email.in?(screened_out) ? :denied : :pending)
 
     mail.each do |subject, body|
       create_inbound from: email, to: "hello@hello.example", subject:, body:,

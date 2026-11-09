@@ -426,11 +426,14 @@ Authenticate with a personal access token (`read` permission is sufficient): `Au
 
 | Endpoint                 | Returns                                                                          |
 | ------------------------ | -------------------------------------------------------------------------------- |
-| `GET /contacts`          | Paged list of the approved senders, those whose mail is forwarded, on domains this token's user can use, newest first |
-| `GET /contacts/denied`   | Senders whose mail is held, in the index's format                                |
+| `GET /contacts`          | Paged list of the approved senders, those whose mail is forwarded, on domains this token's user can use, alphabetically |
+| `GET /screener`          | Senders waiting in the Screener, their mail held until someone says yes, in the index's format |
+| `GET /contacts/denied`   | Senders screened out, in the index's format plus `held_count`, how many of their emails are held |
 
 
-Each entry carries `id`, `number`, `email`, `name`, `decision` (`approved` or `denied`) and `created_at`.
+Each entry carries `id`, `number`, `email`, `name`, `decision` (`pending`, `approved` or `denied`), `lookalike` and `created_at`. An address that imitates another with look-alike letters is kept as punycode, and `lookalike` is `true` for it.
+
+`DELETE /contacts/screened_out_mail` erases the held mail from screened-out senders, with its events, on domains the token's user can use; the senders stay screened out. It needs a `write` token belonging to an account admin, and returns `202` with no body while the mail is erased in the background.
 
 ## Reading mail
 

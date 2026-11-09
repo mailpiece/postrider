@@ -18,7 +18,7 @@ class EventsControllerTest < ActionDispatch::IntegrationTest
 
     get events_path
 
-    assert_select ".trail__sentence", text: /Withheld mail to recipient@example.com/
+    assert_select ".trail__sentence", text: /Blocked mail to recipient@example.com/
     assert_not_includes response.body, "s3cret phrase"
     assert_not_includes response.body, "blocked phrase"
   end

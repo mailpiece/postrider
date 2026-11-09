@@ -1,5 +1,5 @@
 class User < ApplicationRecord
-  include Accessor, Configurable, Named, Role
+  include Accessor, Configurable, Named, Role, ScreenedOutMail
 
   belongs_to :account
   belongs_to :identity, optional: true

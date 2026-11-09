@@ -1,33 +1,19 @@
-<% postable = mailpiece.postable %>
 <% status = mailpiece_status(mailpiece) %>
-<% if mailpiece.inbound_email? %>
-  <% party, own, direction, arrow = postable.sender_address.presence || "No sender", postable.rcpt_to, "Received at", "arrow-left" %>
-<% else %>
-  <% party, own, direction, arrow = postable.rcpt_to, postable.mail_from, "Sent from", "arrow-right" %>
-<% end %>
-<li id="<%= dom_id mailpiece %>" class="envelope envelope--strip <%= status_class(status) %>" data-quick-find-target="item" data-navigable-list-target="item" tabindex="-1">
-  <%= link_to mailpiece_path(mailpiece), class: "envelope__link" do %>
-    <%= tag.time class: "envelope__cancellation", datetime: mailpiece.created_at.iso8601 do %>
-      <span><%= l mailpiece.created_at, format: "%b %d" %></span>
-      <strong><%= l mailpiece.created_at, format: "%H:%M" %></strong>
-    <% end %>
-
-    <span class="envelope__tab <%= "envelope__tab--outbound" unless mailpiece.inbound_email? %>">
-      <%= icon_tag arrow %>
-      <span class="for-screen-reader"><%= direction %></span>
-      <span class="envelope__line"><%= own %></span>
+<li id="<%= dom_id mailpiece %>" class="row" data-quick-find-target="item" data-navigable-list-target="item" tabindex="-1">
+  <%= link_to mailpiece_path(mailpiece), class: "mailpiece__link" do %>
+    <%= mailpiece_avatar_tag mailpiece %>
+    <span class="row__body flex-item-grow">
+      <span class="row__title mailpiece__title">
+        <span class="mailpiece__party"><%= mailpiece_direction_tag mailpiece %> <%= phishing_mark(mailpiece.postable) if mailpiece.inbound_email? %> <%= mailpiece_party mailpiece %></span>
+        <span class="row__meta mailpiece__own"><%= mailpiece_addresses mailpiece %></span>
+      </span>
+      <span class="row__meta">
+        <span class="mailpiece__subject"><%= envelope_subject mailpiece %></span>
+      </span>
     </span>
-
-    <span class="envelope__address">
-      <span class="envelope__subject envelope__line"><%= envelope_subject mailpiece %></span>
-      <strong class="envelope__party envelope__line"><%= phishing_mark(postable) if mailpiece.inbound_email? %> <%= party %></strong>
-    </span>
-
-    <span class="envelope__ink envelope__ink--outcome">
-      <strong><%= status.humanize %></strong>
-      <% if note = mailpiece_outcome_note(mailpiece) %>
-        <span><%= note %></span>
-      <% end %>
+    <span class="row__end mailpiece__end">
+      <%= local_datetime_tag mailpiece.created_at, style: :timeordate %>
+      <span class="status <%= mailpiece_status_class(status) %>"><%= status_label status %></span>
     </span>
   <% end %>
 </li>

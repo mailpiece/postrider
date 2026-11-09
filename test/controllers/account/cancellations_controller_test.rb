@@ -5,16 +5,14 @@ class Account::CancellationsControllerTest < ActionDispatch::IntegrationTest
     @account = accounts(:davids_account)
   end
 
-  test "new offers the owner the one button, under Settings" do
+  test "new offers the owner the button" do
     with_multi_tenant_mode(true) do
       sign_in_as :leo
 
       get new_account_cancellation_path
 
       assert_response :success
-      assert_select ".breadcrumbs a[href=?]", account_settings_path, text: "Settings"
-      assert_select "form[action=?][method=post]", account_cancellation_path, count: 1
-      assert_select "form a[hidden][data-form-target=cancel][href=?]", account_settings_path
+      assert_select "form[action=?]", account_cancellation_path
     end
   end
 

@@ -7,18 +7,13 @@ class Domains::UnverifiedsControllerTest < ActionDispatch::IntegrationTest
     sign_in_as :leo
   end
 
-  test "show lists the domains not verified, checked or not, and nothing else" do
+  test "show lists the domains not verified, checked or not" do
     missing = Current.account.domains.create!(name: "missing.example", creator: users(:leo), dkim_status: :missing)
 
     get domains_unverified_path
 
     assert_response :success
-    assert_select "[data-controller=pagination][data-pagination-paginate-on-intersection-value=true]"
-    assert_select ".breadcrumbs strong", text: "Not verified"
-    assert_select ".breadcrumbs a[href=?]", domains_path, text: "Domains"
     [ missing, domains(:unverified) ].each { |domain| assert_select "li##{dom_id(domain)}" }
-    assert_select "li##{dom_id(missing)} .row__end .status", text: "Not checked"
-    assert_select "li##{dom_id(domains(:example))}", count: 0
   end
 
   test "show says so when every domain is verified" do

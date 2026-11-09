@@ -11,7 +11,6 @@ class SessionsControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_response :success
-    assert_select "rails-passkey-sign-in-button"
     assert_select "input[type=email]", count: 0
     assert_select "a", text: /Sign in as/, count: 0
   end

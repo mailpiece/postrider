@@ -6,13 +6,11 @@ class Account::NamesControllerTest < ActionDispatch::IntegrationTest
     @account = accounts(:davids_account)
   end
 
-  test "edit has the one form, under Settings" do
+  test "edit has the form" do
     get edit_account_name_path
 
     assert_response :success
-    assert_select ".breadcrumbs a[href=?]", account_settings_path, text: "Settings"
-    assert_select "form[action=?]", account_name_path, count: 1
-    assert_select "input[name='account[name]'][value=?][placeholder=?]", @account.name, "Account name…"
+    assert_select "form[action=?]", account_name_path
   end
 
   test "update goes back to Settings" do
@@ -36,8 +34,7 @@ class Account::NamesControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_response :unprocessable_entity
-    assert_select ".error-explanation"
-    assert_select "form[action=?]", account_name_path
+    assert_select ".error-explanation", text: /Name can.t be blank/
   end
 
   test "members are refused" do

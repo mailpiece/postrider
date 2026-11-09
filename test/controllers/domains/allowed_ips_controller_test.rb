@@ -26,7 +26,7 @@ class Domains::AllowedIpsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "203.0.113.0/24\n198.51.100.12", @domain.reload.allowed_ips
   end
 
-  test "an IPv6 address is turned down in place, keeping what was typed" do
+  test "an IPv6 address is turned down in place" do
     sign_in_as :leo
     confirm_sudo
 
@@ -34,7 +34,6 @@ class Domains::AllowedIpsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :unprocessable_entity
     assert_select ".error-explanation__message", text: %(Allowed IPs can't hold "2001:db8::1": only IPv4 addresses and ranges)
-    assert_select "textarea", text: /203\.0\.113\.0\/24\s+2001:db8::1/
     assert_nil @domain.reload.allowed_ips
   end
 

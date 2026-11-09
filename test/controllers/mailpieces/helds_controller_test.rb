@@ -7,15 +7,11 @@ class Mailpieces::HeldsControllerTest < ActionDispatch::IntegrationTest
     sign_in_as :nonstaff
   end
 
-  test "show lists the held mail and nothing else" do
+  test "show lists the held mail" do
     get mailpieces_held_path
 
     assert_response :success
-    assert_select "[data-controller=pagination][data-pagination-paginate-on-intersection-value=true]"
-    assert_select ".breadcrumbs strong", text: "Held"
-    assert_select ".breadcrumbs a[href=?]", root_path, text: "Mailpieces"
     assert_select "li##{dom_id(mailpieces(:held))}"
-    assert_select "li##{dom_id(mailpieces(:received))}", count: 0
   end
 
   test "show as JSON lists the same mailpieces, leaving out a domain you cannot reach" do

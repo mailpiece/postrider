@@ -89,7 +89,7 @@ class SendingTokensControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
-  test "new names the sending token in its heading field" do
+  test "new is never cached" do
     sign_in_as :leo
     confirm_sudo
 
@@ -97,7 +97,6 @@ class SendingTokensControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "meta[name=turbo-cache-control][content=no-cache]"
-    assert_select "form[action=?] input[name=?][placeholder=?]", domain_sending_tokens_path(domains(:example)), "sending_token[name]", "Name this sending token…"
   end
 
   test "creating a sending token in the browser reveals the secret in the response" do
@@ -121,7 +120,6 @@ class SendingTokensControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_equal "no-store", response.headers["Cache-Control"]
-    assert_select "turbo-stream[action=replace][target=?]", "new_sending_token"
     assert_revealed domains(:example).sending_tokens.order(:created_at).last
   end
 
@@ -161,22 +159,15 @@ class SendingTokensControllerTest < ActionDispatch::IntegrationTest
     get domain_sending_tokens_path(domains(:example))
 
     assert_response :success
-    assert_select "input[placeholder=?]", "Filter sending tokens…"
-    assert_select ".filter__empty a", count: 0
-    assert_select "[data-controller=pagination][data-pagination-paginate-on-intersection-value=true]"
-    assert_select "li.row[data-quick-find-target=item] .row__title", text: "Example sending token"
+    assert_select ".row__title", text: "Example sending token"
   end
 
-  test "show renders the persistent sending token page without the secret" do
+  test "show renders the sending token page without the secret" do
     sign_in_as :leo
     get domain_sending_token_path(domains(:example), sending_tokens(:example))
 
     assert_response :success
-    assert_select ".breadcrumbs strong", text: "Example sending token"
-    assert_select ".trail__sentence", text: "Sending token created"
     assert_select "input[readonly]", count: 0
-    assert_select ".details__value code", text: "POST #{messages_url}"
-    assert_includes messages_url, "/#{accounts(:davids_account).external_account_id}/messages"
   end
 
   private

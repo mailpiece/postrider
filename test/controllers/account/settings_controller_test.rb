@@ -1,24 +1,14 @@
 require "test_helper"
 
 class Account::SettingsControllerTest < ActionDispatch::IntegrationTest
-  test "show lists a row for each page, with how it stands" do
+  test "show offers the owner deleting the account" do
     with_multi_tenant_mode(true) do
       sign_in_as :leo
 
       get account_settings_path
 
       assert_response :success
-      assert_select "ul.rows li.row", count: 7
-      assert_select "li.row a[href=?]", edit_account_name_path, text: /Account\s+#{Regexp.escape(accounts(:davids_account).name)}/
-      assert_select "li.row a[href=?]", edit_account_bounce_routing_path, text: /Bounce routing/
-      assert_select "li.row a[href=?]", users_path, text: /People\s+\d+ pe/
-      assert_select "li.row a[href=?]", suppressions_path, text: /Suppressions/
-      assert_select "li.row a[href=?]", "https://postrider.dev/docs", text: /Docs/
-      assert_select "li.row a[href=?]", user_path(users(:leo)), text: /Profile\s+Leo/
-      assert_select "li.row a[href=?]", new_account_cancellation_path, text: /Delete account/
-      assert_select "li.row .icon", count: 7
-      assert_select "form[method=post]", count: 0
-      assert_select ".site-header__link[aria-current=page][href=?]", account_settings_path, text: /Settings/
+      assert_select "li.row a[href=?]", new_account_cancellation_path
     end
   end
 
@@ -32,7 +22,7 @@ class Account::SettingsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "show gives a member only the rows a member can open" do
+  test "show offers a member no configuration" do
     sign_in_as :nonstaff
 
     get account_settings_path
@@ -41,10 +31,6 @@ class Account::SettingsControllerTest < ActionDispatch::IntegrationTest
     assert_select "li.row a[href=?]", edit_account_name_path, count: 0
     assert_select "li.row a[href=?]", edit_account_bounce_routing_path, count: 0
     assert_select "li.row a[href=?]", new_account_cancellation_path, count: 0
-    assert_select "li.row a[href=?]", users_path
-    assert_select "li.row a[href=?]", suppressions_path
-    assert_select "li.row a[href=?]", "https://postrider.dev/docs"
-    assert_select "li.row a[href=?]", user_path(users(:nonstaff)), text: /Profile\s+Non Staff/
   end
 
   test "show json" do

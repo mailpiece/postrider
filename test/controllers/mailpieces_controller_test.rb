@@ -38,13 +38,8 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_select ".envelope__ink", text: /Bounced\s+550 5.1.1/
   end
 
-  test "the status filter lists each status page with its count, All mail current on the index" do
+  test "the status filter lists each status page, All mail current on the index" do
     sign_in_as :nonstaff
-    create_inbound_email(status: :failed)
-    create_inbound_email(status: :bounced)
-    create_inbound_email
-    create_delivery(status: :withheld)
-    deliver_from(domains(:private), status: "deferred")
 
     get mailpieces_path
 
@@ -52,7 +47,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_select ".filter-bar .status-filter__button", text: "Status…"
     assert_equal [ root_path, mailpieces_delivered_path, mailpieces_held_path, mailpieces_queued_path, mailpieces_deferred_path, mailpieces_failed_path, mailpieces_withheld_path, mailpieces_discarded_path ],
       css_select(".status-filter__list a").pluck("href")
-    assert_equal [ "All mail", "Delivered 2", "Held 1", "Queued 2", "Deferred 1", "Failed 2", "Blocked 1", "Discarded 1" ], css_select(".status-filter__list a").map { |link| link.text.squish }
+    assert_equal [ "All mail", "Delivered", "Held", "Queued", "Deferred", "Failed", "Blocked", "Discarded" ], css_select(".status-filter__list a").map { |link| link.text.squish }
     assert_select ".status-filter__list a[aria-current=page]", count: 1, text: "All mail"
   end
 
@@ -176,7 +171,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_select ".blank-slate", text: "No mail yet for example.com. Send something from it, or set up a mailbox."
     assert_select ".blank-slate a[href=?]", domain_path(domains(:example)), text: "example.com"
     assert_select ".blank-slate a[href=?]", new_domain_path, count: 0
-    assert_equal [ "0" ] * 7, css_select(".status-filter__count").map(&:text)
+    assert_select ".status-filter__list a", count: 8
   end
 
   test "index with an unverified domain and no mail says to publish its DNS records, before any verified one" do

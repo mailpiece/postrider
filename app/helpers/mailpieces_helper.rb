@@ -95,12 +95,11 @@ module MailpiecesHelper
     status.to_s.in?(QUIET_STATUSES) ? "status--muted" : status_class(status)
   end
 
-  # Each status page with a count of what it lists, in the order the filter offers them.
+  # Each status page, in the order the filter offers them.
   def mailpiece_status_filters
     { "delivered" => mailpieces_delivered_path, "held" => mailpieces_held_path, "queued" => mailpieces_queued_path,
       "deferred" => mailpieces_deferred_path, "failed" => mailpieces_failed_path, "withheld" => mailpieces_withheld_path,
       "discarded" => mailpieces_discarded_path }
-      .map { |status, path| [ status, path, Current.user.accessible_mailpieces.public_send(status).count ] }
   end
 
   def envelope_subject(mailpiece)

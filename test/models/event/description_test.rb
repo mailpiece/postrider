@@ -41,6 +41,8 @@ class Event::DescriptionTest < ActiveSupport::TestCase
       describe("inbound_email_held", rcpt_to: "list@example.com", reason: "unauthenticated_sender")
     assert_equal "Held inbound mail for list@example.com because its sender was not approved",
       describe("inbound_email_held", rcpt_to: "list@example.com", reason: "denied_sender")
+    assert_equal "Held inbound mail for list@example.com because its sender was waiting in the Screener",
+      describe("inbound_email_held", rcpt_to: "list@example.com", reason: "pending_sender")
   end
 
   test "a hold for an unrecognised reason still reads as a sentence" do
@@ -65,12 +67,12 @@ class Event::DescriptionTest < ActiveSupport::TestCase
       describe("domain_verification_lost", eventable: domain, status: "missing", error: "No DKIM record exists")
   end
 
-  test "a withheld delivery names its phrase to an admin only" do
+  test "a blocked delivery names its phrase to an admin only" do
     event = Event.new(action: "delivery_withheld", particulars: { "rcpt_to" => "a@example.com", "phrase" => "free money" })
 
-    assert_equal %(Withheld mail to a@example.com because it contains the blocked phrase "free money"), event.description_for(users(:leo))
-    assert_equal "Withheld mail to a@example.com", event.description_for(users(:nonstaff))
-    assert_equal "Withheld mail to a@example.com", event.description
+    assert_equal %(Blocked mail to a@example.com because it contains the blocked phrase "free money"), event.description_for(users(:leo))
+    assert_equal "Blocked mail to a@example.com", event.description_for(users(:nonstaff))
+    assert_equal "Blocked mail to a@example.com", event.description
   end
 
   test "a change to the blocked phrases says so and no more" do

@@ -34,7 +34,7 @@ class Mailpieces::OriginalsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "streams the original of a delivery-backed mailpiece as inline text/plain" do
-    messages(:queued).raw = file_fixture("raw.eml").read
+    messages(:queued).update!(raw: file_fixture("raw.eml").read)
 
     get mailpiece_original_path(mailpieces(:queued))
 
@@ -55,7 +55,7 @@ class Mailpieces::OriginalsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "returns not found for a delivery-backed mailpiece with no raw attached" do
-    messages(:delivered).raw = file_fixture("raw.eml").read
+    messages(:delivered).update!(raw: file_fixture("raw.eml").read)
     messages(:delivered).incinerate
 
     get mailpiece_original_path(mailpieces(:delivered))

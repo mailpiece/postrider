@@ -16,7 +16,7 @@
 
 <div class="page flex flex-column gap">
   <div class="panel shadow">
-    <%= form_with model: @webhook, url: domain_webhooks_path(@domain), class: "flex flex-column gap" do |form| %>
+    <%= form_with model: @webhook, url: domain_webhooks_path(@domain), class: "flex flex-column gap", data: { controller: "form", action: "keydown.esc->form#cancel" } do |form| %>
       <%= render "shared/errors", record: @webhook %>
 
       <h2 class="txt-large margin-none">
@@ -42,7 +42,7 @@
 
       <div class="flex gap-half">
         <%= form.button "Add webhook", type: "submit", class: "btn btn--link" %>
-        <%= link_to "Cancel and go back", domain_webhooks_path(@domain), class: "btn borderless" %>
+        <%= link_to "Cancel and go back", domain_webhooks_path(@domain), data: { form_target: "cancel" }, hidden: true %>
       </div>
     <% end %>
   </div>

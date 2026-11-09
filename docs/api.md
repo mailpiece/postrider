@@ -427,7 +427,7 @@ Authenticate with a personal access token (`read` permission is sufficient): `Au
 | Endpoint                 | Returns                                                                          |
 | ------------------------ | -------------------------------------------------------------------------------- |
 | `GET /contacts`          | Paged list of the approved senders, those whose mail is forwarded, on domains this token's user can use, alphabetically |
-| `GET /screener`          | Senders waiting in the Screener, their mail held until someone says yes, in the index's format |
+| `GET /screener`          | Every sender waiting in the Screener, their mail held until someone says yes, in the index's format on one page |
 | `GET /contacts/denied`   | Senders screened out, in the index's format plus `held_count`, how many of their emails are held |
 
 
@@ -448,7 +448,7 @@ Authenticate with a personal access token (`read` permission is sufficient): `Au
 | `GET /mailpieces/deferred` | Deliveries waiting on a retry, in the index's format                              |
 | `GET /mailpieces/queued` | Deliveries not yet attempted and inbound mail not yet processed, in the index's format |
 | `GET /mailpieces/failed` | Deliveries that bounced, ran out of retries or were suppressed, and inbound mail that failed, in the index's format |
-| `GET /mailpieces/withheld` | Deliveries withheld for a blocked phrase, in the index's format |
+| `GET /mailpieces/withheld` | Deliveries blocked for containing a blocked phrase, in the index's format |
 | `GET /mailpieces/discarded` | Inbound mail that was discarded: sent to an address nobody registered, or a bounce matching no delivery, in the index's format |
 | `GET /mailpieces/:id` | One piece: envelope, status, parsed content (while retained), `raw_url`, `attachments` |
 

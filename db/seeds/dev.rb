@@ -293,6 +293,12 @@ Current.with_account(account) do
     end
   end
 
+  # One waiting sender the spam check flagged, listed apart in the Screener.
+  flagged = dev_domain.contacts.create!(email: "promo@bulk.marketing", name: "Bulk Marketing", decision: :pending)
+  create_inbound(from: flagged.email, to: "hello@hello.example", subject: "Last chance: 80% off everything",
+    body: "Our biggest sale of the year ends tonight. Don't miss out!", status: :held, contact: flagged)
+    .track_event "scored", action: "reject", score: 7.4, complete: true, symbols: []
+
   # A webhook with a mix of delivery outcomes, so its "Recent deliveries" list has
   # real activity. insert_all bypasses Webhook::Delivery's after_create_commit
   # callback — seed data should never fire a real HTTP request. Destroyed and

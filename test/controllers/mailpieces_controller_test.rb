@@ -272,7 +272,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
 
     get mailpiece_path(delivery.mailpiece)
 
-    assert_includes response.body, "Withheld mail to recipient@example.com because it contains the blocked phrase &quot;free money&quot;"
+    assert_includes response.body, "Blocked mail to recipient@example.com because it contains the blocked phrase &quot;free money&quot;"
 
     get mailpiece_path(delivery.mailpiece), as: :json
 
@@ -287,7 +287,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
 
     get mailpiece_path(delivery.mailpiece)
 
-    assert_includes response.body, "Withheld mail to recipient@example.com"
+    assert_includes response.body, "Blocked mail to recipient@example.com"
     assert_not_includes response.body, "s3cret phrase"
     assert_not_includes response.body, "blocked phrase"
 
@@ -524,13 +524,22 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     get mailpiece_path(mailpieces(:held))
 
     assert_select ".screener-question + .envelope", count: 1
-    assert_select ".screener-question", text: /Newcomer is writing for the first time\. Forward their mail\?\s+1 email held/
+    assert_select ".screener-question", text: /Newcomer is writing for the first time\.\s+Forward their mail to forwarding@elsewhere\.example\?\s+1 email held/
     assert_select ".screener-question form[action=?] button", contact_approval_path(contacts(:pending)), text: "Yes"
 
     inbound_emails(:held).update!(contact: contacts(:approved))
     get mailpiece_path(mailpieces(:held))
 
     assert_select ".screener-question", count: 0
+  end
+
+  test "the HTML show asks the shorter question when the mailbox no longer forwards" do
+    inbound_emails(:held).update!(contact: contacts(:pending), rcpt_to: "inbox@example.com")
+    sign_in_as :leo
+
+    get mailpiece_path(mailpieces(:held))
+
+    assert_select ".screener-question", text: /Newcomer is writing for the first time\.\s+Forward their mail\?\s+1 email held/
   end
 
   test "the HTML show offers to screen a screened-out sender back in, over the envelope" do

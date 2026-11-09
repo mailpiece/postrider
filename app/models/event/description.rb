@@ -72,9 +72,9 @@ class Event::Description
 
     def withheld_sentence
       if phrase = event.particulars_for(user)["phrase"]
-        %(Withheld mail to #{recipient} because it contains the blocked phrase "#{phrase}")
+        %(Blocked mail to #{recipient} because it contains the blocked phrase "#{phrase}")
       else
-        "Withheld mail to #{recipient}"
+        "Blocked mail to #{recipient}"
       end
     end
 

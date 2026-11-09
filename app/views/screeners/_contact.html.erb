@@ -1,37 +1,12 @@
-<% held_count = contact.held_mailpieces.count %>
-<% mailpieces = contact.held_mailpieces.limit(3).to_a %>
-<article id="<%= dom_id contact %>" class="screener-card">
-  <div class="screener-card__sender">
-    <% if latest = mailpieces.first %>
-      <span class="envelope__tab">
-        <%= icon_tag "arrow-left" %>
-        <span class="for-screen-reader">Received at</span>
-        <span class="envelope__line"><%= latest.postable.rcpt_to %></span>
-      </span>
-    <% end %>
-
-    <%= avatar_tag contact.name, contact.email, class: "contact__avatar" %>
-    <%= link_to contact_path(contact), class: "screener-card__who" do %>
-      <strong class="envelope__line"><%= contact_phishing_mark(contact) %> <%= contact.title %></strong>
-      <span class="envelope__line txt-subtle"><%= safe_join [ (contact.email if contact.name.present?), "#{pluralize held_count, "email"} held" ].compact, " · " %></span>
-    <% end %>
-    <%= render "contacts/yes_no", contact: contact %>
-  </div>
-
-  <% if mailpieces.any? %>
-    <ul class="screener-card__emails">
-      <% mailpieces.each do |mailpiece| %>
-        <li>
-          <%= link_to mailpiece_path(mailpiece), class: "screener-card__email" do %>
-            <strong class="envelope__line"><%= envelope_subject mailpiece %></strong>
-            <%= local_datetime_tag mailpiece.created_at, style: :datetime, class: "txt-small txt-subtle" %>
-          <% end %>
-        </li>
-      <% end %>
-
-      <% if held_count > mailpieces.size %>
-        <li class="screener-card__more"><%= link_to "See all #{pluralize held_count, "email"} from this sender", contact_path(contact) %></li>
-      <% end %>
-    </ul>
+<li id="<%= dom_id contact %>" class="row" data-quick-find-target="item" data-navigable-list-target="item" tabindex="-1">
+  <%= avatar_tag contact.name, contact.email, class: "contact__avatar" %>
+  <%= link_to contact_path(contact), class: "row__body flex-item-grow" do %>
+    <strong class="row__title"><%= contact_phishing_mark(contact) %> <%= contact.title %></strong>
+    <span class="row__meta">
+      <%= safe_join [ (contact.email if contact.name.present?), "#{pluralize contact.held_inbound_emails.size, "email"} held", flagged_score_tag(contact) ].compact, " · " %>
+    </span>
   <% end %>
-</article>
+  <span class="row__end">
+    <%= render "contacts/yes_no", contact: contact, flagged: contact.flagged? %>
+  </span>
+</li>

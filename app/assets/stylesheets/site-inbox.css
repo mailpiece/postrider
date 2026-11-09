@@ -61,6 +61,19 @@
     font-weight: normal;
   }
 
+  /* In a narrow column Yes and No go under the sender rather than squeeze them. */
+  @container layout (inline-size < 640px) {
+    .row:has(> .row__end > .screener-decision) {
+      flex-wrap: wrap;
+      padding-block-end: var(--row-padding-block);
+
+      > .row__end {
+        flex-basis: 100%;
+        justify-content: flex-end;
+      }
+    }
+  }
+
   /* The status filter: a button in the filter bar that drops a list of the status pages. */
   .status-filter {
     position: relative;

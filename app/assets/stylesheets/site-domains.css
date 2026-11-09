@@ -1,9 +1,10 @@
 @layer components {
-  /* The row's end stacks when its DNS was checked over where it stands. */
+  /* The row's end stacks when its DNS was checked over where it stands, with the body's room above and below. */
   .domain__end {
     align-items: flex-end;
     flex-direction: column;
     font-variant-numeric: tabular-nums;
     gap: 0.2em;
+    padding-block: var(--row-padding-block);
   }
 }

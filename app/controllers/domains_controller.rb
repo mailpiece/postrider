@@ -4,7 +4,7 @@ class DomainsController < ApplicationController
   before_action :set_domain, only: %i[ show edit destroy ]
 
   def index
-    set_page_and_extract_portion_from Current.user.domains.verified.ordered
+    set_page_and_extract_portion_from Current.user.domains.unverified_first
     fresh_when etag: [ @page.records, Current.user.domains ]
   end
 

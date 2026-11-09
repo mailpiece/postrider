@@ -17,6 +17,7 @@ class Domains::UnverifiedsControllerTest < ActionDispatch::IntegrationTest
     assert_select ".breadcrumbs strong", text: "Not verified"
     assert_select ".breadcrumbs a[href=?]", domains_path, text: "Domains"
     [ missing, domains(:unverified) ].each { |domain| assert_select "li##{dom_id(domain)}" }
+    assert_select "li##{dom_id(missing)} .row__end .status", text: "Not checked"
     assert_select "li##{dom_id(domains(:example))}", count: 0
   end
 

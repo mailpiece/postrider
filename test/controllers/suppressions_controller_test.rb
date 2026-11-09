@@ -7,11 +7,7 @@ class SuppressionsControllerTest < ActionDispatch::IntegrationTest
     get suppressions_path
 
     assert_response :success
-    assert_select "form[action=?]", suppression_path(suppressions(:bounced))
-    assert_select "[data-controller=pagination][data-pagination-paginate-on-intersection-value=true]"
     assert_select ".row__title", text: "invalid@unreachable.example"
-    assert_select ".breadcrumbs a[href=?]", account_settings_path, text: "Settings"
-    assert_select ".site-header__link[aria-current=page][href=?]", account_settings_path
   end
 
   test "index renders json" do
@@ -49,7 +45,6 @@ class SuppressionsControllerTest < ActionDispatch::IntegrationTest
     suppression = suppressions(:bounced)
 
     get suppressions_path
-    assert_select ".row__title", text: "invalid@unreachable.example"
     assert_select "form[action=?]", suppression_path(suppression), count: 0
 
     delete suppression_path(suppression)

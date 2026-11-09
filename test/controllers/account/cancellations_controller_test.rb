@@ -14,6 +14,7 @@ class Account::CancellationsControllerTest < ActionDispatch::IntegrationTest
       assert_response :success
       assert_select ".breadcrumbs a[href=?]", account_settings_path, text: "Settings"
       assert_select "form[action=?][method=post]", account_cancellation_path, count: 1
+      assert_select "form a[hidden][data-form-target=cancel][href=?]", account_settings_path
     end
   end
 

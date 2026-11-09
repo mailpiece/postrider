@@ -2,7 +2,7 @@ module NavigationHelper
   def navigation_sections
     [
       navigation_section("Mailpieces", root_path, "1", under: [ mailpieces_path ]),
-      navigation_section("Contacts", contacts_path, "2"),
+      navigation_section("Contacts", contacts_path, "2", under: [ contacts_path, screener_path ]),
       navigation_section("Domains", domains_path, "3"),
       navigation_section("Events", events_path, "4"),
       navigation_section("Settings", account_settings_path, "5", under: settings_paths)

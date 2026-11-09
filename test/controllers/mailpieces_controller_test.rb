@@ -161,15 +161,60 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     assert_select "[data-controller=pagination][data-pagination-paginate-on-intersection-value=true]"
   end
 
-  test "index says so when no mail was recorded" do
+  test "index with a verified domain but no mail says to send something from it" do
     sign_in_as :nonstaff
     Mailpiece.delete_all
 
     get mailpieces_path
 
     assert_response :success
-    assert_select ".blank-slate", text: "No mail recorded yet."
+    assert_select ".blank-slate", text: "No mail yet for example.com. Send something from it, or set up a mailbox."
+    assert_select ".blank-slate a[href=?]", domain_path(domains(:example)), text: "example.com"
+    assert_select ".blank-slate a[href=?]", new_domain_path, count: 0
     assert_select ".status-filter__list a", count: 8
+  end
+
+  test "index with an unverified domain and no mail says to publish its DNS records, before any verified one" do
+    sign_in_as :nonstaff
+    Mailpiece.delete_all
+    domains(:unverified).accesses.grant_to [ users(:nonstaff) ]
+
+    get mailpieces_path
+
+    assert_select ".blank-slate", text: "No mail yet. Publish the DNS records of unverified.example and send something."
+    assert_select ".blank-slate a[href=?]", domain_path(domains(:unverified)), text: "unverified.example"
+  end
+
+  test "index with no domain tells an admin what to do and offers to add one" do
+    sign_in_as :leo
+    users(:leo).accesses.delete_all
+
+    get mailpieces_path
+
+    assert_select ".blank-slate", text: /No mail yet\. Add a domain, publish its DNS records, then create a sending token or set up a mailbox\./
+    assert_select ".blank-slate a[href=?]", new_domain_path, text: "Add a domain"
+  end
+
+  test "index with no domain tells a member to ask an admin, with no button" do
+    sign_in_as :nonstaff
+    users(:nonstaff).accesses.delete_all
+
+    get mailpieces_path
+
+    assert_select ".blank-slate", text: "No mail yet. Ask an admin to add a domain and give you access to it."
+    assert_select ".blank-slate a[href=?]", new_domain_path, count: 0
+  end
+
+  test "index is fresh again once a domain is added" do
+    sign_in_as :leo
+    users(:leo).accesses.delete_all
+
+    get mailpieces_path
+    users(:leo).account.domains.create!(name: "added.example", creator: users(:leo))
+    get mailpieces_path, headers: { "HTTP_IF_NONE_MATCH" => response.headers["ETag"] }
+
+    assert_response :success
+    assert_select ".blank-slate", text: "No mail yet. Publish the DNS records of added.example and send something."
   end
 
   test "index lists mail that was never delivered" do
@@ -179,7 +224,7 @@ class MailpiecesControllerTest < ActionDispatch::IntegrationTest
     get mailpieces_path
 
     assert_response :success
-    assert_select ".blank-slate", text: "No mail recorded yet.", count: 0
+    assert_select ".blank-slate", text: /No mail yet/, count: 0
     assert_select "li##{dom_id mailpieces(:queued)}"
     assert_select ".status-filter__list a[href=?]", mailpieces_queued_path
   end

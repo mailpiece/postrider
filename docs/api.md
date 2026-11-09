@@ -427,7 +427,7 @@ Authenticate with a personal access token (`read` permission is sufficient): `Au
 | Endpoint                 | Returns                                                                          |
 | ------------------------ | -------------------------------------------------------------------------------- |
 | `GET /contacts`          | Paged list of the approved senders, those whose mail is forwarded, on domains this token's user can use, alphabetically |
-| `GET /screener`          | Senders waiting in the Screener, their mail held until someone says yes, in the index's format |
+| `GET /screener`          | Every sender waiting in the Screener, their mail held until someone says yes, in the index's format on one page |
 | `GET /contacts/denied`   | Senders screened out, in the index's format plus `held_count`, how many of their emails are held |
 
 

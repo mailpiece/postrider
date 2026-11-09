@@ -8,6 +8,7 @@ class InboundEmail < ApplicationRecord
 
   enum :status, %w[ pending processing delivered failed bounced held ].index_by(&:itself), default: :pending
 
+  scope :ordered, -> { order(created_at: :desc) }
   scope :in_flight, -> { where(status: %w[ pending processing ]) }
   scope :processed, -> { where(status: %w[ delivered failed bounced ]) }
 

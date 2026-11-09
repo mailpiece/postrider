@@ -120,6 +120,7 @@ Rails.application.routes.draw do
   end
   resource :screener, only: :show do
     resource :denial, only: :create, module: :screeners
+    resource :flagged_denial, only: :create, module: :screeners
   end
 
   namespace :contacts do

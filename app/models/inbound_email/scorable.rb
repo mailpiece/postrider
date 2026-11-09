@@ -26,8 +26,9 @@ module InboundEmail::Scorable
     events.exists?(action: "inbound_email_scored")
   end
 
+  # Reads the loaded events, so a list that preloads them asks nothing more.
   def spam_check
-    if event = events.find_by(action: "inbound_email_scored")
+    if event = events.find { |event| event.action == "inbound_email_scored" }
       InboundEmail::SpamCheck.new(event.particulars)
     end
   end
@@ -41,6 +42,8 @@ module InboundEmail::Scorable
 
         track_event "scored", action: result.action.to_s, score: result.score, complete: result.complete?,
           symbols: result.symbols.map { |symbol| scored_symbol(symbol) }, headers: result.headers
+        # Touch so the Screener's etag moves when the verdict lands late.
+        touch
       end
     end
 

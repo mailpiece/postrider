@@ -1,8 +1,13 @@
 <div class="screener-question">
   <% if contact.pending? %>
     <span class="flex-item-grow">
-      <strong><%= contact.title %></strong> is writing for the first time. Forward their mail?
-      <span class="txt-subtle"><%= pluralize contact.inbound_emails.held.count, "email" %> held</span>
+      <strong><%= contact.title %></strong> is writing for the first time.
+      <% if forward_to = local_assigns[:forward_to] %>
+        Forward their mail to <%= forward_to %>?
+      <% else %>
+        Forward their mail?
+      <% end %>
+      <span class="txt-subtle"><%= pluralize contact.held_inbound_emails.size, "email" %> held</span>
     </span>
     <%= render "contacts/yes_no", contact: contact %>
   <% elsif contact.denied? %>

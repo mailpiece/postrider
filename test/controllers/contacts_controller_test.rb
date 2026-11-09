@@ -96,7 +96,7 @@ class ContactsControllerTest < ActionDispatch::IntegrationTest
 
     assert_select ".breadcrumbs a[href=?]", contacts_path, text: "Contacts"
     assert_select ".breadcrumbs a[href=?]", screener_path, text: "The Screener"
-    assert_select ".screener-question", text: /Newcomer is writing for the first time/
+    assert_select ".screener-question", text: /Newcomer is writing for the first time\.\s+Forward their mail\?/
     assert_select ".screener-question form[action=?] button", contact_approval_path(contacts(:pending)), text: "Yes"
   end
 

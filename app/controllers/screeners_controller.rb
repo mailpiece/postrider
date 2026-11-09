@@ -1,6 +1,7 @@
 class ScreenersController < ApplicationController
   def show
-    set_page_and_extract_portion_from Current.user.accessible_contacts.pending.ordered
-    fresh_when etag: @page.records
+    @contacts = Current.user.accessible_contacts.pending.ordered.preloaded
+    @flagged, @waiting = @contacts.partition(&:flagged?)
+    fresh_when etag: @contacts
   end
 end

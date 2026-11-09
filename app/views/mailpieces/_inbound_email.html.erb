@@ -1,6 +1,6 @@
 <div class="page flex flex-column gap">
   <% if inbound_email.held? && (inbound_email.contact&.pending? || inbound_email.contact&.denied?) %>
-    <%= render "contacts/screening", contact: inbound_email.contact %>
+    <%= render "contacts/screening", contact: inbound_email.contact, forward_to: inbound_email.forward_to %>
   <% end %>
 
   <%= render "mailpieces/envelope", mailpiece: mailpiece, status: mailpiece_status(mailpiece), status_line: inbound_envelope_status(inbound_email),

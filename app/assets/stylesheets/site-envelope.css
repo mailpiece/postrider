@@ -596,35 +596,6 @@
     text-transform: uppercase;
   }
 
-  /* The direction and the account's own address, in a tab sharing the card's corner. */
-  .envelope__tab {
-    --icon-size: 0.9em;
-
-    align-items: center;
-    background-color: var(--color-ink-darker);
-    block-size: var(--strip-tab-height);
-    border-radius: var(--radius-sm) 0 var(--radius-sm) 0;
-    color: var(--color-ink-inverted);
-    display: inline-flex;
-    font-size: 0.7rem;
-    font-weight: 600;
-    gap: 0.35em;
-    inset-block-start: 0;
-    inset-inline-start: 0;
-    line-height: 1.2;
-    max-inline-size: min(60%, 18rem);
-    padding-block: 0.2rem;
-    padding-inline: var(--strip-padding-inline) 1ch;
-    position: absolute;
-  }
-
-  .envelope__line {
-    min-inline-size: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
   /* A look-alike sender, shown as punycode, is flagged as phishing before the address. */
   .envelope__phishing {
     color: var(--color-warning-text);

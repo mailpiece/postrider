@@ -8,9 +8,9 @@ class Domains::BulksControllerTest < ActionDispatch::IntegrationTest
   test "an admin turns bulk mail on and goes back" do
     sign_in_as :leo
 
-    post domain_bulk_path(@domain), headers: { "HTTP_REFERER" => edit_domain_path(@domain) }
+    post domain_bulk_path(@domain), headers: { "HTTP_REFERER" => domain_switches_path(@domain) }
 
-    assert_redirected_to edit_domain_path(@domain)
+    assert_redirected_to domain_switches_path(@domain)
     assert @domain.reload.bulk?
   end
 

@@ -1,0 +1,9 @@
+@layer components {
+  /* The row's end stacks when its DNS was checked over where it stands. */
+  .domain__end {
+    align-items: flex-end;
+    flex-direction: column;
+    font-variant-numeric: tabular-nums;
+    gap: 0.2em;
+  }
+}

@@ -5,7 +5,7 @@ module SettingsHelper
       ({ icon: "bell-alert", title: "Bounce routing", hint: Current.account.setting.bounce_address || "Not set up", path: edit_account_bounce_routing_path } if Current.user.admin?),
       { icon: "everyone", title: "People", hint: pluralize(Current.account.users.active.count, "person"), path: users_path },
       { icon: "bell-off", title: "Suppressions", hint: "Addresses skipped on future sends", path: suppressions_path },
-      { icon: "lifebuoy", title: "Docs", hint: "Sending over the HTTP API and SMTP", path: docs_path },
+      { icon: "lifebuoy", title: "Docs", hint: "Sending over the HTTP API and SMTP", path: "https://postrider.dev/docs" },
       { icon: "person", title: "Profile", hint: Current.user.name, path: user_path(Current.user) },
       ({ icon: "trash", title: "Delete account", hint: "For good, with all its data", path: new_account_cancellation_path } if Current.account.cancellable? && Current.user.owner?)
     ].compact

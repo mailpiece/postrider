@@ -108,6 +108,12 @@ class DomainTest < ActiveSupport::TestCase
     assert_not_includes Domain.verified, domains(:unverified)
   end
 
+  test "unverified_first lists the domains not yet verified before the verified ones, each set by name" do
+    missing = users(:leo).account.domains.create!(name: "missing.example", creator: users(:leo), dkim_status: :missing)
+
+    assert_equal [ missing, domains(:unverified), domains(:example), domains(:other_account), domains(:private) ], Domain.unverified_first.to_a
+  end
+
   test "dns_records lists inbound MX and DKIM, leaving the alternate CNAME off the basic list" do
     domain = domains(:example)
 

@@ -8,9 +8,9 @@ class Domains::SendingsControllerTest < ActionDispatch::IntegrationTest
   test "an admin turns sending off and goes back" do
     sign_in_as :leo
 
-    delete domain_sending_path(@domain), headers: { "HTTP_REFERER" => edit_domain_path(@domain) }
+    delete domain_sending_path(@domain), headers: { "HTTP_REFERER" => domain_switches_path(@domain) }
 
-    assert_redirected_to edit_domain_path(@domain)
+    assert_redirected_to domain_switches_path(@domain)
     assert_not @domain.reload.sending?
   end
 

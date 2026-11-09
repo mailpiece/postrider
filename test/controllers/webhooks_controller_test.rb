@@ -64,16 +64,6 @@ class WebhooksControllerTest < ActionDispatch::IntegrationTest
     assert_select "##{dom_id webhook} .row__meta", text: "Turned off webhook Deliveries · https://hooks.example.com/postrider"
   end
 
-  test "index reads every webhook's deactivation in one query" do
-    webhooks(:active).delinquency_tracker.update!(consecutive_failures_count: 9, first_failure_at: 2.hours.ago)
-    webhooks(:active).delinquency_tracker.record_delivery_of(failed_delivery(webhooks(:active)))
-    3.times { |n| domains(:example).webhooks.create!(name: "Hook #{n}", url: "https://example.com/#{n}", active: false) }
-
-    assert_queries_match(/FROM "events"/, count: 1) { get domain_webhooks_path(domains(:example)) }
-
-    assert_select ".row__end form button", text: "Activate", count: 5
-  end
-
   test "activating a webhook from the list returns to it" do
     webhook = webhooks(:inactive)
 

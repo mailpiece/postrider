@@ -20,13 +20,13 @@ class Webhook < ApplicationRecord
     sending_token_refused
   ].freeze
   ACTION_MAILBOX_RELAY_PERMITTED_ACTIONS = %w[ inbound_email_received inbound_email_bounce_received ].freeze
+  DEACTIVATION_ACTIONS = %w[ webhook_deactivated webhook_turned_off ].freeze
 
   has_secure_token :signing_secret
   encrypts :signing_secret
 
   has_many :deliveries, class_name: "Webhook::Delivery", dependent: :delete_all
   has_one :delinquency_tracker, class_name: "Webhook::DelinquencyTracker", dependent: :delete
-  has_one :last_deactivation, -> { where(action: %w[ webhook_deactivated webhook_turned_off ]).ordered }, as: :eventable, class_name: "Event"
 
   belongs_to :account, default: -> { domain.account }
   belongs_to :domain
@@ -70,7 +70,7 @@ class Webhook < ApplicationRecord
   end
 
   def deactivation
-    last_deactivation unless active?
+    events.where(action: DEACTIVATION_ACTIONS).ordered.first unless active?
   end
 
   def for_action_mailbox_relay?

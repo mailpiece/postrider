@@ -150,6 +150,15 @@ class WebhookTest < ActiveSupport::TestCase
     assert_equal 10, webhook.events.last.particulars["consecutive_failures_count"]
   end
 
+  test "the deactivation of an inactive webhook is its newest one" do
+    webhook = webhooks(:active)
+    webhook.deactivate event_name: "deactivated", consecutive_failures_count: 10, code: 500
+    webhook.activate
+    webhook.deactivate
+
+    assert_equal "webhook_turned_off", webhook.reload.deactivation.action
+  end
+
   test "trigger creates a delivery" do
     event = deliveries(:delivered).track_event("delivered")
 

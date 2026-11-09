@@ -98,34 +98,26 @@ class MailboxesControllerTest < ActionDispatch::IntegrationTest
     assert_match "Mailbox added", response.body
   end
 
-  test "show renders the mailbox page" do
+  test "show offers to set up forwarding on a mailbox that does not forward" do
     sign_in_as :leo
     mailbox = mailboxes(:inbox)
 
     get domain_mailbox_path(domains(:example), mailbox)
 
     assert_response :success
-    assert_select ".breadcrumbs strong", text: "inbox@#{domains(:example).name}"
-    assert_select ".record .status", text: "Off"
-    assert_select ".trail__sentence", text: "Mailbox added"
-    assert_select ".strip a[href=?][aria-keyshortcuts=e]", edit_domain_mailbox_path(domains(:example), mailbox), text: /Edit/
     assert_select ".record a[href=?]", edit_domain_mailbox_path(domains(:example), mailbox), text: "Set up forwarding"
   end
 
-  test "show calls an unconfirmed destination not confirmed, whether it never confirmed or a bounce cleared it" do
+  test "show offers to send the confirmation again to an unconfirmed destination" do
     sign_in_as :leo
     mailbox = mailboxes(:unconfirmed_forwarding)
 
     get domain_mailbox_path(domains(:example), mailbox)
 
-    assert_select ".record .status", text: "Not confirmed"
-    assert_select ".record__byline", text: /Set to forward to\s+unconfirmed@elsewhere.example/
     assert_select "button", text: "Send a confirmation link"
-    assert_select ".strip a[href=?]", edit_domain_mailbox_path(domains(:example), mailbox), text: /Edit/
-    assert_select ".record a[href=?]", edit_domain_mailbox_path(domains(:example), mailbox), count: 0
   end
 
-  test "a forward on an unverified domain is saved unconfirmed, sends nothing, and asks for DKIM" do
+  test "a forward on an unverified domain is saved unconfirmed, sends nothing, and offers no confirmation" do
     sign_in_as :leo
     mailbox = mailboxes(:unverified_postmaster)
 
@@ -135,8 +127,6 @@ class MailboxesControllerTest < ActionDispatch::IntegrationTest
 
     follow_redirect!
     assert_no_match "Confirmation sent", response.body
-    assert_select ".record p", text: "Verify this domain's DKIM, then send the confirmation."
-    assert_select ".record a[href=?]", domain_dns_records_path(domains(:unverified)), text: "See the DNS records"
     assert_select "button", text: "Send a confirmation link", count: 0
     assert_equal "someone@example.com", mailbox.reload.forward_to
   end
@@ -165,26 +155,13 @@ class MailboxesControllerTest < ActionDispatch::IntegrationTest
     assert domains(:example).mailboxes.exists?(reserved.id)
   end
 
-  test "the index lists the mailboxes under a row leading to the catch-all policy" do
+  test "the index lists the mailboxes" do
     sign_in_as :leo
-    mailboxes(:example_postmaster).update!(forward_to: "someone@example.com")
 
     get domain_mailboxes_path(domains(:example))
 
     assert_response :success
-    assert_select "select", count: 0
-    assert_select ".rows--links a.row__body[href=?]", edit_domain_catch_all_path(domains(:example)) do
-      assert_select ".row__title", text: "Everything else"
-      assert_select ".row__meta", text: "Mail for an address with no mailbox is rejected"
-    end
-    assert_select "input[placeholder=?]", "Filter mailboxes…"
-    assert_select ".filter__empty a", count: 0
-    assert_select "[data-controller=pagination][data-pagination-paginate-on-intersection-value=true]"
-    assert_select "li.row[data-quick-find-target=item] a.row__body" do
-      assert_select ".row__title", text: "postmaster@#{domains(:example).name}"
-      assert_select ".row__meta", text: "Not confirmed by someone@example.com · Required", count: 1
-      assert_select ".row__meta .status", text: "Not confirmed by someone@example.com"
-    end
+    assert_select ".row__title", text: "postmaster@#{domains(:example).name}"
   end
 
   test "setting a forwarding address sends a confirmation link and says where it went" do

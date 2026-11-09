@@ -1,7 +1,7 @@
 class DomainsController < ApplicationController
-  before_action :ensure_admin, only: %i[ new edit create destroy ]
+  before_action :ensure_admin, only: %i[ new create destroy ]
   before_action :ensure_sudo, only: %i[ new create ]
-  before_action :set_domain, only: %i[ show edit destroy ]
+  before_action :set_domain, only: %i[ show destroy ]
 
   def index
     set_page_and_extract_portion_from Current.user.domains.unverified_first
@@ -9,9 +9,6 @@ class DomainsController < ApplicationController
   end
 
   def show
-  end
-
-  def edit
   end
 
   def new

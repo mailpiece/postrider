@@ -13,7 +13,7 @@ class Account::SettingsControllerTest < ActionDispatch::IntegrationTest
       assert_select "li.row a[href=?]", edit_account_bounce_routing_path, text: /Bounce routing/
       assert_select "li.row a[href=?]", users_path, text: /People\s+\d+ pe/
       assert_select "li.row a[href=?]", suppressions_path, text: /Suppressions/
-      assert_select "li.row a[href=?]", docs_path, text: /Docs/
+      assert_select "li.row a[href=?]", "https://postrider.dev/docs", text: /Docs/
       assert_select "li.row a[href=?]", user_path(users(:leo)), text: /Profile\s+Leo/
       assert_select "li.row a[href=?]", new_account_cancellation_path, text: /Delete account/
       assert_select "li.row .icon", count: 7
@@ -43,7 +43,7 @@ class Account::SettingsControllerTest < ActionDispatch::IntegrationTest
     assert_select "li.row a[href=?]", new_account_cancellation_path, count: 0
     assert_select "li.row a[href=?]", users_path
     assert_select "li.row a[href=?]", suppressions_path
-    assert_select "li.row a[href=?]", docs_path
+    assert_select "li.row a[href=?]", "https://postrider.dev/docs"
     assert_select "li.row a[href=?]", user_path(users(:nonstaff)), text: /Profile\s+Non Staff/
   end
 

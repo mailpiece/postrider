@@ -1,6 +1,6 @@
 @layer components {
   /* On the page a list is a card of its own. Inside a surface that already is one, it is ruled lines. */
-  :is(.panel, .record, .project__sheet, .tool__panel),
+  :is(.panel, .record, .project__sheet),
   .rows .rows {
     --rows-border-radius: 0;
     --rows-shadow: none;

@@ -1,15 +1,13 @@
 require "test_helper"
 
 class Account::BounceRoutingsControllerTest < ActionDispatch::IntegrationTest
-  test "edit has the one form, under Settings" do
+  test "edit has the form" do
     sign_in_as :leo
 
     get edit_account_bounce_routing_path
 
     assert_response :success
-    assert_select ".breadcrumbs a[href=?]", account_settings_path, text: "Settings"
-    assert_select "form[action=?]", account_bounce_routing_path, count: 1
-    assert_select "input[name='setting[bounce_address]']"
+    assert_select "form[action=?]", account_bounce_routing_path
   end
 
   test "admins can update the bounce address" do

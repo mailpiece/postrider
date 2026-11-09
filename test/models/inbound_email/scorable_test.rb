@@ -121,6 +121,17 @@ class InboundEmail::ScorableTest < ActiveSupport::TestCase
       event.particulars)
   end
 
+  test "a verdict touches the mail and its contact, so a Screener held in a browser is stale" do
+    email = create_inbound_email(status: :held, contact: contacts(:pending))
+    MailScore::Client.any_instance.stubs(:check).returns(verdict(action: :reject, score: 7.4))
+
+    assert_changes -> { contacts(:pending).reload.updated_at } do
+      assert_changes -> { email.reload.updated_at } do
+        email.score_now
+      end
+    end
+  end
+
   test "a null sender is sent as <>" do
     email = create_inbound_email(mail_from: "")
 

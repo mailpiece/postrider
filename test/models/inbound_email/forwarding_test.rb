@@ -11,7 +11,7 @@ class InboundEmail::ForwardingTest < ActiveSupport::TestCase
     publish_sealing_key
   end
 
-  test "mail from an unknown, authenticated sender is held and its sender lands denied" do
+  test "mail from an unknown, authenticated sender is held and its sender waits in the Screener" do
     stub_verdicts(dmarc: "pass", from_aligned: true)
     email = inbound_to_mailbox(from: JANE)
 
@@ -20,13 +20,13 @@ class InboundEmail::ForwardingTest < ActiveSupport::TestCase
     end
 
     assert email.reload.held?
-    assert email.contact.denied?
+    assert email.contact.pending?
     assert_equal "jane@remote.example", email.contact.email
     assert_equal "Jane", email.contact.name
 
     event = email.events.last
     assert_equal "inbound_email_held", event.action
-    assert_equal "denied_sender", event.particulars["reason"]
+    assert_equal "pending_sender", event.particulars["reason"]
   end
 
   test "mail from an unknown sender nothing vouches for is held under no contact" do

@@ -1,10 +1,10 @@
 require "test_helper"
 
 class ContactTest < ActiveSupport::TestCase
-  test "for_sender creates a denied contact on first contact, capturing the display name" do
+  test "for_sender creates a pending contact on first contact, capturing the display name" do
     contact = Contact.for_sender(domains(:example), "Jane@Remote.Example", name: "Jane")
 
-    assert contact.denied?
+    assert contact.pending?
     assert_equal "jane@remote.example", contact.email
     assert_equal "Jane", contact.name
     assert_equal accounts(:davids_account), contact.account
@@ -25,6 +25,10 @@ class ContactTest < ActiveSupport::TestCase
     assert_equal "jacopo@xn--basecmp-6fg.com", contact.email
     assert contact.lookalike?
     assert_equal contact, Contact.for_sender(domains(:example), "jacopo@basecаmp.com")
+  end
+
+  test "a blank display name is kept as none" do
+    assert_nil Contact.for_sender(domains(:example), "quiet@remote.example", name: " ").name
   end
 
   test "for_sender takes the direction override out of a display name" do
@@ -56,6 +60,77 @@ class ContactTest < ActiveSupport::TestCase
     end
 
     assert contacts(:denied).approved?
+  end
+
+  test "approve forwards the held mail of a pending contact" do
+    assert_enqueued_with(job: Contact::ForwardHeldJob, args: [ contacts(:pending) ]) do
+      assert_changes -> { contacts(:pending).reload.decision }, from: "pending", to: "approved" do
+        contacts(:pending).approve
+      end
+    end
+  end
+
+  test "deny turns a pending contact away, its mail still held" do
+    assert_no_enqueued_jobs only: Contact::ForwardHeldJob do
+      assert_changes -> { contacts(:pending).reload.decision }, from: "pending", to: "denied" do
+        contacts(:pending).deny
+      end
+    end
+  end
+
+  test "deny_all denies every contact in the relation, and nobody else" do
+    assert_changes -> { contacts(:pending).reload.decision }, from: "pending", to: "denied" do
+      assert_no_changes -> { contacts(:approved).reload.decision } do
+        Contact.pending.deny_all
+      end
+    end
+  end
+
+  test "alphabetically sorts by name, or by address when there is none" do
+    contacts(:pending).update!(name: "aardvark")
+
+    assert_equal %w[ newcomer@sender.example friend@sender.example stranger@sender.example ],
+      domains(:example).contacts.alphabetically.pluck(:email)
+  end
+
+  test "new mail from a contact touches it" do
+    assert_changes -> { contacts(:pending).reload.updated_at } do
+      create_inbound_email(status: :held, contact: contacts(:pending))
+    end
+  end
+
+  test "the newest held email speaks for a contact" do
+    latest = create_inbound_email(status: :held, contact: contacts(:denied))
+    create_inbound_email(status: :delivered, contact: contacts(:denied))
+
+    assert_equal [ latest, inbound_emails(:held) ], contacts(:denied).held_inbound_emails.to_a
+    assert_equal latest, contacts(:denied).newest_held_email
+    assert_nil contacts(:approved).newest_held_email
+  end
+
+  test "a contact is flagged when the spam check flagged their newest held email" do
+    assert_not contacts(:denied).flagged?
+    assert_not contacts(:approved).flagged?
+
+    inbound_emails(:held).track_event "scored", action: "no_action", score: -1.8, complete: true, symbols: []
+    assert_not contacts(:denied).reload.flagged?
+
+    create_inbound_email(status: :held, contact: contacts(:denied))
+      .track_event "scored", action: "reject", score: 7.4, complete: true, symbols: []
+    assert contacts(:denied).reload.flagged?
+  end
+
+  test "deny_flagged denies the flagged contacts in the relation, and nobody else" do
+    inbound_emails(:held).update!(contact: contacts(:pending))
+    inbound_emails(:held).track_event "scored", action: "reject", score: 7.4, complete: true, symbols: []
+    bystander = domains(:example).contacts.create!(email: "quiet@sender.example", decision: :pending)
+    create_inbound_email(status: :held, contact: bystander)
+
+    domains(:example).contacts.pending.deny_flagged
+
+    assert contacts(:pending).reload.denied?
+    assert bystander.reload.pending?
+    assert contacts(:approved).reload.approved?
   end
 
   test "deny records the decision and forwards nothing" do

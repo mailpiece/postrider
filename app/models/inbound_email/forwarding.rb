@@ -7,7 +7,7 @@ module InboundEmail::Forwarding
   MAX_RECEIVED_HOPS = 25
 
   included do
-    belongs_to :contact, optional: true
+    belongs_to :contact, optional: true, touch: true
 
     # Contact mail is read through the contact; pairing keeps that scope honest.
     validate :contact_belongs_to_domain
@@ -51,6 +51,11 @@ module InboundEmail::Forwarding
 
   def from_name
     parsed_email.from_name
+  end
+
+  # Where the mailbox it was sent to passes mail on, while it does.
+  def forward_to
+    forwarding_mailbox&.forward_to
   end
 
   private
@@ -115,6 +120,8 @@ module InboundEmail::Forwarding
         "unauthenticated_sender"
       elsif contact.nil?
         "unidentified_sender"
+      elsif contact.pending?
+        "pending_sender"
       elsif contact.denied?
         "denied_sender"
       else

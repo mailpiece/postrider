@@ -1,9 +1,36 @@
 module ContactsHelper
-  def contact_address(contact)
-    if contact.name.present?
-      "#{contact.name} <#{contact.email}>"
+  def contact_crumbs(contact)
+    if contact.pending?
+      safe_join [ contacts_crumb, up_crumb_to("The Screener", screener_path) ], " "
+    elsif contact.denied?
+      safe_join [ contacts_crumb, up_crumb_to("Screened out", contacts_denied_path) ], " "
     else
-      contact.email
+      up_crumb_to "Contacts", contacts_path
     end
   end
+
+  def flagged_score_tag(contact)
+    if contact.flagged?
+      tag.span "flagged #{contact.newest_held_email.spam_check.formatted_score}", class: "status status--warning"
+    end
+  end
+
+  def forward_confirmation(contact)
+    held = contact.held_inbound_emails
+
+    if held.any?
+      "Forward #{pluralize held.size, "held email"} from #{contact.title} to #{held_forwarding_address(held)}?"
+    end
+  end
+
+  private
+    def contacts_crumb
+      link_to("Contacts", contacts_path) + tag.span("▸", class: "breadcrumbs__separator")
+    end
+
+    def held_forwarding_address(held)
+      destinations = held.uniq(&:rcpt_to).filter_map(&:forward_to).uniq
+
+      destinations.one? ? destinations.first : "your forwarding address"
+    end
 end

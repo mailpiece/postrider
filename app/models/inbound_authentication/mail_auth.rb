@@ -68,7 +68,12 @@ class InboundAuthentication::MailAuth
     end
 
     def authenticated?(result)
-      result.dmarc&.status == ::MailAuth::Status::PASS || from_aligned?(result)
+      result.dmarc&.status == ::MailAuth::Status::PASS || from_aligned?(result) || trusted_arc?(result)
+    end
+
+    def trusted_arc?(result)
+      newest = result.arc&.newest
+      InboundAuthentication.trusted_arc?(status: result.arc&.status, sealer: newest&.seal&.domain, claimed: newest&.claimed)
     end
 
     def temporary?(check)

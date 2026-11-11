@@ -383,6 +383,7 @@ Every variable PostRider reads, A–Z. Provide them however your deployment does
 | `SUBMISSION_MAX_AUTH_ATTEMPTS_PER_IP` | `60` | `AUTH` commands one IP may send per minute on the submission listener, successful ones included; the next gets a `454`. Keep it above `SUBMISSION_RATE_LIMIT`, since most clients authenticate once per message |
 | `SUBMISSION_PORT` | `587` (`2587` in development) | Submission listener port |
 | `SUBMISSION_RATE_LIMIT` | `30` | Submissions per account per minute |
+| `TRUSTED_ARC_SEALERS` | `google.com,microsoft.com` | Comma-separated domains trusted as intermediaries: inbound mail whose `From` nothing else vouches for is believed when its ARC chain passes and the newest seal is from one of these or a subdomain, and that sealer recorded a DMARC pass (RFC 8617 §7.2.1). Set it empty to trust none |
 | `TRUSTED_PROXIES` | — | Comma-separated CIDR ranges whose `X-Forwarded-For` entries are trusted, on top of the private network ranges Rails trusts already (see [Client IP](#client-ip)) |
 
 ## Client IP

@@ -40,9 +40,9 @@ module InboundEmail::Forwarding
     delivered? && contact_id?
   end
 
-  # From is only believed when DMARC/DKIM/SPF alignment vouch for it.
+  # From is only believed when DMARC/DKIM/SPF alignment vouch for it, or a trusted sealer's passing ARC chain.
   def authenticated_sender?
-    dmarc == "pass" || from_aligned?
+    dmarc == "pass" || from_aligned? || trusted_arc?
   end
 
   def from_address
@@ -62,6 +62,17 @@ module InboundEmail::Forwarding
     def contact_belongs_to_domain
       if contact && contact.domain_id != domain_id
         errors.add(:contact, "is not a contact of this domain")
+      end
+    end
+
+    def trusted_arc?
+      InboundAuthentication.trusted_arc?(status: arc, sealer: arc_sealer, claimed: newest_arc_claims)
+    end
+
+    # The verdicts keep who sealed last, not what they recorded, so that is read back from the message.
+    def newest_arc_claims
+      if arc == "pass"
+        @newest_arc_claims ||= ::MailAuth::Arc::Chain.new(::MailAuth::Message.new(raw)).newest&.claimed
       end
     end
 

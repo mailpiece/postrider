@@ -226,6 +226,17 @@ module Relay
       ENV.fetch("TRUSTED_PROXIES", "").split(",").map(&:strip).compact_blank.map { |proxy| IPAddr.new(proxy) }
     end
 
+    # Intermediaries whose passing ARC chain vouches for a From that DMARC no longer does (RFC 8617 §7.2.1).
+    def trusted_arc_sealers
+      ENV.fetch("TRUSTED_ARC_SEALERS", "google.com,microsoft.com").split(",").map(&:strip).compact_blank.map(&:downcase)
+    end
+
+    # A subdomain counts, so "eur.microsoft.com" is trusted as "microsoft.com" and "evilmicrosoft.com" is not.
+    def trusted_arc_sealer?(domain)
+      domain = domain.to_s.downcase.chomp(".")
+      trusted_arc_sealers.any? { |sealer| domain == sealer || domain.end_with?(".#{sealer}") }
+    end
+
     private
       # Leading dot required so "google.com" doesn't also match "notgoogle.com".
       def mx_suffix(suffix)

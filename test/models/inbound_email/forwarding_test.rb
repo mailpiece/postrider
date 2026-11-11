@@ -133,6 +133,48 @@ class InboundEmail::ForwardingTest < ActiveSupport::TestCase
     assert_equal "unauthenticated_sender", email.events.last.particulars["reason"]
   end
 
+  test "mail DMARC fails is forwarded when a trusted sealer passed its ARC chain, from the sealer or a subdomain" do
+    [ "microsoft.com", "EUR.Microsoft.com" ].each do |sealer|
+      stub_verdicts(dmarc: "fail", arc: "pass", arc_sealer: sealer)
+      email = inbound_to_mailbox(raw: arc_sealed_raw(dmarc: "pass"))
+
+      assert_difference -> { Message.count }, 1 do
+        email.forward_now(ip: "203.0.113.1", helo: "sender.example")
+      end
+      assert email.reload.forwarded?
+    end
+  end
+
+  test "mail DMARC fails is held when its ARC chain failed, a sealer nobody trusts passed it, or the sealer recorded no DMARC pass" do
+    stub_env TRUSTED_ARC_SEALERS: "lists.example.org, Microsoft.com"
+
+    [ [ "fail", "microsoft.com", "pass" ], [ "pass", "untrusted.example", "pass" ], [ "pass", "evilmicrosoft.com", "pass" ], [ "pass", nil, "pass" ],
+      [ "pass", "microsoft.com", "fail" ], [ "pass", "microsoft.com", "none" ] ].each do |arc, sealer, claimed|
+      stub_verdicts(dmarc: "fail", arc: arc, arc_sealer: sealer)
+      email = inbound_to_mailbox(raw: arc_sealed_raw(dmarc: claimed))
+
+      assert_no_difference -> { Message.count } do
+        email.forward_now(ip: "203.0.113.1", helo: "sender.example")
+      end
+      assert email.reload.held?
+      assert_equal "unauthenticated_sender", email.events.last.particulars["reason"]
+    end
+  end
+
+  test "TRUSTED_ARC_SEALERS replaces the sealers trusted by default" do
+    stub_env TRUSTED_ARC_SEALERS: "lists.example.org"
+
+    stub_verdicts(dmarc: "fail", arc: "pass", arc_sealer: "lists.example.org")
+    email = inbound_to_mailbox(raw: arc_sealed_raw(dmarc: "pass"))
+    email.forward_now(ip: "203.0.113.1", helo: "sender.example")
+    assert email.reload.forwarded?
+
+    stub_verdicts(dmarc: "fail", arc: "pass", arc_sealer: "google.com")
+    email = inbound_to_mailbox(raw: arc_sealed_raw(dmarc: "pass"))
+    email.forward_now(ip: "203.0.113.1", helo: "sender.example")
+    assert email.reload.held?
+  end
+
   test "mail from a denied sender is held under that decision" do
     stub_verdicts(dmarc: "pass", from_aligned: true)
     email = inbound_to_mailbox(from: contacts(:denied).email)
@@ -285,6 +327,12 @@ class InboundEmail::ForwardingTest < ActiveSupport::TestCase
       "From: #{from}\r\nSubject: Hi\r\n\r\nBody"
     end
 
+    # Sealed with the relay's key; the stubbed verdicts name the sealer, the seal carries what it recorded.
+    def arc_sealed_raw(dmarc:)
+      Relay::SealingKey.instance.seal(raw_from(FRIEND),
+        authentication_results: "mx.example; dmarc=#{dmarc} header.from=sender.example", chain_status: "none")
+    end
+
     def looping_raw
       "#{InboundEmail::Forwarding::TRACE_HEADER}: elsewhere.example\r\n" + raw_from(FRIEND)
     end
@@ -297,10 +345,10 @@ class InboundEmail::ForwardingTest < ActiveSupport::TestCase
     end
 
     # Drive the gate at the same seam production uses.
-    def stub_verdicts(dmarc: "none", from_aligned: false, arc: "none", authentication_results: "mx.example; dmarc=#{dmarc}")
+    def stub_verdicts(dmarc: "none", from_aligned: false, arc: "none", arc_sealer: nil, authentication_results: "mx.example; dmarc=#{dmarc}")
       InboundAuthentication.stubs(:verdicts).returns(
         spf: "none", dkim: "none", dmarc: dmarc, dmarc_policy: nil,
-        arc: arc, arc_sealer: nil, iprev: "permerror", remote_host: nil, from_aligned: from_aligned,
+        arc: arc, arc_sealer: arc_sealer, iprev: "permerror", remote_host: nil, from_aligned: from_aligned,
         authentication_results: authentication_results
       )
     end

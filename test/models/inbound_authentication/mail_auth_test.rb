@@ -155,6 +155,20 @@ class InboundAuthentication::MailAuthTest < ActiveSupport::TestCase
     assert_equal "pass", settle[:dkim]
   end
 
+  test "settles once a trusted sealer's passing ARC chain vouches for the sender, whatever failed for now" do
+    ::MailAuth.stubs(:authenticate).returns(result_of(spf: "temperror", dkim: "none", dmarc: "fail",
+      arc: "pass", arc_sealer: "eur.microsoft.com", arc_claimed: { "dmarc" => "pass" }))
+    assert_equal "temperror", settle[:spf]
+  end
+
+  test "leaves unsettled what failed for now when the ARC chain failed, its sealer is not trusted, or it recorded no DMARC pass" do
+    [ [ "fail", "microsoft.com", "pass" ], [ "pass", "evilmicrosoft.com", "pass" ], [ "pass", "microsoft.com", "fail" ], [ "pass", "microsoft.com", "none" ] ].each do |arc, sealer, claimed|
+      ::MailAuth.stubs(:authenticate).returns(result_of(spf: "temperror", dkim: "none", dmarc: "fail",
+        arc: arc, arc_sealer: sealer, arc_claimed: { "dmarc" => claimed }))
+      assert_nil settle
+    end
+  end
+
   test "settles despite a reverse name that failed for now" do
     stub_mailauth(spf: "fail", dkim: "none", dmarc: "none", iprev: "temperror")
     assert_equal "temperror", settle[:iprev]
@@ -216,11 +230,12 @@ class InboundAuthentication::MailAuthTest < ActiveSupport::TestCase
       InboundAuthentication.verdicts(RAW, ip: "203.0.113.1", helo: "sender.example", mail_from: "person@sender.example")
     end
 
-    def result_of(spf:, dkim:, dmarc:, aligned: false, spf_domain: "sender.example")
+    def result_of(spf:, dkim:, dmarc:, aligned: false, spf_domain: "sender.example", arc: "none", arc_sealer: nil, arc_claimed: {})
       ::MailAuth::Result.new(
         spf: ::MailAuth::SpfResult.new(status: spf, domain: spf_domain),
         dkim: ::MailAuth::DkimResult.new(signatures: [ ::MailAuth::Signature.new(status: dkim, domain: "sender.example", aligned:) ]),
         dmarc: ::MailAuth::DmarcResult.new(status: dmarc, policy: "reject"),
+        arc: arc_result(arc, arc_sealer, arc_claimed),
         authentication_results: "relay.example; spf=#{spf}; dkim=#{dkim}; dmarc=#{dmarc}"
       )
     end

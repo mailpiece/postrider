@@ -60,7 +60,7 @@ class Relay::SubmissionBackend
 
   def submit(id, raw:, received:, envelope:, key:)
     with_sending_token(id) do |sending_token|
-      submission = SmtpSubmission.new(raw)
+      submission = SmtpSubmission.new(raw, domain: sending_token.domain)
       raise MailGate::Errors::InvalidMessage, "Message must include a To header, a From header, and exactly one address in each identity header" unless submission.valid?
 
       authorize_identities(submission, sending_token)

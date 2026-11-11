@@ -7,13 +7,19 @@ class SmtpSubmission
 
   MESSAGE_ID_HEADER = /\Amessage-id\s*:/i
 
+  REFERENCE_HEADERS = /\A(in-reply-to|references)\s*:/i
+
+  REFERENCE = /<[^<>]*>/
+
   DATE_HEADER = /\Adate\s*:/i
 
   LIST_UNSUBSCRIBE_HEADER = /\A(list-unsubscribe|list-unsubscribe-post)\s*:/i
 
   IDENTITY_HEADERS = %w[ from sender ]
 
-  def initialize(raw)
+  # The sending domain decides which references name mail it sent, and so may be mapped to their stand-ins.
+  def initialize(raw, domain:)
+    @domain = domain
     @raw_headers, @raw_body = raw.gsub(/\r?\n/, "\r\n").gsub(/\r(?!\n)/, "").split("\r\n\r\n", 2)
     @raw_headers ||= ""
     @raw_body ||= ""
@@ -50,31 +56,81 @@ class SmtpSubmission
     end
 
     def kept_header_records
-      header_records.reject do |record|
-        record.match?(DIRECTIVE_HEADERS) || record.match?(RECEIVER_HEADERS) ||
-          replaced_message_id?(record) || replaced_list_unsubscribe?(record)
-      end
+      header_records.reject { |record| dropped?(record) }.map { |record| rewritten(record) }
+    end
+
+    def dropped?(record)
+      record.match?(DIRECTIVE_HEADERS) || record.match?(RECEIVER_HEADERS) ||
+        replaced_message_id?(record) || replaced_list_unsubscribe?(record)
     end
 
     def replaced_message_id?(record)
       replacing_message_id? && record.match?(MESSAGE_ID_HEADER)
     end
 
+    # Nothing can thread on a missing, repeated or malformed Message-ID, so stamp our own.
+    def replacing_message_id?
+      from_domain.present? && !(records_for("message-id").one? && MessageId.well_formed?(header_value("message-id")))
+    end
+
+    def rewritten(record)
+      if from_domain.blank?
+        record
+      elsif record.match?(MESSAGE_ID_HEADER)
+        "Message-ID: #{MessageId.parse(header_value("message-id")).at(from_domain)}"
+      elsif record.match?(REFERENCE_HEADERS)
+        with_sent_references_mapped(record)
+      else
+        record
+      end
+    end
+
+    # One ID per line, so stand-ins longer than the IDs they replace never push a line past 998.
+    def with_sent_references_mapped(record)
+      if references[record].any? { |reference| sent?(reference) }
+        "#{record.split(":", 2).first.strip}: " +
+          references[record].map { |reference| sent?(reference) ? stand_in_for(reference) : reference }.join("\r\n ")
+      else
+        record
+      end
+    end
+
+    def references
+      @references ||= header_records.grep(REFERENCE_HEADERS).index_with { |record| record.scan(REFERENCE) }
+    end
+
+    # Only a reference to our own rewritten mail is mapped: someone else's machine-name ID
+    # is what their side threads on, and mapping it would hide nothing.
+    def sent?(reference)
+      sent_stand_ins.include?(stand_in_for(reference))
+    end
+
+    def stand_in_for(reference)
+      if (id = MessageId.parse(reference))&.machine_host?
+        id.stand_in_at(from_domain)
+      end
+    end
+
+    # A stand-in carries the From domain, and a token sends only for its own domain,
+    # so only mail this domain sent can match.
+    def sent_stand_ins
+      @sent_stand_ins ||= if reference_stand_ins.any?
+        @domain.messages.where(mail_message_id: reference_stand_ins).pluck(:mail_message_id).to_set
+      else
+        Set.new
+      end
+    end
+
+    def reference_stand_ins
+      references.values.flatten.filter_map { |reference| stand_in_for(reference) }
+    end
+
     def message_id_records
       replacing_message_id? ? [ generated_message_id_record ] : []
     end
 
-    # Multiple or foreign Message-IDs are untrusted — replace all of them.
-    def replacing_message_id?
-      from_domain.present? && (records_for("message-id").size != 1 || message_id_host != from_domain)
-    end
-
     def generated_message_id_record
       @generated_message_id_record ||= "Message-ID: <#{SecureRandom.uuid}@#{from_domain}>"
-    end
-
-    def message_id_host
-      header_value("message-id")&.downcase&.slice(/@([^@>]+)>?\z/, 1)
     end
 
     def date_records
@@ -90,7 +146,7 @@ class SmtpSubmission
     end
 
     def from_domain
-      @from_domain ||= EmailAddress.extract(header_value("from"))&.split("@")&.last&.downcase
+      @from_domain ||= Domain.name_for(header_value("from"))
     end
 
     def replaced_list_unsubscribe?(record)

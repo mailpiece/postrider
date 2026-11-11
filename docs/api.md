@@ -185,6 +185,8 @@ Two optional headers are read and then stripped before sending:
 | `X-PostRider-Tags`   | Single tag or comma-separated list. Recorded on the message and included in `delivery_*` webhooks — same as the API's `tags` |
 | `X-List-Unsubscribe` | Promoted to a real `List-Unsubscribe` header; an `https://` URI also enables RFC 8058 one-click unsubscribe                  |
 
+A single, well-formed `Message-ID` is kept as you sent it, so replies thread on it. One whose host names a machine rather than a public domain (no dot, an IP address, a name outside the public suffix list, or `.home.arpa`) is replaced with a stable stand-in at the `From` domain, so the hostname never leaves. `In-Reply-To` and `References` entries that point at mail the same domain sent through PostRider are mapped to the same stand-in, so a later reply finds its parent. A missing, repeated or malformed `Message-ID` is replaced with a generated one. Webhooks' `message_id` is the ID as sent.
+
 
 
 

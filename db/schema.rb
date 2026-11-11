@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.2].define(version: 2026_11_06_120000) do
+ActiveRecord::Schema[8.2].define(version: 2026_11_11_120000) do
   create_table "accesses", id: :uuid, force: :cascade do |t|
     t.uuid "account_id", null: false
     t.uuid "user_id", null: false
@@ -307,7 +307,7 @@ ActiveRecord::Schema[8.2].define(version: 2026_11_06_120000) do
     t.string "origin", limit: 255, default: "submitted", null: false
     t.index ["account_id"], name: "index_messages_on_account_id"
     t.index ["created_at"], name: "index_messages_on_created_at"
-    t.index ["domain_id"], name: "index_messages_on_domain_id"
+    t.index ["domain_id", "mail_message_id"], name: "index_messages_on_domain_id_and_mail_message_id"
   end
 
   create_table "mta_sts_policies", id: :uuid, force: :cascade do |t|

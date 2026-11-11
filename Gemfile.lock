@@ -602,6 +602,7 @@ DEPENDENCIES
   mta_sts!
   platform_agent
   propshaft
+  public_suffix
   puma (~> 8.0)
   rack-mini-profiler
   rails!

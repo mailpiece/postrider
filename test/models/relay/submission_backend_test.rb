@@ -442,6 +442,26 @@ class Relay::SubmissionBackendTest < ActiveSupport::TestCase
     assert_match "Message-ID: <keep-me@example.com>", Message.order(:created_at).last.raw
   end
 
+  test "keeps a Message-ID the client set at its own public domain, so replies to it still thread" do
+    message = "From: sender@example.com\r\nTo: recipient@example.com\r\n" \
+      "Message-ID: <thread-me@client.example.net>\r\nSubject: Hi\r\n\r\nBody.\r\n"
+
+    deliver(from: "sender@example.com", to: "recipient@example.com", message: message)
+
+    assert_match "Message-ID: <thread-me@client.example.net>", Message.order(:created_at).last.raw
+  end
+
+  test "points a reply's In-Reply-To at the stand-in its machine-name parent was sent with" do
+    deliver(from: "sender@example.com", to: "recipient@example.com", message: "From: sender@example.com\r\nTo: recipient@example.com\r\n" \
+      "Message-ID: <parent@app-1.mail>\r\nSubject: Hi\r\n\r\nBody.\r\n")
+    parent = submitted_messages.sole.mail_message_id
+
+    deliver(from: "sender@example.com", to: "recipient@example.com", message: "From: sender@example.com\r\nTo: recipient@example.com\r\n" \
+      "In-Reply-To: <parent@app-1.mail>\r\nSubject: Re: Hi\r\n\r\nReply.\r\n")
+
+    assert_match "In-Reply-To: #{parent}\r\n", submitted_messages.where.not(mail_message_id: parent).sole.raw
+  end
+
   test "rejects a submission missing a From header" do
     error = assert_raises(Net::SMTPFatalError) do
       deliver(from: "sender@example.com", to: "recipient@example.com",

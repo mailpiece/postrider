@@ -24,7 +24,7 @@ GIT
 
 GIT
   remote: https://github.com/mailpiece/mailauth.git
-  revision: 0f26999e693103ff8e29af4ab5d13ba09dea959b
+  revision: 9fa5b677d8300fab3a863452a6fe109fa8a091ed
   branch: main
   specs:
     mailauth (0.6.0)

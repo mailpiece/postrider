@@ -40,9 +40,9 @@ module InboundEmail::Forwarding
     delivered? && contact_id?
   end
 
-  # From is only believed when DMARC/DKIM/SPF alignment vouch for it.
+  # From is only believed when DMARC/DKIM/SPF alignment vouch for it, or a trusted sealer's passing ARC chain.
   def authenticated_sender?
-    dmarc == "pass" || from_aligned?
+    dmarc == "pass" || from_aligned? || trusted_arc?
   end
 
   def from_address
@@ -63,6 +63,10 @@ module InboundEmail::Forwarding
       if contact && contact.domain_id != domain_id
         errors.add(:contact, "is not a contact of this domain")
       end
+    end
+
+    def trusted_arc?
+      arc == "pass" && Relay.trusted_arc_sealer?(arc_sealer)
     end
 
     def forwardable?

@@ -68,7 +68,11 @@ class InboundAuthentication::MailAuth
     end
 
     def authenticated?(result)
-      result.dmarc&.status == ::MailAuth::Status::PASS || from_aligned?(result)
+      result.dmarc&.status == ::MailAuth::Status::PASS || from_aligned?(result) || trusted_arc?(result)
+    end
+
+    def trusted_arc?(result)
+      result.arc&.status == ::MailAuth::Status::PASS && Relay.trusted_arc_sealer?(result.arc&.newest&.seal&.domain)
     end
 
     def temporary?(check)

@@ -72,7 +72,8 @@ class InboundAuthentication::MailAuth
     end
 
     def trusted_arc?(result)
-      result.arc&.status == ::MailAuth::Status::PASS && Relay.trusted_arc_sealer?(result.arc&.newest&.seal&.domain)
+      newest = result.arc&.newest
+      InboundAuthentication.trusted_arc?(status: result.arc&.status, sealer: newest&.seal&.domain, claimed: newest&.claimed)
     end
 
     def temporary?(check)

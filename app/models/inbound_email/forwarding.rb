@@ -66,7 +66,14 @@ module InboundEmail::Forwarding
     end
 
     def trusted_arc?
-      arc == "pass" && Relay.trusted_arc_sealer?(arc_sealer)
+      InboundAuthentication.trusted_arc?(status: arc, sealer: arc_sealer, claimed: newest_arc_claims)
+    end
+
+    # The verdicts keep who sealed last, not what they recorded, so that is read back from the message.
+    def newest_arc_claims
+      if arc == "pass"
+        @newest_arc_claims ||= ::MailAuth::Arc::Chain.new(::MailAuth::Message.new(raw)).newest&.claimed
+      end
     end
 
     def forwardable?

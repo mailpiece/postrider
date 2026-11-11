@@ -7,6 +7,11 @@ class InboundAuthentication
     def settled_verdicts(data, ip:, helo:, mail_from:, within:, slots: nil)
       new(data, ip:, helo:, mail_from:).settled_verdicts(within:, slots:)
     end
+
+    # A passing chain vouches for the From when its newest seal is a trusted sealer's that recorded a DMARC pass.
+    def trusted_arc?(status:, sealer:, claimed:)
+      status == "pass" && Relay.trusted_arc_sealer?(sealer) && claimed.to_h["dmarc"] == "pass"
+    end
   end
 
   def initialize(data, ip: nil, helo: nil, mail_from: nil)

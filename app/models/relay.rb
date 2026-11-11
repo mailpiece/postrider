@@ -228,7 +228,7 @@ module Relay
 
     # Intermediaries whose passing ARC chain vouches for a From that DMARC no longer does (RFC 8617 §7.2.1).
     def trusted_arc_sealers
-      ENV.fetch("TRUSTED_ARC_SEALERS", "google.com,microsoft.com").split(",").map(&:strip).compact_blank.map { it.downcase.delete_prefix(".") }
+      ENV.fetch("TRUSTED_ARC_SEALERS", "google.com,microsoft.com").split(",").map(&:strip).compact_blank.map(&:downcase)
     end
 
     # A subdomain counts, so "eur.microsoft.com" is trusted as "microsoft.com" and "evilmicrosoft.com" is not.

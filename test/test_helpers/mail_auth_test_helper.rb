@@ -15,9 +15,9 @@ module MailAuthTestHelper
   end
 
   private
-    def arc_result(status, sealer)
+    def arc_result(status, sealer, claimed = {})
       sets = if sealer
-        [ ::MailAuth::ArcSet.new(instance: 1, seal: ::MailAuth::ArcSeal.new(status: status, domain: sealer)) ]
+        [ ::MailAuth::ArcSet.new(instance: 1, seal: ::MailAuth::ArcSeal.new(status: status, domain: sealer), claimed: claimed) ]
       else
         []
       end

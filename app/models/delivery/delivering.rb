@@ -53,6 +53,8 @@ module Delivery::Delivering
         end
       end
 
+      screen_in_recipient if delivered?
+
       # Raising drives retry_on, and comes after the transaction so it keeps the deferral.
       if deferred?
         raise "Deferred delivering to #{rcpt_to}: #{result.output}"
@@ -232,5 +234,13 @@ module Delivery::Delivering
     def defer(result)
       deferred!
       track_event("deferred", rcpt_to: rcpt_to, smtp_code: result.code, smtp_output: result.output)
+    end
+
+    # After the transaction, and reported rather than raised: losing the find-or-create race
+    # for a contact leaves the mail delivered, not a failed job.
+    def screen_in_recipient
+      Contact.screen_in(domain, rcpt_to) if message.from_forwarding_mailbox?
+    rescue StandardError => error
+      Rails.error.report(error, severity: :warning)
     end
 end

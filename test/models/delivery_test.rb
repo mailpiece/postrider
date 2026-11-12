@@ -155,6 +155,90 @@ class DeliveryTest < ActiveSupport::TestCase
     assert_equal "recipient@example.com", event.particulars["rcpt_to"]
   end
 
+  test "an email from a forwarding mailbox screens its recipient in" do
+    @message.update! mail_from: "forwarding@example.com"
+    @delivery.update! rcpt_to: "michael@someemail.example"
+    stub_smtp(:sent, "250", "OK")
+
+    @delivery.deliver
+
+    assert domains(:example).contacts.find_by(email: "michael@someemail.example").approved?
+  end
+
+  test "an email from a forwarding mailbox releases what its recipient had waiting in the Screener" do
+    @message.update! mail_from: "forwarding@example.com"
+    @delivery.update! rcpt_to: "newcomer@sender.example"
+    stub_smtp(:sent, "250", "OK")
+
+    assert_enqueued_with(job: Contact::ForwardHeldJob, args: [ contacts(:pending) ]) do
+      @delivery.deliver
+    end
+
+    assert contacts(:pending).reload.approved?
+  end
+
+  test "an email to someone screened out leaves them out, their mail still held" do
+    @message.update! mail_from: "forwarding@example.com"
+    @delivery.update! rcpt_to: "stranger@sender.example"
+    stub_smtp(:sent, "250", "OK")
+
+    assert_no_enqueued_jobs only: Contact::ForwardHeldJob do
+      @delivery.deliver
+    end
+
+    assert contacts(:denied).reload.denied?
+    assert inbound_emails(:held).reload.held?
+  end
+
+  test "an email from a mailbox whose forward isn't confirmed screens nobody in" do
+    @message.update! mail_from: "unconfirmed@example.com"
+    @delivery.update! rcpt_to: "michael@someemail.example"
+    stub_smtp(:sent, "250", "OK")
+
+    assert_no_difference -> { Contact.count } do
+      @delivery.deliver
+    end
+  end
+
+  test "an email from a forwarding mailbox's name on another domain screens nobody in" do
+    @message.update! mail_from: "forwarding@elsewhere.example"
+    @delivery.update! rcpt_to: "michael@someemail.example"
+    stub_smtp(:sent, "250", "OK")
+
+    assert_no_difference -> { Contact.count } do
+      @delivery.deliver
+    end
+  end
+
+  test "a forwarded email screens nobody in" do
+    @message.update! mail_from: "forwarding@example.com", origin: :forwarded
+    @delivery.update! rcpt_to: "michael@someemail.example"
+    stub_smtp(:sent, "250", "OK")
+
+    assert_no_difference -> { Contact.count } do
+      @delivery.deliver
+    end
+  end
+
+  test "a bounced email screens nobody in" do
+    @message.update! mail_from: "forwarding@example.com"
+    @delivery.update! rcpt_to: "michael@someemail.example"
+    stub_smtp(:hard_fail, "550", "no such user")
+
+    assert_no_difference -> { Contact.count } do
+      @delivery.deliver
+    end
+  end
+
+  test "a contact that can't be filed is reported, and the delivery stays delivered" do
+    @message.update! mail_from: "forwarding@example.com"
+    Contact.stubs(:screen_in).raises(ActiveRecord::RecordNotUnique)
+    stub_smtp(:sent, "250", "OK")
+
+    assert_nothing_raised { @delivery.deliver }
+    assert @delivery.reload.delivered?
+  end
+
   test "deliver on a delivery in a terminal state never attempts smtp" do
     SmtpDelivery.any_instance.expects(:deliver).never
 

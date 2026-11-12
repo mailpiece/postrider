@@ -70,6 +70,30 @@ class ContactTest < ActiveSupport::TestCase
     end
   end
 
+  test "screen_in approves someone new, with nothing held to forward" do
+    assert_no_enqueued_jobs only: Contact::ForwardHeldJob do
+      Contact.screen_in(domains(:example), "Michael@Someemail.Example")
+    end
+
+    assert domains(:example).contacts.find_by(email: "michael@someemail.example").approved?
+  end
+
+  test "screen_in approves a sender waiting in the Screener and forwards what they had held" do
+    assert_enqueued_with(job: Contact::ForwardHeldJob, args: [ contacts(:pending) ]) do
+      Contact.screen_in(domains(:example), "newcomer@sender.example")
+    end
+
+    assert contacts(:pending).reload.approved?
+  end
+
+  test "screen_in leaves someone screened out where they are" do
+    assert_no_enqueued_jobs only: Contact::ForwardHeldJob do
+      Contact.screen_in(domains(:example), "stranger@sender.example")
+    end
+
+    assert contacts(:denied).reload.denied?
+  end
+
   test "deny turns a pending contact away, its mail still held" do
     assert_no_enqueued_jobs only: Contact::ForwardHeldJob do
       assert_changes -> { contacts(:pending).reload.decision }, from: "pending", to: "denied" do

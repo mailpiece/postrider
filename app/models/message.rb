@@ -72,6 +72,11 @@ class Message < ApplicationRecord
     @parsed_email ||= ParsedEmail.new(raw)
   end
 
+  # Sent from a mailbox whose replies come back through the Screener, not from noreply@.
+  def from_forwarding_mailbox?
+    submitted? && Domain.name_for(mail_from) == domain.name && domain.mailbox_for(mail_from)&.forwarding?
+  end
+
   def extract_attachments_later
     ExtractionJob.perform_later(self)
   end

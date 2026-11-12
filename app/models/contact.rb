@@ -38,14 +38,23 @@ class Contact < ApplicationRecord
     where(id: preloaded.select(&:flagged?).map(&:id)).deny_all
   end
 
-  def self.for_sender(domain, email, name: nil)
+  def self.for_sender(domain, email, name: nil, decision: :pending)
     email = scrubbed(email.to_s)
 
     if email.present?
       domain.contacts.find_or_create_by(email: email) do |contact|
         contact.name = name
+        contact.decision = decision
         contact.lookalike = HomographicSpoofing.email_address_spoof?(email)
       end
+    end
+  end
+
+  # Writing to someone screens them in. Someone new starts approved, with nothing held to
+  # forward; someone screened out stays out until let in by hand.
+  def self.screen_in(domain, email)
+    if contact = for_sender(domain, email, decision: :approved)
+      contact.approve if contact.pending?
     end
   end
 

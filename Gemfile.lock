@@ -34,7 +34,7 @@ GIT
 
 GIT
   remote: https://github.com/mailpiece/mailbounce.git
-  revision: c8bcd4b8b88d969d3fb22848efa0ac60a440bb1a
+  revision: ebdfb0237a1639bea9d428855cba6c91cea78f5e
   branch: main
   specs:
     mailbounce (0.6.0)

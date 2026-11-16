@@ -14,7 +14,7 @@ gem "kamal", require: false
 gem "puma", "~> 8.0"
 gem "solid_cable", ">= 3.0"
 gem "solid_cache", "~> 1.0"
-gem "solid_queue", "~> 1.5"
+gem "solid_queue", "~> 1.7"
 gem "sqlite3", ">= 2.9.6"
 gem "thruster", require: false
 gem "tzinfo-data"

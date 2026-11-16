@@ -571,14 +571,14 @@ class Relay::SubmissionBackendTest < ActiveSupport::TestCase
     assert_equal 0, submitted_messages.count
   end
 
-  test "refuses submission with a temporary 452 when the account is over its rate limit" do
+  test "refuses submission with a temporary 450 when the account is over its rate limit" do
     SubmissionRateLimiter.stubs(:exceeded?).returns(true)
 
     error = assert_raises(Net::SMTPServerBusy) do
       deliver(from: "sender@example.com", to: "recipient@example.com")
     end
 
-    assert_match "452", error.message
+    assert_match "450 4.7.1", error.message
     assert_equal 0, submitted_messages.count
   end
 

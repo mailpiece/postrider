@@ -75,7 +75,7 @@ GIT
 
 GIT
   remote: https://github.com/mailpiece/mailsmtp.git
-  revision: 914270cf46f8b1731709afdd221313832b36ee28
+  revision: 27d83a7f0e0e1995e0e1f5fca4b19b2c2f2a57de
   branch: main
   specs:
     mailsmtp (0.7.0)

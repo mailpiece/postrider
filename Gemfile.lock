@@ -42,7 +42,7 @@ GIT
 
 GIT
   remote: https://github.com/mailpiece/mailgate.git
-  revision: b00adda891a2010fdfe126d39d4e745d0198c3c5
+  revision: 9d89e032502f546250153325fbeb095a4d892eb3
   branch: main
   specs:
     mailgate (0.1.0)

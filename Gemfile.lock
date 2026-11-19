@@ -60,7 +60,7 @@ GIT
 
 GIT
   remote: https://github.com/mailpiece/mailresolver.git
-  revision: 3bca94be216f18815814e094f257bcdfdbd5ff6b
+  revision: cffec70d36761ebe5a28766ec90a415d0c9a04f0
   branch: main
   specs:
     mailresolver (0.6.0)

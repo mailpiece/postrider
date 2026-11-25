@@ -91,7 +91,7 @@ GIT
 
 GIT
   remote: https://github.com/mailpiece/mta_sts.git
-  revision: 42c715c6f39da1f5040366a02b37048b9906fbdb
+  revision: d3e7ff1cfbab2b466335e03a0d1be08cba211a8a
   branch: main
   specs:
     mta_sts (0.6.0)
